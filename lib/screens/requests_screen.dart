@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
 import 'approval_list_screen.dart';
-import 'feature_screen.dart';
 import 'leave_hours_screen.dart';
 import 'leave_of_absence_screen.dart';
-import 'payroll_screen.dart';
+import 'payslip_screen.dart';
+import 'timesheet_screen.dart';
 
 /// RECORD / REQUEST hub — mirrors the same-named group in the HRIS web sidebar.
 class RequestsScreen extends StatelessWidget {
@@ -87,7 +87,8 @@ class RequestsScreen extends StatelessWidget {
                 title: 'Overtime',
                 subtitle: 'File and track overtime requests.',
                 icon: Icons.access_time_filled_rounded,
-                txnDateLabel: 'OT date',
+                txnDateLabel: 'Overtime date',
+                showHours: true,
                 records: _overtimeRecords,
               ),
             ),
@@ -97,8 +98,7 @@ class RequestsScreen extends StatelessWidget {
             icon: Icons.view_week_rounded,
             label: 'Timesheet',
             color: AppColors.inkSoft,
-            onTap: () => _feature(
-                context, 'Timesheet', Icons.view_week_rounded, AppColors.inkSoft),
+            onTap: () => _go(context, const TimesheetScreen()),
           ),
           const SizedBox(height: 10),
           NavListTile(
@@ -106,7 +106,7 @@ class RequestsScreen extends StatelessWidget {
             label: 'Payslip',
             color: AppColors.inkSoft,
             badge: true,
-            onTap: () => _go(context, const PayrollScreen()),
+            onTap: () => _go(context, const PayslipScreen()),
           ),
         ],
       ),
@@ -115,10 +115,6 @@ class RequestsScreen extends StatelessWidget {
 
   void _go(BuildContext context, Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
-
-  void _feature(
-          BuildContext context, String title, IconData icon, Color color) =>
-      _go(context, FeatureScreen(title: title, icon: icon, color: color));
 }
 
 // -----------------------------------------------------------------------------
@@ -175,20 +171,42 @@ const _manualAdRecords = <ApprovalRecord>[
       year: 2026, month: 8, day: 7, witnessedBy: 'SOFIA REYES'),
 ];
 
+// Overtime shows applied/approved hours in addition to the shared columns.
 const _overtimeRecords = <ApprovalRecord>[
   ApprovalRecord('OT30217', 'September 04, 2026', 'September 04, 2026',
       'ARIEL SERRANO', 'September 04, 2026',
-      year: 2026, month: 9, day: 4),
+      year: 2026,
+      month: 9,
+      day: 4,
+      appliedHours: '3.00',
+      approvedHours: '3.00'),
   ApprovalRecord('OT30185', 'August 29, 2026', 'August 29, 2026',
       'ARIEL SERRANO', 'August 29, 2026',
-      year: 2026, month: 8, day: 29),
+      year: 2026,
+      month: 8,
+      day: 29,
+      appliedHours: '2.00',
+      approvedHours: '2.00'),
   ApprovalRecord('OT30142', 'August 25, 2026', 'August 22, 2026',
       'ARIEL SERRANO', 'August 26, 2026',
-      year: 2026, month: 8, day: 22, status: 'Approved'),
+      year: 2026,
+      month: 8,
+      day: 22,
+      status: 'Approved',
+      appliedHours: '4.00',
+      approvedHours: '3.50'),
   ApprovalRecord('OT30044', 'August 15, 2026', 'August 15, 2026',
       'ARIEL SERRANO', 'August 15, 2026',
-      year: 2026, month: 8, day: 15),
+      year: 2026,
+      month: 8,
+      day: 15,
+      appliedHours: '1.50',
+      approvedHours: '1.50'),
   ApprovalRecord('OT29981', 'August 08, 2026', 'August 08, 2026',
       'ARIEL SERRANO', 'August 08, 2026',
-      year: 2026, month: 8, day: 8),
+      year: 2026,
+      month: 8,
+      day: 8,
+      appliedHours: '5.00',
+      approvedHours: '5.00'),
 ];

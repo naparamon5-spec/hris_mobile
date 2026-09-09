@@ -20,6 +20,8 @@ class ApprovalRecord {
     required this.day,
     this.status = 'Posted',
     this.witnessedBy = '',
+    this.appliedHours = '',
+    this.approvedHours = '',
   });
 
   final String no;
@@ -33,6 +35,10 @@ class ApprovalRecord {
   /// Only used by Manual Arrival/Departure, which shows a witness instead of
   /// an approved date.
   final String witnessedBy;
+
+  /// Only used by Overtime, which shows applied/approved hours.
+  final String appliedHours;
+  final String approvedHours;
   final int year;
   final int month;
   final int day;
@@ -52,6 +58,7 @@ class ApprovalListScreen extends StatefulWidget {
     required this.txnDateLabel,
     required this.records,
     this.showWitnessedBy = false,
+    this.showHours = false,
   });
 
   final String title;
@@ -65,6 +72,10 @@ class ApprovalListScreen extends StatefulWidget {
   /// When true the second detail row shows "Witnessed by / Approved by"
   /// (Manual Arrival/Departure); otherwise "Approved by / Approved date".
   final bool showWitnessedBy;
+
+  /// When true an extra "Applied hours / Approved hours" row is shown
+  /// (Overtime).
+  final bool showHours;
 
   @override
   State<ApprovalListScreen> createState() => _ApprovalListScreenState();
@@ -405,6 +416,7 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                         icon: widget.icon,
                         txnDateLabel: widget.txnDateLabel,
                         showWitnessedBy: widget.showWitnessedBy,
+                        showHours: widget.showHours,
                       ),
                     ),
             ),
@@ -621,12 +633,14 @@ class _ApprovalCard extends StatelessWidget {
     required this.icon,
     required this.txnDateLabel,
     required this.showWitnessedBy,
+    required this.showHours,
   });
 
   final ApprovalRecord record;
   final IconData icon;
   final String txnDateLabel;
   final bool showWitnessedBy;
+  final bool showHours;
 
   Color _statusColor(String status) {
     switch (status) {
@@ -685,6 +699,15 @@ class _ApprovalCard extends StatelessWidget {
               Expanded(child: _kv(txnDateLabel, record.txnDate)),
             ],
           ),
+          if (showHours) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(child: _kv('Applied hours', record.appliedHours)),
+                Expanded(child: _kv('Approved hours', record.approvedHours)),
+              ],
+            ),
+          ],
           const SizedBox(height: 14),
           Row(
             children: [

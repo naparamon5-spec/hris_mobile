@@ -397,10 +397,10 @@ class _QA extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.brandRed.withValues(alpha: 0.08),
+                color: AppColors.inkSoft.withValues(alpha: 0.10),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: AppColors.brandRed, size: 20),
+              child: Icon(icon, color: AppColors.inkSoft, size: 20),
             ),
             const SizedBox(height: 8),
             Text(

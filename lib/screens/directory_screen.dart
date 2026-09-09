@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 
 class DirectoryScreen extends StatefulWidget {
@@ -71,10 +70,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 18),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        gradient: sel ? AppColors.brandGradient : null,
-                        color: sel ? null : AppColors.card,
+                        color: sel ? AppColors.ink : AppColors.fieldFill,
                         borderRadius: BorderRadius.circular(30),
-                        boxShadow: sel ? null : kSoftShadow,
                       ),
                       child: Text(_depts[i],
                           style: TextStyle(
@@ -136,7 +133,7 @@ class _EmployeeCard extends StatelessWidget {
       child: Row(
         children: [
           InitialsAvatar(
-              name: employee.name, size: 52, color: employee.color),
+              name: employee.name, size: 48, color: employee.color),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -146,27 +143,20 @@ class _EmployeeCard extends StatelessWidget {
                     style: const TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 3),
-                Text(employee.role,
+                Text('${employee.role} · ${employee.department}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         color: AppColors.inkSoft, fontSize: 12.5)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    StatusPill(label: employee.status, color: _statusColor),
-                    const SizedBox(width: 8),
-                    StatusPill(
-                        label: employee.department,
-                        color: AppColors.inkSoft,
-                        bg: AppColors.fieldFill),
-                  ],
-                ),
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          StatusPill(label: employee.status, color: _statusColor),
           IconButton(
             onPressed: () => showToast(context, 'Calling ${employee.name}…'),
             icon: const Icon(Icons.phone_rounded,
-                color: AppColors.brandRed, size: 20),
+                color: AppColors.inkSoft, size: 20),
           ),
         ],
       ),

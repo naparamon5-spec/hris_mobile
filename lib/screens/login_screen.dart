@@ -224,61 +224,32 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          // ---- Log In ----
-                          ElevatedButton(
-                            onPressed: _signIn,
-                            child: const Text('Log In'),
-                          ),
-                          const SizedBox(height: 10),
-                          // ---- Sign in with Biometrics ----
-                          OutlinedButton(
-                            onPressed: _authenticateWithBiometrics,
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: AppColors.line),
-                              backgroundColor: AppColors.fieldFill,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(
-                                  Icons.fingerprint_rounded,
-                                  size: 22,
-                                  color: AppColors.brandRed,
-                                ),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Sign in with Biometrics / Face ID',
-                                  style: TextStyle(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.ink,
+                          // ---- Log In (+ biometric shortcut icon) ----
+                          // The fingerprint icon only appears when biometrics
+                          // is toggled on; tapping it signs in without needing
+                          // the Employee ID / Password.
+                          ListenableBuilder(
+                            listenable: SecurityState.instance,
+                            builder: (context, _) {
+                              final bioOn =
+                                  SecurityState.instance.biometricsEnabled;
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: _signIn,
+                                      child: const Text('Log In'),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          // ---- Sign in with Authentik (SSO) ----
-                          OutlinedButton(
-                            onPressed: () => showToast(context, 'Authentik SSO triggered'),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(
-                                  Icons.verified_user_outlined,
-                                  size: 20,
-                                  color: AppColors.authentik,
-                                ),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Sign in with Authentik',
-                                  style: TextStyle(
-                                    fontSize: 14.5,
-                                    color: AppColors.ink,
-                                  ),
-                                ),
-                              ],
-                            ),
+                                  if (bioOn) ...[
+                                    const SizedBox(width: 12),
+                                    _BiometricIconButton(
+                                      onTap: _authenticateWithBiometrics,
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                           const SizedBox(height: 18),
                           // ---- Helper links ----
@@ -354,6 +325,43 @@ class _LoginScreenState extends State<LoginScreen> {
         foregroundColor: color,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+/// Compact fingerprint button shown beside "Log In" when biometrics is on.
+/// A quick, password-free sign-in shortcut.
+class _BiometricIconButton extends StatelessWidget {
+  const _BiometricIconButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Sign in with Biometrics / Face ID',
+      child: Material(
+        color: AppColors.dangerSoft,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 56,
+            height: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.brandRed.withValues(alpha: 0.25)),
+            ),
+            child: const Icon(
+              Icons.fingerprint_rounded,
+              color: AppColors.brandRed,
+              size: 28,
+            ),
+          ),
+        ),
       ),
     );
   }
