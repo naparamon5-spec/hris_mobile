@@ -43,20 +43,16 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: AppColors.card,
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x14101828),
-              blurRadius: 24,
-              offset: Offset(0, -6),
-            ),
-          ],
+          border: Border(
+            top: BorderSide(color: AppColors.line, width: 1),
+          ),
         ),
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 for (int i = 0; i < _items.length; i++)
                   _NavButton(
@@ -96,34 +92,23 @@ class _NavButton extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: selected ? AppColors.brandGradient : null,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: selected ? kBrandShadow : null,
-                ),
-                child: Icon(
-                  item.icon,
-                  size: 23,
-                  color: selected ? Colors.white : AppColors.inkFaint,
-                ),
+              Icon(
+                item.icon,
+                size: 24,
+                color: selected ? AppColors.brandRed : AppColors.inkFaint,
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 4),
               Text(
                 item.label,
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: selected ? AppColors.brandRed : AppColors.inkFaint,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? AppColors.brandRed : AppColors.inkSoft,
                 ),
               ),
             ],

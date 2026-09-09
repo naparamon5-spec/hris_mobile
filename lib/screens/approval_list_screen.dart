@@ -2,41 +2,81 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
-import 'create_leave_of_absence_screen.dart';
 
-class LeaveOfAbsenceScreen extends StatefulWidget {
-  const LeaveOfAbsenceScreen({super.key});
+/// A single approval record shown in the [ApprovalListScreen] table/cards.
+///
+/// Shared by Call Approval, Manual Arrival/Departure and Overtime — they all
+/// use the same columns: reference no., date applied, a transaction date,
+/// approver and approved date plus a status.
+class ApprovalRecord {
+  const ApprovalRecord(
+    this.no,
+    this.dateApplied,
+    this.txnDate,
+    this.approvedBy,
+    this.approvedDate, {
+    required this.year,
+    required this.month,
+    required this.day,
+    this.status = 'Posted',
+    this.witnessedBy = '',
+  });
 
-  @override
-  State<LeaveOfAbsenceScreen> createState() => _LeaveOfAbsenceScreenState();
+  final String no;
+  final String dateApplied;
+
+  /// The transaction date (CA date, arrival/departure date, overtime date).
+  final String txnDate;
+  final String approvedBy;
+  final String approvedDate;
+
+  /// Only used by Manual Arrival/Departure, which shows a witness instead of
+  /// an approved date.
+  final String witnessedBy;
+  final int year;
+  final int month;
+  final int day;
+  final String status;
 }
 
-class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
-  static const _allRecords = <_Loa>[
-    _Loa('H23969', 'Aug 17, 2026', 'Aug 17, 2026', 'Approved Leave',
-        'Ariel Serrano', 'Aug 18, 2026',
-        year: 2026, month: 8, day: 17, status: 'Posted'),
-    _Loa('H23859', 'Aug 05, 2026', 'Aug 05, 2026', 'Approved UT (AM/PM)',
-        'Ariel Serrano', 'Aug 05, 2026',
-        year: 2026, month: 8, day: 5, status: 'Posted'),
-    _Loa('H23854', 'Aug 05, 2026', 'Aug 04, 2026', 'Approved Leave',
-        'Ariel Serrano', 'Aug 12, 2026',
-        year: 2026, month: 8, day: 4, status: 'Posted'),
-    _Loa('H23412', 'Jul 15, 2026', 'Jul 15, 2026', 'Approved Leave',
-        'Sofia Reyes', 'Jul 16, 2026',
-        year: 2026, month: 7, day: 15, status: 'Posted'),
-    _Loa('H23108', 'Jun 02, 2026', 'Jun 02, 2026', 'Approved UT (AM/PM)',
-        'Sofia Reyes', 'Jun 02, 2026',
-        year: 2026, month: 6, day: 2, status: 'Posted'),
-  ];
+/// Generic list screen used by the three request types that share the same
+/// shape (Call Approval, Manual Arrival/Departure, Overtime). Mirrors the
+/// Leave of Absence screen's look & feel (date-range pill, filter sheet,
+/// search, sort, Create FAB and record cards).
+class ApprovalListScreen extends StatefulWidget {
+  const ApprovalListScreen({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.txnDateLabel,
+    required this.records,
+    this.showWitnessedBy = false,
+  });
 
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  /// Label for the transaction date column (e.g. 'CA date').
+  final String txnDateLabel;
+  final List<ApprovalRecord> records;
+
+  /// When true the second detail row shows "Witnessed by / Approved by"
+  /// (Manual Arrival/Departure); otherwise "Approved by / Approved date".
+  final bool showWitnessedBy;
+
+  @override
+  State<ApprovalListScreen> createState() => _ApprovalListScreenState();
+}
+
+class _ApprovalListScreenState extends State<ApprovalListScreen> {
   DateTimeRange _dateRange = DateTimeRange(
     start: DateTime(2026, 8, 1),
     end: DateTime(2026, 10, 31),
   );
   String _dateLabel = 'Aug 2026 – Oct 2026';
   String _selectedStatus = 'All';
-  String _selectedType = 'All';
   String _searchQuery = '';
   bool _isSearching = false;
   bool _sortAscending = false;
@@ -135,40 +175,27 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
       ),
       builder: (ctx) => _FilterOptionsSheet(
         currentStatus: _selectedStatus,
-        currentType: _selectedType,
-        onApply: (status, type) {
-          setState(() {
-            _selectedStatus = status;
-            _selectedType = type;
-          });
+        onApply: (status) {
+          setState(() => _selectedStatus = status);
         },
       ),
     );
   }
 
-  List<_Loa> get _filteredRecords {
-    var list = _allRecords.where((r) {
+  List<ApprovalRecord> get _filteredRecords {
+    var list = widget.records.where((r) {
       final rDate = DateTime(r.year, r.month, r.day);
-      // Date filter
       final inRange = !rDate.isBefore(_dateRange.start) &&
           !rDate.isAfter(_dateRange.end.add(const Duration(days: 1)));
       if (!inRange) return false;
 
-      // Status filter
       if (_selectedStatus != 'All' && r.status != _selectedStatus) return false;
 
-      // Type filter
-      if (_selectedType != 'All' && !r.type.contains(_selectedType)) {
-        return false;
-      }
-
-      // Search query
       if (_searchQuery.isNotEmpty) {
         final q = _searchQuery.toLowerCase();
         final matchNo = r.no.toLowerCase().contains(q);
-        final matchType = r.type.toLowerCase().contains(q);
         final matchApprover = r.approvedBy.toLowerCase().contains(q);
-        if (!matchNo && !matchType && !matchApprover) return false;
+        if (!matchNo && !matchApprover) return false;
       }
 
       return true;
@@ -196,12 +223,12 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                 autofocus: true,
                 onChanged: (v) => setState(() => _searchQuery = v),
                 decoration: const InputDecoration(
-                  hintText: 'Search by No., Type, Approver…',
+                  hintText: 'Search by No. or Approver…',
                   border: InputBorder.none,
                   hintStyle: TextStyle(color: AppColors.inkFaint, fontSize: 15),
                 ),
               )
-            : const Text('Leave of Absence'),
+            : Text(widget.title),
         actions: [
           IconButton(
             tooltip: _isSearching ? 'Close Search' : 'Search',
@@ -234,11 +261,7 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const CreateLeaveOfAbsenceScreen(),
-          ),
-        ),
+        onPressed: () => showToast(context, 'Create ${widget.title}'),
         backgroundColor: AppColors.success,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
@@ -252,10 +275,16 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+              child: Text(
+                widget.subtitle,
+                style: const TextStyle(color: AppColors.inkSoft, fontSize: 13.5),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Row(
                 children: [
-                  // Tappable Date Filter Pill
                   Expanded(
                     child: GestureDetector(
                       onTap: _showDateFilterSheet,
@@ -291,19 +320,18 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  // Filter icon button
                   GestureDetector(
                     onTap: _showFilterSheet,
                     child: Container(
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: (_selectedStatus != 'All' || _selectedType != 'All')
+                        color: _selectedStatus != 'All'
                             ? AppColors.dangerSoft
                             : AppColors.fieldFill,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: (_selectedStatus != 'All' || _selectedType != 'All')
+                          color: _selectedStatus != 'All'
                               ? AppColors.brandRed
                               : AppColors.line,
                         ),
@@ -311,7 +339,7 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                       child: Icon(
                         Icons.filter_list_rounded,
                         size: 20,
-                        color: (_selectedStatus != 'All' || _selectedType != 'All')
+                        color: _selectedStatus != 'All'
                             ? AppColors.brandRed
                             : AppColors.ink,
                       ),
@@ -333,7 +361,7 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                               color: AppColors.fieldFill,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.event_busy_rounded,
+                            child: Icon(widget.icon,
                                 size: 30, color: AppColors.inkFaint),
                           ),
                           const SizedBox(height: 14),
@@ -360,7 +388,6 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                                 );
                                 _dateLabel = 'All 2026';
                                 _selectedStatus = 'All';
-                                _selectedType = 'All';
                                 _searchQuery = '';
                               });
                             },
@@ -373,7 +400,12 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
                       itemCount: records.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, i) => _LoaCard(record: records[i]),
+                      itemBuilder: (context, i) => _ApprovalCard(
+                        record: records[i],
+                        icon: widget.icon,
+                        txnDateLabel: widget.txnDateLabel,
+                        showWitnessedBy: widget.showWitnessedBy,
+                      ),
                     ),
             ),
           ],
@@ -472,7 +504,9 @@ class _DateRangeSelectionSheet extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(
-        isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+        isSelected
+            ? Icons.radio_button_checked_rounded
+            : Icons.radio_button_off_rounded,
         color: isSelected ? AppColors.brandRed : AppColors.inkFaint,
         size: 20,
       ),
@@ -490,18 +524,16 @@ class _DateRangeSelectionSheet extends StatelessWidget {
 }
 
 // -----------------------------------------------------------------------------
-// FILTER OPTIONS SHEET (STATUS & LEAVE TYPE)
+// FILTER OPTIONS SHEET (STATUS)
 // -----------------------------------------------------------------------------
 class _FilterOptionsSheet extends StatefulWidget {
   const _FilterOptionsSheet({
     required this.currentStatus,
-    required this.currentType,
     required this.onApply,
   });
 
   final String currentStatus;
-  final String currentType;
-  final void Function(String status, String type) onApply;
+  final void Function(String status) onApply;
 
   @override
   State<_FilterOptionsSheet> createState() => _FilterOptionsSheetState();
@@ -509,7 +541,6 @@ class _FilterOptionsSheet extends StatefulWidget {
 
 class _FilterOptionsSheetState extends State<_FilterOptionsSheet> {
   late String _status = widget.currentStatus;
-  late String _type = widget.currentType;
 
   @override
   Widget build(BuildContext context) {
@@ -538,12 +569,7 @@ class _FilterOptionsSheetState extends State<_FilterOptionsSheet> {
               ),
               const Spacer(),
               TextButton(
-                onPressed: () {
-                  setState(() {
-                    _status = 'All';
-                    _type = 'All';
-                  });
-                },
+                onPressed: () => setState(() => _status = 'All'),
                 child: const Text('Reset'),
               ),
             ],
@@ -556,7 +582,8 @@ class _FilterOptionsSheetState extends State<_FilterOptionsSheet> {
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            children: ['All', 'Posted', 'Pending', 'Rejected'].map((s) {
+            children: ['All', 'Posted', 'Approved', 'Pending', 'Rejected']
+                .map((s) {
               final sel = _status == s;
               return ChoiceChip(
                 label: Text(s),
@@ -571,34 +598,11 @@ class _FilterOptionsSheetState extends State<_FilterOptionsSheet> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Leave Type',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: ['All', 'Approved Leave', 'Approved UT'].map((t) {
-              final sel = _type == t;
-              return ChoiceChip(
-                label: Text(t),
-                selected: sel,
-                selectedColor: AppColors.dangerSoft,
-                labelStyle: TextStyle(
-                  color: sel ? AppColors.brandRed : AppColors.inkSoft,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
-                ),
-                onSelected: (_) => setState(() => _type = t),
-              );
-            }).toList(),
-          ),
           const SizedBox(height: 22),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              widget.onApply(_status, _type);
+              widget.onApply(_status);
             },
             child: const Text('Apply Filters'),
           ),
@@ -609,14 +613,34 @@ class _FilterOptionsSheetState extends State<_FilterOptionsSheet> {
 }
 
 // -----------------------------------------------------------------------------
-// LOA RECORD CARD
+// APPROVAL RECORD CARD
 // -----------------------------------------------------------------------------
-class _LoaCard extends StatelessWidget {
-  const _LoaCard({required this.record});
+class _ApprovalCard extends StatelessWidget {
+  const _ApprovalCard({
+    required this.record,
+    required this.icon,
+    required this.txnDateLabel,
+    required this.showWitnessedBy,
+  });
 
-  final _Loa record;
+  final ApprovalRecord record;
+  final IconData icon;
+  final String txnDateLabel;
+  final bool showWitnessedBy;
 
-  bool get _isUt => record.type.contains('UT');
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Approved':
+        return AppColors.success;
+      case 'Pending':
+        return AppColors.warning;
+      case 'Rejected':
+        return AppColors.brandRed;
+      case 'Posted':
+      default:
+        return AppColors.info;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -627,33 +651,8 @@ class _LoaCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                record.no,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.ink,
-                ),
-              ),
-              const Spacer(),
-              StatusPill(
-                label: record.status,
-                color: record.status == 'Posted'
-                    ? AppColors.info
-                    : (record.status == 'Pending'
-                        ? AppColors.warning
-                        : AppColors.brandRed),
-                icon: Icons.check_circle_rounded,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
               IconBadge(
-                icon: _isUt
-                    ? Icons.running_with_errors_rounded
-                    : Icons.directions_walk_rounded,
+                icon: icon,
                 color: AppColors.brandRed,
                 size: 40,
                 iconSize: 21,
@@ -661,13 +660,18 @@ class _LoaCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  record.type,
+                  record.no,
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.ink,
                   ),
                 ),
+              ),
+              StatusPill(
+                label: record.status,
+                color: _statusColor(record.status),
+                icon: Icons.check_circle_rounded,
               ),
             ],
           ),
@@ -678,14 +682,19 @@ class _LoaCard extends StatelessWidget {
           Row(
             children: [
               Expanded(child: _kv('Date applied', record.dateApplied)),
-              Expanded(child: _kv('LOA date', record.loaDate)),
+              Expanded(child: _kv(txnDateLabel, record.txnDate)),
             ],
           ),
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: _kv('Approved by', record.approvedBy)),
-              Expanded(child: _kv('Approved date', record.approvedDate)),
+              if (showWitnessedBy) ...[
+                Expanded(child: _kv('Witnessed by', record.witnessedBy)),
+                Expanded(child: _kv('Approved by', record.approvedBy)),
+              ] else ...[
+                Expanded(child: _kv('Approved by', record.approvedBy)),
+                Expanded(child: _kv('Approved date', record.approvedDate)),
+              ],
             ],
           ),
         ],
@@ -718,30 +727,4 @@ class _LoaCard extends StatelessWidget {
       ],
     );
   }
-}
-
-class _Loa {
-  const _Loa(
-    this.no,
-    this.dateApplied,
-    this.loaDate,
-    this.type,
-    this.approvedBy,
-    this.approvedDate, {
-    required this.year,
-    required this.month,
-    required this.day,
-    this.status = 'Posted',
-  });
-
-  final String no;
-  final String dateApplied;
-  final String loaDate;
-  final String type;
-  final String approvedBy;
-  final String approvedDate;
-  final int year;
-  final int month;
-  final int day;
-  final String status;
 }

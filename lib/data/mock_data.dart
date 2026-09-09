@@ -68,57 +68,50 @@ class AppNotification {
   final bool unread;
 }
 
-const String kCurrentUser = 'Ramon Napa';
-const String kCurrentRole = 'Senior Network Engineer';
+const String kCurrentUser = 'Ramon Napa ( Mon)';
+const String kCurrentRole = 'PROGRAMMER';
 
 const List<Employee> kEmployees = [
   Employee(
-      name: 'Ramon Napa',
-      role: 'Senior Network Engineer',
-      department: 'Engineering',
+      name: 'Ramon Napa ( Mon)',
+      role: 'PROGRAMMER',
+      department: 'Information Technology',
       status: 'Active'),
   Employee(
       name: 'Sofia Reyes',
       role: 'People Operations Lead',
       department: 'Human Resources',
-      status: 'Active',
-      color: AppColors.brandMaroon),
+      status: 'Active'),
   Employee(
       name: 'Marco Villanueva',
       role: 'Finance Manager',
       department: 'Finance',
-      status: 'Remote',
-      color: AppColors.info),
+      status: 'Remote'),
   Employee(
       name: 'Aisha Khan',
       role: 'Product Designer',
       department: 'Design',
-      status: 'On leave',
-      color: AppColors.warning),
+      status: 'On leave'),
   Employee(
       name: 'Daniel Cruz',
       role: 'Backend Developer',
       department: 'Engineering',
-      status: 'Active',
-      color: AppColors.success),
+      status: 'Active'),
   Employee(
       name: 'Grace Lim',
       role: 'Talent Acquisition',
       department: 'Human Resources',
-      status: 'Remote',
-      color: AppColors.brandRedBright),
+      status: 'Remote'),
   Employee(
       name: 'Noah Santos',
       role: 'IT Support Specialist',
       department: 'IT',
-      status: 'Active',
-      color: AppColors.brandMaroon),
+      status: 'Active'),
   Employee(
       name: 'Bea Mendoza',
       role: 'Marketing Associate',
       department: 'Marketing',
-      status: 'Active',
-      color: AppColors.info),
+      status: 'Active'),
 ];
 
 const List<LeaveRequest> kLeaveRequests = [
@@ -165,7 +158,7 @@ const List<AppNotification> kNotifications = [
       body: 'Your annual leave (Jun 23–27) was approved by Sofia Reyes.',
       time: '2h ago',
       icon: Icons.check_circle_rounded,
-      color: AppColors.success,
+      color: AppColors.brandRed,
       unread: true),
   AppNotification(
       title: 'Payslip available',
@@ -179,17 +172,17 @@ const List<AppNotification> kNotifications = [
       body: 'Don\'t forget to clock out — you\'re still checked in.',
       time: 'Yesterday',
       icon: Icons.schedule_rounded,
-      color: AppColors.warning),
+      color: AppColors.brandRed),
   AppNotification(
       title: 'New policy update',
       body: 'The 2026 remote work policy has been published.',
       time: '2 days ago',
       icon: Icons.campaign_rounded,
-      color: AppColors.info),
+      color: AppColors.brandRed),
   AppNotification(
       title: 'Welcome aboard',
       body: 'Bea Mendoza has joined the Marketing team.',
       time: '3 days ago',
       icon: Icons.celebration_rounded,
-      color: AppColors.brandMaroon),
+      color: AppColors.brandRed),
 ];

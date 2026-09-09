@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../data/security_state.dart';
 import '../data/tenants.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand.dart';
+import '../widgets/ui.dart';
 import 'home_shell.dart';
 
 /// Sign-in screen, matched to the HRIS web login
@@ -42,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (selected != null) setState(() => _company = selected);
   }
 
-  void _signIn() {
+  void _goToHome() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 350),
@@ -54,61 +56,95 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _signIn() {
+    if (SecurityState.instance.twoFactorEnabled) {
+      _show2FAVerification();
+    } else {
+      _goToHome();
+    }
+  }
+
+  void _authenticateWithBiometrics() {
+    if (!SecurityState.instance.biometricsEnabled) {
+      showToast(context, 'Biometrics is currently disabled in Settings.');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _BiometricScanDialog(
+        onSuccess: () {
+          Navigator.pop(ctx);
+          if (SecurityState.instance.twoFactorEnabled) {
+            _show2FAVerification();
+          } else {
+            _goToHome();
+          }
+        },
+      ),
+    );
+  }
+
+  void _show2FAVerification() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => _TwoFactorLoginSheet(onVerified: () {
+        Navigator.pop(ctx);
+        _goToHome();
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Subtle brand wash in the top corners — keeps the bg white & clean.
-          Positioned(
-            top: -90,
-            right: -70,
-            child: _blob(220, AppColors.brandRed.withValues(alpha: 0.07)),
-          ),
-          Positioned(
-            top: 40,
-            left: -90,
-            child: _blob(180, AppColors.brandMaroon.withValues(alpha: 0.05)),
-          ),
-          SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: IntrinsicHeight(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 4, 24, 14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
-                          // ---- Brand hero: shield mark + brand sparkles ----
-                          const _BrandHero(),
-                          const SizedBox(height: 10),
-                          const Center(child: ArdentLogo(height: 38)),
-                          const SizedBox(height: 22),
-                          const Text(
-                            'Welcome Back!',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.4,
-                              color: AppColors.brandRed,
-                            ),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+                      const Center(child: AniHrisIcon(size: 72)),
+                      const SizedBox(height: 14),
+                      const Center(
+                        child: Text(
+                          'ANI HRIS',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.3,
+                            color: AppColors.ink,
                           ),
-                          const SizedBox(height: 5),
-                          const Text(
-                            'Sign in to continue to HRIS.',
-                            style: TextStyle(
-                              color: AppColors.inkSoft,
-                              fontSize: 14.5,
-                            ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Center(
+                        child: Text(
+                          'Sign in to your employee account',
+                          style: TextStyle(
+                            color: AppColors.inkSoft,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(height: 22),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
                           // ---- Employee ID ----
                           _field(
                             label: 'Employee ID',
@@ -193,10 +229,38 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: _signIn,
                             child: const Text('Log In'),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
+                          // ---- Sign in with Biometrics ----
+                          OutlinedButton(
+                            onPressed: _authenticateWithBiometrics,
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.line),
+                              backgroundColor: AppColors.fieldFill,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(
+                                  Icons.fingerprint_rounded,
+                                  size: 22,
+                                  color: AppColors.brandRed,
+                                ),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Sign in with Biometrics / Face ID',
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
                           // ---- Sign in with Authentik (SSO) ----
                           OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () => showToast(context, 'Authentik SSO triggered'),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: const [
@@ -209,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Text(
                                   'Sign in with Authentik',
                                   style: TextStyle(
-                                    fontSize: 15,
+                                    fontSize: 14.5,
                                     color: AppColors.ink,
                                   ),
                                 ),
@@ -236,10 +300,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                           const Spacer(),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           const Center(
                             child: Text(
-                              'Protected by Ardent SSO • v1.0.0',
+                              'Protected by ANI SSO • v1.0.0',
                               style: TextStyle(
                                 color: AppColors.inkFaint,
                                 fontSize: 11.5,
@@ -255,9 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
+        );
   }
 
   Widget _field({required String label, required Widget child}) {
@@ -292,44 +354,6 @@ class _LoginScreenState extends State<LoginScreen> {
         foregroundColor: color,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-
-  Widget _blob(double size, Color color) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-  );
-}
-
-/// Small branded header: the shield mark flanked by a few brand sparkles,
-/// echoing the illustration on the HRIS website without crowding the form.
-class _BrandHero extends StatelessWidget {
-  const _BrandHero();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 92,
-      width: double.infinity,
-      child: Stack(
-        alignment: Alignment.center,
-        children: const [
-          Align(
-            alignment: Alignment(-0.34, -0.8),
-            child: Icon(Icons.add_rounded, size: 13, color: AppColors.info),
-          ),
-          Align(
-            alignment: Alignment(0.32, -0.55),
-            child: Icon(Icons.check_rounded, size: 14, color: AppColors.success),
-          ),
-          Align(
-            alignment: Alignment(0.4, 0.7),
-            child: Icon(Icons.circle, size: 8, color: Color(0xFFF98D7B)),
-          ),
-          ShieldMark(size: 78),
-        ],
       ),
     );
   }
@@ -515,6 +539,201 @@ class _CompanySheetState extends State<_CompanySheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// BIOMETRIC SCAN DIALOG
+// -----------------------------------------------------------------------------
+class _BiometricScanDialog extends StatefulWidget {
+  const _BiometricScanDialog({required this.onSuccess});
+  final VoidCallback onSuccess;
+
+  @override
+  State<_BiometricScanDialog> createState() => _BiometricScanDialogState();
+}
+
+class _BiometricScanDialogState extends State<_BiometricScanDialog> {
+  bool _success = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 1100), () {
+      if (mounted) {
+        setState(() => _success = true);
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) widget.onSuccess();
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      content: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _success
+                  ? Container(
+                      key: const ValueKey('success'),
+                      width: 68,
+                      height: 68,
+                      decoration: const BoxDecoration(
+                        color: AppColors.success,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_rounded,
+                          color: Colors.white, size: 40),
+                    )
+                  : Container(
+                      key: const ValueKey('scanning'),
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: AppColors.dangerSoft,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.fingerprint_rounded,
+                          color: AppColors.brandRed, size: 40),
+                    ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              _success ? 'Identity Verified' : 'Scanning Biometrics…',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _success
+                ? 'Welcome back, Ramon'
+                : 'Confirm Face ID or Touch sensor to proceed',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        if (!_success)
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Use Password Instead'),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 2FA VERIFICATION SHEET ON LOGIN
+// -----------------------------------------------------------------------------
+class _TwoFactorLoginSheet extends StatefulWidget {
+  const _TwoFactorLoginSheet({required this.onVerified});
+  final VoidCallback onVerified;
+
+  @override
+  State<_TwoFactorLoginSheet> createState() => _TwoFactorLoginSheetState();
+}
+
+class _TwoFactorLoginSheetState extends State<_TwoFactorLoginSheet> {
+  final _codeController = TextEditingController();
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  void _verify() {
+    widget.onVerified();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.line,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: const [
+              Icon(Icons.security_rounded,
+                  color: AppColors.brandRed, size: 24),
+              SizedBox(width: 10),
+              Text(
+                'Two-Factor Verification',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Enter the 6-digit verification code from your Authenticator app (e.g. Google Authenticator) or SMS.',
+            style: TextStyle(fontSize: 13, color: AppColors.inkSoft, height: 1.4),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _codeController,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 24,
+              letterSpacing: 8,
+              fontWeight: FontWeight.w800,
+            ),
+            decoration: const InputDecoration(
+              counterText: '',
+              hintText: '000000',
+              isDense: true,
+            ),
+            onSubmitted: (_) => _verify(),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _verify,
+            child: const Text('Verify & Continue'),
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: TextButton(
+              onPressed: () => showToast(context, 'Backup SMS OTP sent to +63 917 •••• 4567'),
+              child: const Text(
+                'Send code via SMS instead',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -230,7 +230,7 @@ class _EmployeeSheet extends StatelessWidget {
           SoftCard(
             child: Column(
               children: [
-                _info(Icons.badge_rounded, 'Employee ID', 'ARD-2041'),
+                _info(Icons.badge_rounded, 'Employee ID', 'ANI-2041'),
                 const Divider(height: 22),
                 _info(Icons.location_on_rounded, 'Location', 'Makati HQ'),
                 const Divider(height: 22),

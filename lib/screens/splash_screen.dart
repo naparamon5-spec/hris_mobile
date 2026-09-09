@@ -18,16 +18,12 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2200),
+    duration: const Duration(milliseconds: 1400),
   );
 
-  late final Animation<double> _check = CurvedAnimation(
-    parent: _c,
-    curve: const Interval(0.15, 0.55, curve: Curves.easeOutCubic),
-  );
   late final Animation<double> _fade = CurvedAnimation(
     parent: _c,
-    curve: const Interval(0.0, 0.35, curve: Curves.easeOut),
+    curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
   );
 
   @override
@@ -43,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen>
   void _advance() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 450),
+        transitionDuration: const Duration(milliseconds: 350),
         pageBuilder: (_, _, _) => const LoginScreen(),
         transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
@@ -60,75 +56,38 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.55),
-            radius: 1.1,
-            colors: [Colors.white, Color(0xFFFDF3F4), Color(0xFFFCEBEE)],
-            stops: [0.0, 0.55, 1.0],
-          ),
-        ),
-        child: Center(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: FadeTransition(
+          opacity: _fade,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 220,
-                height: 210,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    _sparkle(
-                      const Alignment(-0.55, -0.85),
-                      Icons.check_rounded,
-                      15,
-                      AppColors.success,
-                    ),
-                    _sparkle(
-                      const Alignment(0.7, -0.4),
-                      Icons.star_rounded,
-                      13,
-                      AppColors.info,
-                    ),
-                    _sparkle(
-                      const Alignment(-0.85, 0.35),
-                      Icons.circle,
-                      9,
-                      const Color(0xFFF98D7B),
-                    ),
-                    _sparkle(
-                      const Alignment(0.85, 0.5),
-                      Icons.add_rounded,
-                      13,
-                      AppColors.info,
-                    ),
-                    AnimatedBuilder(
-                      animation: _check,
-                      builder: (_, _) => ShieldMark(
-                        size: 168,
-                        progress: _check.value,
-                      ),
-                    ),
-                  ],
+              const AniHrisIcon(size: 88),
+              const SizedBox(height: 20),
+              const Text(
+                'ANI HRIS',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                  color: AppColors.ink,
                 ),
               ),
-              const SizedBox(height: 30),
-              const ArdentLogo(height: 46),
-              const SizedBox(height: 18),
-              Text(
-                'Human Resource Information System'.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 10.5,
-                  letterSpacing: 2.4,
-                  fontWeight: FontWeight.w700,
+              const SizedBox(height: 6),
+              const Text(
+                'Human Resource Information System',
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 0.8,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.inkSoft,
                 ),
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 32),
               SizedBox(
-                width: 130,
-                height: 5,
+                width: 120,
+                height: 4,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(99),
                   child: const LinearProgressIndicator(
@@ -140,16 +99,6 @@ class _SplashScreenState extends State<SplashScreen>
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _sparkle(Alignment a, IconData icon, double size, Color color) {
-    return Align(
-      alignment: a,
-      child: FadeTransition(
-        opacity: _fade,
-        child: Icon(icon, size: size, color: color),
       ),
     );
   }

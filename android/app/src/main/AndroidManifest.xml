@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="hris_mobile"
+        android:label="ANI HRIS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

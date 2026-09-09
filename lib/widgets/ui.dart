@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 
-/// A white rounded card with the standard soft shadow.
+/// A white rounded card with clean subtle border and soft shadow.
 class SoftCard extends StatelessWidget {
   const SoftCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(18),
+    this.padding = const EdgeInsets.all(16),
     this.onTap,
     this.color = AppColors.card,
-    this.radius = 22,
+    this.radius = 16,
     this.border,
   });
 
@@ -33,7 +33,7 @@ class SoftCard extends StatelessWidget {
             color: color,
             borderRadius: BorderRadius.circular(radius),
             boxShadow: kSoftShadow,
-            border: border,
+            border: border ?? Border.all(color: AppColors.line, width: 1),
           ),
           child: Padding(padding: padding, child: child),
         ),

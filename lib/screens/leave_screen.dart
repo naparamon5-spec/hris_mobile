@@ -119,47 +119,77 @@ class _BalanceHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: AppColors.maroonGradient,
-        borderRadius: BorderRadius.circular(26),
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line, width: 1),
         boxShadow: kSoftShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Total leave balance',
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13.5)),
-          const SizedBox(height: 8),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: const [
-              Text('18',
+            children: [
+              const Text(
+                'Total leave balance',
+                style: TextStyle(
+                  color: AppColors.inkSoft,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.dangerSoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  '2026 Credits',
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 44,
-                      height: 1,
-                      fontWeight: FontWeight.w800)),
-              SizedBox(width: 6),
-              Padding(
-                padding: EdgeInsets.only(bottom: 7),
-                child: Text('days remaining',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w600)),
+                    color: AppColors.brandRed,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: const [
+              Text(
+                '18.0',
+                style: TextStyle(
+                  color: AppColors.brandRed,
+                  fontSize: 36,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(width: 6),
+              Text(
+                'days remaining',
+                style: TextStyle(
+                  color: AppColors.inkSoft,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
-              _pill('Annual', '9'),
-              const SizedBox(width: 10),
-              _pill('Sick', '7'),
-              const SizedBox(width: 10),
-              _pill('Personal', '2'),
+              _pill('Annual', '9.0'),
+              const SizedBox(width: 8),
+              _pill('Sick', '7.0'),
+              const SizedBox(width: 8),
+              _pill('Personal', '2.0'),
             ],
           ),
         ],
@@ -170,24 +200,30 @@ class _BalanceHeader extends StatelessWidget {
   Widget _pill(String label, String value) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(16),
+          color: AppColors.fieldFill,
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Text(value,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.brandRed,
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.inkSoft,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),

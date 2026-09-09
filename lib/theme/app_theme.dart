@@ -157,21 +157,16 @@ class AppTheme {
 /// Reusable soft shadow for cards and floating surfaces.
 const List<BoxShadow> kSoftShadow = [
   BoxShadow(
-    color: Color(0x0F101828),
-    blurRadius: 24,
-    offset: Offset(0, 8),
-  ),
-  BoxShadow(
-    color: Color(0x08101828),
-    blurRadius: 4,
-    offset: Offset(0, 1),
+    color: Color(0x0A101828),
+    blurRadius: 10,
+    offset: Offset(0, 2),
   ),
 ];
 
 const List<BoxShadow> kBrandShadow = [
   BoxShadow(
-    color: Color(0x33EB1E23),
-    blurRadius: 24,
-    offset: Offset(0, 12),
+    color: Color(0x1FEB1E23),
+    blurRadius: 14,
+    offset: Offset(0, 4),
   ),
 ];

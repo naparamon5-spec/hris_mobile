@@ -2,6 +2,112 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
+/// The ANI HRIS app icon: crisp white squircle with a bold red 'H' centered,
+/// matching the app icon.
+class AniHrisIcon extends StatelessWidget {
+  const AniHrisIcon({
+    super.key,
+    this.size = 64,
+    this.hasShadow = true,
+  });
+
+  final double size;
+  final bool hasShadow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(size * 0.22),
+        border: Border.all(
+          color: AppColors.line,
+          width: 1,
+        ),
+        boxShadow: hasShadow
+            ? [
+                BoxShadow(
+                  color: const Color(0x14101828),
+                  blurRadius: size * 0.16,
+                  offset: Offset(0, size * 0.06),
+                ),
+                BoxShadow(
+                  color: AppColors.brandRed.withValues(alpha: 0.08),
+                  blurRadius: size * 0.08,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        'H',
+        style: TextStyle(
+          color: AppColors.brandRed,
+          fontSize: size * 0.58,
+          fontWeight: FontWeight.w900,
+          fontFamily: 'Roboto',
+          height: 1.0,
+        ),
+      ),
+    );
+  }
+}
+
+/// Clean branded header with the ANI HRIS icon and title.
+class AniHrisWordmark extends StatelessWidget {
+  const AniHrisWordmark({
+    super.key,
+    this.iconSize = 40,
+    this.showSubtitle = true,
+  });
+
+  final double iconSize;
+  final bool showSubtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        AniHrisIcon(size: iconSize),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'ANI HRIS',
+              style: TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.2,
+                color: AppColors.ink,
+                height: 1.1,
+              ),
+            ),
+            if (showSubtitle) ...[
+              const SizedBox(height: 2),
+              const Text(
+                'Ardent Networks, Inc.',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.inkSoft,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 /// The Ardent Networks wordmark — red ball + black swoosh sweeping over
 /// "ARDENT", with "NETWORKS, INC" beneath. Drawn with a painter (no asset
 /// dependency) so it stays crisp at any size. Swap for the official SVG/PNG

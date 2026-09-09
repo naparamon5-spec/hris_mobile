@@ -48,75 +48,115 @@ class _ClockCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppColors.darkGradient,
-        borderRadius: BorderRadius.circular(26),
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line, width: 1),
         boxShadow: kSoftShadow,
       ),
       child: Column(
         children: [
-          Text('Working time today',
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.75),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.successSoft,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.circle, size: 8, color: AppColors.success),
+                    SizedBox(width: 6),
+                    Text(
+                      'CLOCKED IN',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Text(
+                'Shift: 08:30 AM – 05:30 PM',
+                style: TextStyle(
+                  color: AppColors.inkSoft,
                   fontWeight: FontWeight.w600,
-                  fontSize: 13.5)),
-          const SizedBox(height: 10),
-          const Text('07 : 12 : 48',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 40,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1)),
-          const SizedBox(height: 6),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            '07 : 12 : 48',
+            style: TextStyle(
+              color: AppColors.ink,
+              fontSize: 38,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Total hours worked today',
+            style: TextStyle(
+              color: AppColors.inkSoft,
+              fontWeight: FontWeight.w500,
+              fontSize: 12.5,
+            ),
+          ),
+          const SizedBox(height: 18),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
             decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(30),
+              color: AppColors.fieldFill,
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.circle, size: 9, color: Color(0xFF6CF0A8)),
-                SizedBox(width: 6),
-                Text('Currently clocked in',
-                    style: TextStyle(
-                        color: Color(0xFF8FF3BD),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12.5)),
+              children: [
+                Expanded(
+                  child: _miniStat('Time in', '08:32 AM',
+                      Icons.login_rounded, AppColors.brandRed),
+                ),
+                Container(width: 1, height: 28, color: AppColors.line),
+                Expanded(
+                  child: _miniStat('Break', '48 min',
+                      Icons.coffee_outlined, AppColors.brandRed),
+                ),
+                Container(width: 1, height: 28, color: AppColors.line),
+                Expanded(
+                  child: _miniStat('Overtime', '0h 00m',
+                      Icons.access_time_rounded, AppColors.brandRed),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 22),
-          Row(
-            children: [
-              Expanded(
-                  child: _miniStat('Clock in', '08:32 AM',
-                      Icons.login_rounded, const Color(0xFF6CF0A8))),
-              Container(
-                  width: 1,
-                  height: 36,
-                  color: Colors.white.withValues(alpha: 0.15)),
-              Expanded(
-                  child: _miniStat('Break', '48 min',
-                      Icons.coffee_rounded, AppColors.warning)),
-              Container(
-                  width: 1,
-                  height: 36,
-                  color: Colors.white.withValues(alpha: 0.15)),
-              Expanded(
-                  child: _miniStat('Overtime', '0h',
-                      Icons.bolt_rounded, AppColors.brandRedSoft)),
-            ],
-          ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => showToast(context, 'Clocked out at 04:30 PM'),
-              icon: const Icon(Icons.logout_rounded, size: 20),
-              label: const Text('Clock Out'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brandRed,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(46),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 18),
+              label: const Text(
+                'Clock Out',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ],
@@ -127,19 +167,30 @@ class _ClockCard extends StatelessWidget {
   Widget _miniStat(String label, String value, IconData icon, Color color) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 6),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 14)),
-        const SizedBox(height: 2),
-        Text(label,
-            style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 14),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.inkSoft,
                 fontSize: 11,
-                fontWeight: FontWeight.w600)),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.ink,
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+          ),
+        ),
       ],
     );
   }
@@ -272,11 +323,11 @@ class _Timeline extends StatelessWidget {
   Widget build(BuildContext context) {
     final events = const [
       ('Clock in', '08:32 AM', 'Makati HQ', Icons.login_rounded,
-          AppColors.success),
+          AppColors.brandRed),
       ('Break start', '12:05 PM', 'Lunch break', Icons.coffee_rounded,
-          AppColors.warning),
+          AppColors.inkSoft),
       ('Break end', '12:53 PM', 'Back to work', Icons.work_rounded,
-          AppColors.info),
+          AppColors.inkSoft),
       ('In progress', 'Now', 'Working…', Icons.more_horiz_rounded,
           AppColors.brandRed),
     ];

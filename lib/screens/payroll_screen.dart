@@ -53,48 +53,59 @@ class _LatestPayslip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppColors.brandGradient,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: kBrandShadow,
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line, width: 1),
+        boxShadow: kSoftShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: [
-              Text('Net pay • May 2026',
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13.5)),
-              const Spacer(),
+            children: const [
+              Text(
+                'Net pay • May 2026',
+                style: TextStyle(
+                  color: AppColors.inkSoft,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              Spacer(),
               StatusPill(
-                  label: 'Paid',
-                  color: Colors.white,
-                  bg: Colors.white.withValues(alpha: 0.2),
-                  icon: Icons.check_circle_rounded),
+                label: 'Paid',
+                color: AppColors.success,
+                icon: Icons.check_circle_rounded,
+              ),
             ],
           ),
-          const SizedBox(height: 14),
-          const Text('₱ 86,420.00',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 38,
-                  height: 1,
-                  fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Text('Deposited to BPI •••• 4821 on May 30',
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.88),
-                  fontSize: 13)),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+          const Text(
+            '₱ 86,420.00',
+            style: TextStyle(
+              color: AppColors.brandRed,
+              fontSize: 34,
+              height: 1,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Deposited to BPI •••• 4821 on May 30',
+            style: TextStyle(
+              color: AppColors.inkSoft,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.fieldFill,
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
@@ -114,23 +125,32 @@ class _LatestPayslip extends StatelessWidget {
   Widget _chip(String label, String value) => Expanded(
         child: Column(
           children: [
-            Text(value,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14)),
-            const SizedBox(height: 3),
-            Text(label,
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.ink,
+                fontWeight: FontWeight.w800,
+                fontSize: 13.5,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.inkSoft,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       );
 
   Widget _divider() => Container(
-      width: 1, height: 30, color: Colors.white.withValues(alpha: 0.2));
+        width: 1,
+        height: 24,
+        color: AppColors.line,
+      );
 }
 
 class _Breakdown extends StatelessWidget {
