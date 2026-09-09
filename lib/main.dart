@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'theme/app_theme.dart';
-import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +22,7 @@ class HrisApp extends StatelessWidget {
       title: 'Ardent HR',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: const LoginScreen(),
+      home: const SplashScreen(),
     );
   }
 }

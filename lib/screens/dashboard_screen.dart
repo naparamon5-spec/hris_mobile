@@ -7,8 +7,10 @@ import '../widgets/ui.dart';
 import 'directory_screen.dart';
 import 'notifications_screen.dart';
 import 'leave_screen.dart';
+import 'leave_of_absence_screen.dart';
 import 'payroll_screen.dart';
 import 'attendance_screen.dart';
+import 'feature_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -258,14 +260,27 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = [
-      _QA(Icons.event_available_rounded, 'Request\nLeave', AppColors.brandRed,
-          () => _go(context, const LeaveScreen())),
-      _QA(Icons.payments_rounded, 'View\nPayslip', AppColors.info,
+      _QA(Icons.event_busy_rounded, 'Leave of\nAbsence', AppColors.brandRed,
+          () => _go(context, const LeaveOfAbsenceScreen())),
+      _QA(Icons.access_time_filled_rounded, 'File\nOvertime',
+          AppColors.warning,
+          () => _go(
+              context,
+              const FeatureScreen(
+                title: 'Overtime',
+                icon: Icons.access_time_filled_rounded,
+                color: AppColors.warning,
+              ))),
+      _QA(Icons.view_week_rounded, 'My\nTimesheet', AppColors.info,
+          () => _go(
+              context,
+              const FeatureScreen(
+                title: 'Timesheet',
+                icon: Icons.view_week_rounded,
+                color: AppColors.info,
+              ))),
+      _QA(Icons.receipt_long_rounded, 'View\nPayslip', AppColors.brandMaroon,
           () => _go(context, const PayrollScreen())),
-      _QA(Icons.fingerprint_rounded, 'My\nAttendance', AppColors.success,
-          () => _go(context, const AttendanceScreen())),
-      _QA(Icons.groups_rounded, 'Team\nDirectory', AppColors.brandMaroon,
-          () => _go(context, const DirectoryScreen())),
     ];
     return Row(
       children: [

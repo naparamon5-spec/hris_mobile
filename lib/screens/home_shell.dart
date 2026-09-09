@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
-import 'attendance_screen.dart';
-import 'leave_screen.dart';
-import 'payroll_screen.dart';
+import 'requests_screen.dart';
+import 'apps_screen.dart';
 import 'profile_screen.dart';
 
-/// Bottom-nav container that hosts the five primary tabs.
+/// Bottom-nav container that hosts the primary areas, mapped from the HRIS web
+/// sidebar: Home, Record/Request, Apps, and Profile (the sidebar's "Menu").
 /// Directory and Notifications are reached from the Dashboard app bar.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, this.initialIndex = 0});
@@ -24,17 +24,15 @@ class _HomeShellState extends State<HomeShell> {
 
   final _tabs = const [
     DashboardScreen(),
-    AttendanceScreen(),
-    LeaveScreen(),
-    PayrollScreen(),
+    RequestsScreen(),
+    AppsScreen(),
     ProfileScreen(),
   ];
 
   static const _items = [
     _NavItem(Icons.grid_view_rounded, 'Home'),
-    _NavItem(Icons.fingerprint_rounded, 'Attendance'),
-    _NavItem(Icons.event_available_rounded, 'Leave'),
-    _NavItem(Icons.payments_rounded, 'Payroll'),
+    _NavItem(Icons.assignment_rounded, 'Requests'),
+    _NavItem(Icons.apps_rounded, 'Apps'),
     _NavItem(Icons.person_rounded, 'Profile'),
   ];
 

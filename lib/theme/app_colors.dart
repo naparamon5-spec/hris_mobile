@@ -31,6 +31,9 @@ class AppColors {
   static const Color infoSoft = Color(0xFFE7EEFE);
   static const Color dangerSoft = Color(0xFFFCE7E8);
 
+  // ----- Integrations -----
+  static const Color authentik = Color(0xFF5B5BD6); // Authentik SSO accent
+
   // ----- Gradients -----
   static const LinearGradient brandGradient = LinearGradient(
     begin: Alignment.topLeft,

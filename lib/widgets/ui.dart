@@ -215,6 +215,84 @@ class InitialsAvatar extends StatelessWidget {
   }
 }
 
+/// Small-caps group label, matching the website sidebar's section headers
+/// (e.g. "RECORD / REQUEST", "APPS").
+class SmallCapsHeader extends StatelessWidget {
+  const SmallCapsHeader(this.label, {super.key});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.3,
+          color: AppColors.inkFaint,
+        ),
+      ),
+    );
+  }
+}
+
+/// A tappable navigation row: coloured icon tile, label, optional red dot, and
+/// a chevron. Used by the Requests and Apps hubs to mirror the web menu.
+class NavListTile extends StatelessWidget {
+  const NavListTile({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.badge = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return SoftCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          IconBadge(icon: icon, color: color, size: 44, iconSize: 22),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+          ),
+          if (badge)
+            Container(
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.only(right: 6),
+              decoration: const BoxDecoration(
+                color: AppColors.brandRed,
+                shape: BoxShape.circle,
+              ),
+            ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+        ],
+      ),
+    );
+  }
+}
+
 /// Simple snackbar helper used for the static demo interactions.
 void showToast(BuildContext context, String message) {
   ScaffoldMessenger.of(context)
