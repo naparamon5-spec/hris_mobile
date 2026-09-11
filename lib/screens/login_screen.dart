@@ -5,13 +5,17 @@ import '../data/tenants.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand.dart';
 import '../widgets/ui.dart';
+import 'forgot_password_screen.dart';
 import 'home_shell.dart';
 
 /// Sign-in screen, matched to the HRIS web login
 /// (hris.ardentnetworks.com.ph): Ardent mark, "Welcome Back!", Employee ID,
 /// Password, Company, Log In, and Sign in with Authentik.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, required this.company});
+
+  /// The tenant chosen on the company-select screen; scopes the session.
+  final Tenant company;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -23,10 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
   bool _remember = false;
 
-  /// One shared app used by several companies — the tenant chosen here scopes
-  /// the whole session, matching the web app's Company field.
-  Tenant _company = kTenants.first;
-
   @override
   void dispose() {
     _employeeId.dispose();
@@ -34,15 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _pickCompany() async {
-    final selected = await showModalBottomSheet<Tenant>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.card,
-      builder: (_) => _CompanySheet(selected: _company),
-    );
-    if (selected != null) setState(() => _company = selected);
-  }
+  void _switchCompany() => Navigator.of(context).pop();
 
   void _goToHome() {
     Navigator.of(context).pushReplacement(
@@ -144,7 +136,37 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 20),
+                      // ---- Selected company chip ----
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.fieldFill,
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(color: AppColors.line),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _TenantLogo(tenant: widget.company, size: 26),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  widget.company.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
                           // ---- Employee ID ----
                           _field(
                             label: 'Employee ID',
@@ -183,15 +205,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                       setState(() => _obscure = !_obscure),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          // ---- Company (multi-tenant selector) ----
-                          _field(
-                            label: 'Company',
-                            child: _CompanyField(
-                              tenant: _company,
-                              onTap: _pickCompany,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -260,7 +273,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 icon: Icons.lock_outline_rounded,
                                 label: 'Forgot your password?',
                                 color: AppColors.inkSoft,
-                                onTap: () {},
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => ForgotPasswordScreen(
+                                      company: widget.company,
+                                    ),
+                                  ),
+                                ),
                               ),
                               _linkButton(
                                 icon: Icons.assignment_outlined,
@@ -269,6 +288,23 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onTap: () {},
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 8),
+                          // ---- Switch company ----
+                          Center(
+                            child: TextButton.icon(
+                              onPressed: _switchCompany,
+                              icon: const Icon(Icons.swap_horiz_rounded,
+                                  size: 18),
+                              label: const Text('Switch company'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.ink,
+                                textStyle: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
                           ),
                           const Spacer(),
                           const SizedBox(height: 12),
@@ -369,47 +405,6 @@ class _BiometricIconButton extends StatelessWidget {
 
 /// Company selector styled like the text fields. Shows the current tenant's
 /// logo tile + name and opens a branded picker sheet on tap.
-class _CompanyField extends StatelessWidget {
-  const _CompanyField({required this.tenant, required this.onTap});
-
-  final Tenant tenant;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 56,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppColors.fieldFill,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            _TenantLogo(tenant: tenant, size: 32),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                tenant.name,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ink,
-                ),
-              ),
-            ),
-            const Icon(Icons.keyboard_arrow_down_rounded,
-                color: AppColors.inkSoft),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Rounded logo tile with the tenant's initial over its brand gradient.
 class _TenantLogo extends StatelessWidget {
   const _TenantLogo({required this.tenant, this.size = 40});
@@ -433,119 +428,6 @@ class _TenantLogo extends StatelessWidget {
           color: Colors.white,
           fontWeight: FontWeight.w800,
           fontSize: size * 0.44,
-        ),
-      ),
-    );
-  }
-}
-
-/// Bottom-sheet company picker — the multi-tenant chooser, searchable and
-/// branded, that the Company field opens.
-class _CompanySheet extends StatefulWidget {
-  const _CompanySheet({required this.selected});
-
-  final Tenant selected;
-
-  @override
-  State<_CompanySheet> createState() => _CompanySheetState();
-}
-
-class _CompanySheetState extends State<_CompanySheet> {
-  String _query = '';
-
-  @override
-  Widget build(BuildContext context) {
-    final results = kTenants
-        .where((t) =>
-            t.name.toLowerCase().contains(_query.toLowerCase()) ||
-            t.subtitle.toLowerCase().contains(_query.toLowerCase()))
-        .toList();
-
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 42,
-              height: 5,
-              decoration: BoxDecoration(
-                color: AppColors.line,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 18, 22, 6),
-              child: Row(
-                children: const [
-                  Text(
-                    'Select your company',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 6, 22, 6),
-              child: TextField(
-                autofocus: false,
-                onChanged: (v) => setState(() => _query = v),
-                decoration: const InputDecoration(
-                  isDense: true,
-                  hintText: 'Search companies…',
-                  prefixIcon: Icon(Icons.search_rounded),
-                ),
-              ),
-            ),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
-                itemCount: results.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 4),
-                itemBuilder: (context, i) {
-                  final t = results[i];
-                  final isSel = t.id == widget.selected.id;
-                  return ListTile(
-                    onTap: () => Navigator.of(context).pop(t),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    leading: _TenantLogo(tenant: t, size: 44),
-                    title: Text(
-                      t.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    subtitle: Text(
-                      t.subtitle,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.inkFaint,
-                      ),
-                    ),
-                    trailing: isSel
-                        ? const Icon(Icons.check_circle_rounded,
-                            color: AppColors.brandRed)
-                        : const Icon(Icons.circle_outlined,
-                            color: AppColors.inkFaint),
-                  );
-                },
-              ),
-            ),
-          ],
         ),
       ),
     );

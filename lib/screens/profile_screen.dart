@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_data.dart';
 import '../data/security_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
-import 'login_screen.dart';
+import 'company_select_screen.dart';
+import 'edit_profile_photo.dart';
+import 'personal_background_tab.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -40,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   void _logout(BuildContext context) {
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const CompanySelectScreen()),
       (route) => false,
     );
   }
@@ -82,7 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           controller: _tabController,
           children: [
             _EmploymentTab(),
-            _PersonalBackgroundTab(),
+            const PersonalBackgroundTab(),
             _MdrTab(),
             _LinkedAccountsTab(),
             _CertificatesTab(),
@@ -154,32 +155,54 @@ class _ProfileHeroHeader extends StatelessWidget {
                 painter: _CitySkylinePainter(),
               ),
             ),
-            // Floating large avatar
+            // Floating large avatar (tap to change profile photo)
             Positioned(
               bottom: -46,
-              child: Container(
-                width: 92,
-                height: 92,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.brandRed,
-                  border: Border.all(color: Colors.white, width: 4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+              child: GestureDetector(
+                onTap: () => editProfilePhoto(context),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 92,
+                      height: 92,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.card,
+                        border: Border.all(color: Colors.white, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: const UserAvatar(
+                        name: 'Ramon Napa ( Mon)',
+                        size: 84,
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: AppColors.brandRed,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      ),
                     ),
                   ],
-                ),
-                alignment: Alignment.center,
-                child: const Text(
-                  'R',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 42,
-                    fontWeight: FontWeight.w800,
-                  ),
                 ),
               ),
             ),
@@ -308,7 +331,7 @@ class _EmploymentTab extends StatelessWidget {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => showToast(context, 'Upload photo'),
+                    onTap: () => editProfilePhoto(context),
                     child: const Text(
                       'Upload',
                       style: TextStyle(
@@ -400,104 +423,6 @@ class _EmploymentTab extends StatelessWidget {
             children: [
               SizedBox(
                 width: 145,
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: AppColors.ink,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.inkSoft,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (!isLast) const Divider(height: 1, thickness: 0.8),
-      ],
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// TAB 2: PERSONAL BACKGROUND
-// -----------------------------------------------------------------------------
-class _PersonalBackgroundTab extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      children: [
-        SoftCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Personal Details',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.ink,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _row('Full Name', 'Ramon Napa'),
-              _row('Nickname', 'Mon'),
-              _row('Gender', 'Male'),
-              _row('Civil Status', 'Single'),
-              _row('Birth Date', 'August 14, 1995'),
-              _row('Blood Type', 'O+'),
-              _row('Mobile', '+63 917 882 1920'),
-              _row('Work Email', 'ramon.napa@ardentnetworks.com.ph'),
-              _row('Address', 'Makati City, Metro Manila', isLast: true),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        SoftCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Emergency Contacts',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.ink,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _row('Contact Name', 'Maria Napa'),
-              _row('Relationship', 'Mother'),
-              _row('Contact Phone', '+63 917 123 4567', isLast: true),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _row(String label, String value, {bool isLast = false}) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 130,
                 child: Text(
                   label,
                   style: const TextStyle(

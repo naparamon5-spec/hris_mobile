@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/profile_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 
@@ -211,6 +212,44 @@ class InitialsAvatar extends StatelessWidget {
           fontSize: size * 0.36,
         ),
       ),
+    );
+  }
+}
+
+/// The current user's avatar: shows the uploaded profile photo when one is set
+/// (via [ProfileState]), otherwise falls back to initials. Rebuilds everywhere
+/// the moment a new photo is uploaded.
+class UserAvatar extends StatelessWidget {
+  const UserAvatar({
+    super.key,
+    required this.name,
+    this.size = 44,
+    this.color,
+  });
+
+  final String name;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: ProfileState.instance,
+      builder: (context, _) {
+        final photo = ProfileState.instance.photo;
+        if (photo != null) {
+          return ClipOval(
+            child: Image.memory(
+              photo,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+            ),
+          );
+        }
+        return InitialsAvatar(name: name, size: size, color: color);
+      },
     );
   }
 }

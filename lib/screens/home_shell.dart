@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
-import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
 import 'requests_screen.dart';
-import 'apps_screen.dart';
+import 'whos_out_screen.dart';
 import 'profile_screen.dart';
 
 /// Bottom-nav container that hosts the primary areas, mapped from the HRIS web
-/// sidebar: Home, Record/Request, Apps, and Profile (the sidebar's "Menu").
+/// sidebar: Home, Record/Request, Who's Out, and Profile (the sidebar's "Menu").
 /// Directory and Notifications are reached from the Dashboard app bar.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, this.initialIndex = 0});
@@ -25,14 +24,14 @@ class _HomeShellState extends State<HomeShell> {
   final _tabs = const [
     DashboardScreen(),
     RequestsScreen(),
-    AppsScreen(),
+    WhosOutScreen(),
     ProfileScreen(),
   ];
 
   static const _items = [
     _NavItem(Icons.grid_view_rounded, 'Home'),
     _NavItem(Icons.assignment_rounded, 'Requests'),
-    _NavItem(Icons.apps_rounded, 'Apps'),
+    _NavItem(Icons.calendar_month_rounded, "Who's Out"),
     _NavItem(Icons.person_rounded, 'Profile'),
   ];
 

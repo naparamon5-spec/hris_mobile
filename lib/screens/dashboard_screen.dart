@@ -7,9 +7,9 @@ import '../widgets/ui.dart';
 import 'directory_screen.dart';
 import 'notifications_screen.dart';
 import 'leave_screen.dart';
+import 'whos_out_screen.dart';
 import 'leave_of_absence_screen.dart';
 import 'payroll_screen.dart';
-import 'attendance_screen.dart';
 import 'feature_screen.dart';
 import 'profile_screen.dart';
 
@@ -25,11 +25,7 @@ class DashboardScreen extends StatelessWidget {
         children: [
           _TopBar(),
           const SizedBox(height: 16),
-          _ClockInCard(),
-          const SizedBox(height: 20),
-          const SectionHeader(title: 'Quick actions'),
-          const SizedBox(height: 12),
-          _QuickActions(),
+          _TodayCard(),
           const SizedBox(height: 20),
           SectionHeader(
             title: 'Leave credits',
@@ -39,13 +35,21 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 12),
           _LeaveBalance(),
           const SizedBox(height: 20),
+          const SectionHeader(title: 'Quick actions'),
+          const SizedBox(height: 12),
+          _QuickActions(),
+          const SizedBox(height: 20),
           SectionHeader(
-            title: 'Announcements',
-            actionLabel: 'See all',
-            onAction: () => _go(context, const NotificationsScreen()),
+            title: "Who's out today",
+            actionLabel: 'Calendar',
+            onAction: () => _go(context, _whosOutPage()),
           ),
           const SizedBox(height: 12),
-          _Announcement(),
+          _WhosOutToday(),
+          const SizedBox(height: 20),
+          const SectionHeader(title: 'This month'),
+          const SizedBox(height: 12),
+          _MonthStats(),
         ],
       ),
     );
@@ -54,6 +58,14 @@ class DashboardScreen extends StatelessWidget {
   void _go(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
+
+  /// The Who's Out calendar wrapped in a Scaffold so it gets a back button when
+  /// pushed from the dashboard (on its own tab it has no app bar).
+  Widget _whosOutPage() => Scaffold(
+        backgroundColor: AppColors.bg,
+        appBar: AppBar(title: const Text("Who's Out")),
+        body: const WhosOutScreen(),
+      );
 }
 
 class _TopBar extends StatelessWidget {
@@ -67,7 +79,7 @@ class _TopBar extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              const InitialsAvatar(name: kCurrentUser, size: 44),
+              const UserAvatar(name: kCurrentUser, size: 44),
               Positioned(
                 right: 0,
                 bottom: 0,
@@ -173,153 +185,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// Sprout HR style clean attendance hero card
-class _ClockInCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.line, width: 1),
-        boxShadow: kSoftShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.successSoft,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.circle, color: AppColors.success, size: 8),
-                    SizedBox(width: 6),
-                    Text(
-                      'CLOCKED IN',
-                      style: TextStyle(
-                        color: AppColors.success,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              const Text(
-                'Shift: 08:30 AM – 05:30 PM',
-                style: TextStyle(
-                  color: AppColors.inkSoft,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              const Text(
-                '08:32',
-                style: TextStyle(
-                  color: AppColors.ink,
-                  fontSize: 38,
-                  height: 1,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'AM',
-                style: TextStyle(
-                  color: AppColors.inkSoft,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '7h 12m worked today',
-                style: TextStyle(
-                  color: AppColors.brandRed,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Makati HQ • Biometrics verified',
-            style: TextStyle(
-              color: AppColors.inkFaint,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const AttendanceScreen(),
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandRed,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(Icons.logout_rounded, size: 18),
-                  label: const Text(
-                    'Clock Out',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: () => showToast(context, 'Starting break timer…'),
-                child: Container(
-                  height: 46,
-                  width: 46,
-                  decoration: BoxDecoration(
-                    color: AppColors.fieldFill,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.line, width: 1),
-                  ),
-                  child: const Icon(
-                    Icons.coffee_outlined,
-                    color: AppColors.ink,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -419,65 +284,100 @@ class _QA extends StatelessWidget {
   }
 }
 
-/// Sprout HR style clean leave credit cards
-class _LeaveBalance extends StatelessWidget {
+/// Slim "today" banner: date, shift window and an attendance status pill.
+/// Informational only — no clock in/out controls.
+class _TodayCard extends StatelessWidget {
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  static const _wd = [
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+    'Saturday', 'Sunday',
+  ];
+
+  /// Semi-monthly payday (15th / end of month) — next one from the demo date.
+  DateTime get _payday {
+    final t = kToday;
+    if (t.day < 15) return DateTime(t.year, t.month, 15);
+    return DateTime(t.year, t.month + 1, 0); // last day of this month
+  }
+
+  int get _daysToPayday => _payday.difference(kToday).inDays;
+
   @override
   Widget build(BuildContext context) {
+    final t = kToday;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        gradient: AppColors.brandGradient,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.line, width: 1),
         boxShadow: kSoftShadow,
       ),
       child: Row(
         children: [
-          _creditItem('Vacation', '9.0', 'days left'),
-          _vDivider(),
-          _creditItem('Sick', '7.0', 'days left'),
-          _vDivider(),
-          _creditItem('Emergency', '2.0', 'days left'),
-        ],
-      ),
-    );
-  }
-
-  Widget _vDivider() => Container(
-        width: 1,
-        height: 38,
-        color: AppColors.line,
-      );
-
-  Widget _creditItem(String title, String val, String sub) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            val,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: AppColors.brandRed,
-              height: 1,
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.today_rounded, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_wd[t.weekday - 1]}, ${_months[t.month - 1]} ${t.day}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Next payday • ${_months[_payday.month - 1]} ${_payday.day}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
             ),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            sub,
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w500,
-              color: AppColors.inkFaint,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$_daysToPayday',
+                  style: const TextStyle(
+                    color: AppColors.brandRed,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    height: 1,
+                  ),
+                ),
+                const Text(
+                  'days',
+                  style: TextStyle(
+                    color: AppColors.inkSoft,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -486,67 +386,311 @@ class _LeaveBalance extends StatelessWidget {
   }
 }
 
-class _Announcement extends StatelessWidget {
+/// Preview of who is on leave today, with overlapping avatars. Tapping opens
+/// the full Who's Out calendar.
+class _WhosOutToday extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.line, width: 1),
-          boxShadow: kSoftShadow,
-        ),
+    final out = whosOutOn(kToday);
+
+    if (out.isEmpty) {
+      return SoftCard(
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.brandRed.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(12),
+            IconBadge(
+              icon: Icons.emoji_people_rounded,
+              color: AppColors.success,
+              size: 44,
+              iconSize: 22,
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text(
+                "Everyone's in today 🎉",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
               ),
-              child: const Icon(
-                Icons.campaign_outlined,
-                color: AppColors.brandRed,
-                size: 22,
+            ),
+          ],
+        ),
+      );
+    }
+
+    const maxAvatars = 4;
+    final shown = out.take(maxAvatars).toList();
+    final extra = out.length - shown.length;
+
+    return SoftCard(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            backgroundColor: AppColors.bg,
+            appBar: AppBar(title: const Text("Who's Out")),
+            body: const WhosOutScreen(),
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 30.0 + (shown.length - 1) * 20 + (extra > 0 ? 20 : 0),
+            height: 36,
+            child: Stack(
+              children: [
+                for (int i = 0; i < shown.length; i++)
+                  Positioned(
+                    left: i * 20.0,
+                    child: _ring(
+                      child: InitialsAvatar(
+                        name: shown[i].name,
+                        size: 32,
+                        color: shown[i].color,
+                      ),
+                    ),
+                  ),
+                if (extra > 0)
+                  Positioned(
+                    left: shown.length * 20.0,
+                    child: _ring(
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          color: AppColors.fieldFill,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '+$extra',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.inkSoft,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${out.length} ${out.length == 1 ? "person" : "people"} out today',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  shown.map((e) => e.name.split(' ').first).join(', ') +
+                      (extra > 0 ? ' & $extra more' : ''),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.inkSoft,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+        ],
+      ),
+    );
+  }
+
+  Widget _ring({required Widget child}) => Container(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.card,
+        ),
+        padding: const EdgeInsets.all(2),
+        child: child,
+      );
+}
+
+/// A row of three at-a-glance stats for the current month.
+class _MonthStats extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _stat(Icons.event_busy_rounded, '2', 'Leaves taken'),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _stat(Icons.access_time_rounded, '8.5', 'OT hours'),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _stat(Icons.fact_check_rounded, '3', 'Call Approvals'),
+        ),
+      ],
+    );
+  }
+
+  Widget _stat(IconData icon, String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.line, width: 1),
+        boxShadow: kSoftShadow,
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: AppColors.brandRed, size: 22),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: AppColors.ink,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.inkSoft,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Leave balance with VL and SL as prominent hero tiles.
+class _LeaveBalance extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _bigCredit(
+                context,
+                label: 'Vacation Leave',
+                short: 'VL',
+                val: '9.0',
+                icon: Icons.beach_access_outlined,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '2026 Remote Work Policy',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'New hybrid schedule guidelines in effect.',
-                    style: TextStyle(
-                      color: AppColors.inkSoft,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+              child: _bigCredit(
+                context,
+                label: 'Sick Leave',
+                short: 'SL',
+                val: '7.0',
+                icon: Icons.healing_outlined,
               ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.inkFaint,
-              size: 20,
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _bigCredit(
+    BuildContext context, {
+    required String label,
+    required String short,
+    required String val,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line, width: 1),
+        boxShadow: kSoftShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.brandRed.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppColors.brandRed, size: 18),
+              ),
+              const Spacer(),
+              Text(
+                short,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.inkFaint,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                val,
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.brandRed,
+                  height: 1,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                'days',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.inkFaint,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
+        ],
       ),
     );
   }

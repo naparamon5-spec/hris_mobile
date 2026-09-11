@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/brand.dart';
-import 'login_screen.dart';
+import 'company_select_screen.dart';
 
 /// Branded launch screen. Draws the shield-and-check mark on, then hands off
 /// to the login screen. In production this is also where you'd check for an
@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 350),
-        pageBuilder: (_, _, _) => const LoginScreen(),
+        pageBuilder: (_, _, _) => const CompanySelectScreen(),
         transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
       ),

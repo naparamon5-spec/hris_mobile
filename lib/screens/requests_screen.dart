@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../data/app_session.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
 import 'approval_list_screen.dart';
+import 'approvals_screen.dart';
 import 'leave_hours_screen.dart';
 import 'leave_of_absence_screen.dart';
+import 'other_requests_screen.dart';
 import 'payslip_screen.dart';
 import 'timesheet_screen.dart';
 
@@ -108,6 +111,25 @@ class RequestsScreen extends StatelessWidget {
             badge: true,
             onTap: () => _go(context, const PayslipScreen()),
           ),
+          // ---- Manager / head / executive only ----
+          if (AppSession.instance.canApprove) ...[
+            const SizedBox(height: 10),
+            NavListTile(
+              icon: Icons.post_add_rounded,
+              label: 'Other Requests',
+              color: AppColors.inkSoft,
+              onTap: () => _go(context, const OtherRequestsScreen()),
+            ),
+            const SizedBox(height: 22),
+            const SmallCapsHeader('Approvals'),
+            NavListTile(
+              icon: Icons.verified_user_rounded,
+              label: 'Approvals',
+              color: AppColors.inkSoft,
+              badge: true,
+              onTap: () => _go(context, const ApprovalsScreen()),
+            ),
+          ],
         ],
       ),
     );
