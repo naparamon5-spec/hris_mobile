@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/app_session.dart';
+import '../data/hris_api.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
 import 'approval_list_screen.dart';
-import 'approvals_screen.dart';
+import 'approvals_center_screen.dart';
 import 'leave_hours_screen.dart';
 import 'leave_of_absence_screen.dart';
 import 'other_requests_screen.dart';
@@ -23,7 +24,7 @@ class RequestsScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         children: [
           const Text(
-            'Record / Request',
+            'File Request',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
@@ -58,7 +59,7 @@ class RequestsScreen extends StatelessWidget {
                 subtitle: 'File and track call approval requests.',
                 icon: Icons.fact_check_rounded,
                 txnDateLabel: 'CA date',
-                records: _callApprovalRecords,
+                type: 'call-approval',
               ),
             ),
           ),
@@ -75,7 +76,7 @@ class RequestsScreen extends StatelessWidget {
                 icon: Icons.punch_clock_rounded,
                 txnDateLabel: 'MAD date',
                 showWitnessedBy: true,
-                records: _manualAdRecords,
+                type: 'manual-ad',
               ),
             ),
           ),
@@ -92,7 +93,7 @@ class RequestsScreen extends StatelessWidget {
                 icon: Icons.access_time_filled_rounded,
                 txnDateLabel: 'Overtime date',
                 showHours: true,
-                records: _overtimeRecords,
+                type: 'overtime',
               ),
             ),
           ),
@@ -111,8 +112,8 @@ class RequestsScreen extends StatelessWidget {
             badge: true,
             onTap: () => _go(context, const PayslipScreen()),
           ),
-          // ---- Manager / head / executive only ----
-          if (AppSession.instance.canApprove) ...[
+          // ---- Versatech only: additional request types ----
+          if (AppSession.instance.tenant?.id == 'versatech') ...[
             const SizedBox(height: 10),
             NavListTile(
               icon: Icons.post_add_rounded,
@@ -120,16 +121,86 @@ class RequestsScreen extends StatelessWidget {
               color: AppColors.inkSoft,
               onTap: () => _go(context, const OtherRequestsScreen()),
             ),
-            const SizedBox(height: 22),
-            const SmallCapsHeader('Approvals'),
-            NavListTile(
-              icon: Icons.verified_user_rounded,
-              label: 'Approvals',
-              color: AppColors.inkSoft,
-              badge: true,
-              onTap: () => _go(context, const ApprovalsScreen()),
-            ),
           ],
+          // ---- Approvers only — shown when the signed-in user is a department
+          // approver in vw_emp_list_with_approver (real data, not just role). ----
+          FutureBuilder<ApprovalAccess>(
+            future: HrisApi.instance.approvalAccess(),
+            builder: (context, snap) {
+              final acc = snap.data;
+              if (acc == null || !acc.isApprover) return const SizedBox.shrink();
+              final isVersatech =
+                  AppSession.instance.tenant?.id == 'versatech';
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 22),
+                  const SmallCapsHeader('Approvals'),
+                  NavListTile(
+                    icon: Icons.verified_user_rounded,
+                    label: acc.pending > 0
+                        ? 'Records Approval (${acc.pending})'
+                        : 'Records Approval',
+                    color: AppColors.inkSoft,
+                    badge: acc.pending > 0,
+                    onTap: () => _go(
+                      context,
+                      const ApprovalsCenterScreen(
+                        module: 'records',
+                        scope: 'pending',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  NavListTile(
+                    icon: Icons.task_alt_rounded,
+                    label: 'Approved Records',
+                    color: AppColors.inkSoft,
+                    onTap: () => _go(
+                      context,
+                      const ApprovalsCenterScreen(
+                        module: 'records',
+                        scope: 'history',
+                      ),
+                    ),
+                  ),
+                  // Request Approval covers the Other Requests, which are
+                  // Versatech-only.
+                  if (isVersatech) ...[
+                    const SizedBox(height: 10),
+                    NavListTile(
+                      icon: Icons.assignment_turned_in_rounded,
+                      label: acc.pendingRequests > 0
+                          ? 'Request Approval (${acc.pendingRequests})'
+                          : 'Request Approval',
+                      color: AppColors.inkSoft,
+                      badge: acc.pendingRequests > 0,
+                      onTap: () => _go(
+                        context,
+                        const ApprovalsCenterScreen(
+                          module: 'requests',
+                          scope: 'pending',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    NavListTile(
+                      icon: Icons.fact_check_outlined,
+                      label: 'Approved Requests',
+                      color: AppColors.inkSoft,
+                      onTap: () => _go(
+                        context,
+                        const ApprovalsCenterScreen(
+                          module: 'requests',
+                          scope: 'history',
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -138,97 +209,3 @@ class RequestsScreen extends StatelessWidget {
   void _go(BuildContext context, Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 }
-
-// -----------------------------------------------------------------------------
-// MOCK DATA — Call Approval, Manual Arrival/Departure, Overtime
-// -----------------------------------------------------------------------------
-const _callApprovalRecords = <ApprovalRecord>[
-  ApprovalRecord('243647', 'September 03, 2026', 'September 03, 2026',
-      'ARIEL SERRANO', 'September 03, 2026',
-      year: 2026, month: 9, day: 3),
-  ApprovalRecord('243470', 'August 27, 2026', 'August 27, 2026',
-      'ARIEL SERRANO', 'August 27, 2026',
-      year: 2026, month: 8, day: 27),
-  ApprovalRecord('242917', 'August 20, 2026', 'August 20, 2026',
-      'ARIEL SERRANO', 'August 20, 2026',
-      year: 2026, month: 8, day: 20),
-  ApprovalRecord('243489', 'August 27, 2026', 'August 19, 2026',
-      'ARIEL SERRANO', 'September 01, 2026',
-      year: 2026, month: 8, day: 19, status: 'Approved'),
-  ApprovalRecord('242277', 'August 18, 2026', 'August 18, 2026',
-      'ARIEL SERRANO', 'August 18, 2026',
-      year: 2026, month: 8, day: 18),
-  ApprovalRecord('242103', 'August 13, 2026', 'August 13, 2026',
-      'ARIEL SERRANO', 'August 13, 2026',
-      year: 2026, month: 8, day: 13),
-  ApprovalRecord('241976', 'August 10, 2026', 'August 10, 2026',
-      'ARIEL SERRANO', 'August 10, 2026',
-      year: 2026, month: 8, day: 10),
-  ApprovalRecord('241668', 'August 06, 2026', 'August 06, 2026',
-      'ARIEL SERRANO', 'August 06, 2026',
-      year: 2026, month: 8, day: 6),
-];
-
-// Manual Arrival/Departure uses a "Witnessed By" column instead of an
-// approved date (approvedDate is left blank for these records).
-const _manualAdRecords = <ApprovalRecord>[
-  ApprovalRecord('MAD24512', 'September 02, 2026', 'September 02, 2026',
-      'ARIEL SERRANO', '',
-      year: 2026, month: 9, day: 2, witnessedBy: 'SOFIA REYES'),
-  ApprovalRecord('MAD24488', 'August 28, 2026', 'August 26, 2026',
-      'ARIEL SERRANO', '',
-      year: 2026,
-      month: 8,
-      day: 26,
-      status: 'Approved',
-      witnessedBy: 'MARK DELA CRUZ'),
-  ApprovalRecord('MAD24390', 'August 21, 2026', 'August 21, 2026',
-      'ARIEL SERRANO', '',
-      year: 2026, month: 8, day: 21, witnessedBy: 'SOFIA REYES'),
-  ApprovalRecord('MAD24201', 'August 14, 2026', 'August 14, 2026',
-      'ARIEL SERRANO', '',
-      year: 2026, month: 8, day: 14, witnessedBy: 'JOHN SANTOS'),
-  ApprovalRecord('MAD24098', 'August 07, 2026', 'August 07, 2026',
-      'ARIEL SERRANO', '',
-      year: 2026, month: 8, day: 7, witnessedBy: 'SOFIA REYES'),
-];
-
-// Overtime shows applied/approved hours in addition to the shared columns.
-const _overtimeRecords = <ApprovalRecord>[
-  ApprovalRecord('OT30217', 'September 04, 2026', 'September 04, 2026',
-      'ARIEL SERRANO', 'September 04, 2026',
-      year: 2026,
-      month: 9,
-      day: 4,
-      appliedHours: '3.00',
-      approvedHours: '3.00'),
-  ApprovalRecord('OT30185', 'August 29, 2026', 'August 29, 2026',
-      'ARIEL SERRANO', 'August 29, 2026',
-      year: 2026,
-      month: 8,
-      day: 29,
-      appliedHours: '2.00',
-      approvedHours: '2.00'),
-  ApprovalRecord('OT30142', 'August 25, 2026', 'August 22, 2026',
-      'ARIEL SERRANO', 'August 26, 2026',
-      year: 2026,
-      month: 8,
-      day: 22,
-      status: 'Approved',
-      appliedHours: '4.00',
-      approvedHours: '3.50'),
-  ApprovalRecord('OT30044', 'August 15, 2026', 'August 15, 2026',
-      'ARIEL SERRANO', 'August 15, 2026',
-      year: 2026,
-      month: 8,
-      day: 15,
-      appliedHours: '1.50',
-      approvedHours: '1.50'),
-  ApprovalRecord('OT29981', 'August 08, 2026', 'August 08, 2026',
-      'ARIEL SERRANO', 'August 08, 2026',
-      year: 2026,
-      month: 8,
-      day: 8,
-      appliedHours: '5.00',
-      approvedHours: '5.00'),
-];

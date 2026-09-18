@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../data/api_client.dart';
+import '../data/hris_api.dart';
 import '../data/mock_data.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
@@ -12,43 +14,63 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  late List<AppNotification> _notifications;
+  List<AppNotification> _notifications = [];
+  bool _loading = true;
+  String? _error;
   int _selectedTab = 0; // 0: All, 1: Unread
 
   @override
   void initState() {
     super.initState();
-    _notifications = List.from(kNotifications);
+    _load();
   }
 
-  void _markAllRead() {
+  Future<void> _load() async {
     setState(() {
-      _notifications = _notifications.map((n) {
-        return AppNotification(
-          title: n.title,
-          body: n.body,
-          time: n.time,
-          icon: n.icon,
-          color: n.color,
-          unread: false,
-        );
-      }).toList();
+      _loading = true;
+      _error = null;
     });
-    showToast(context, 'All notifications marked as read');
+    try {
+      final res = await HrisApi.instance.notifications();
+      if (!mounted) return;
+      setState(() {
+        _notifications = res.items;
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    }
   }
 
-  void _markSingleAsRead(int index) {
+  Future<void> _markAllRead() async {
+    final previous = _notifications;
     setState(() {
-      final n = _notifications[index];
-      _notifications[index] = AppNotification(
-        title: n.title,
-        body: n.body,
-        time: n.time,
-        icon: n.icon,
-        color: n.color,
-        unread: false,
-      );
+      _notifications =
+          _notifications.map((n) => n.copyWith(unread: false)).toList();
     });
+    try {
+      await HrisApi.instance.markAllNotificationsRead();
+      if (mounted) showToast(context, 'All notifications have been marked as read.', isSuccess: true, title: 'Updated');
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _notifications = previous); // revert on failure
+      showToast(context, e.message);
+    }
+  }
+
+  Future<void> _markSingleAsRead(int index) async {
+    final n = _notifications[index];
+    if (!n.unread || n.id == null) return;
+    setState(() => _notifications[index] = n.copyWith(unread: false));
+    try {
+      await HrisApi.instance.markNotificationRead(n.id!);
+    } on ApiException {
+      // Silent — the list still reads fine; a refresh corrects it.
+    }
   }
 
   @override
@@ -107,7 +129,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: displayed.isEmpty
+              child: _loading
+                  ? Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.brandRed))
+                  : _error != null
+                      ? _NotifError(message: _error!, onRetry: _load)
+                      : displayed.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -145,8 +173,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ],
                       ),
                     )
-                  : ListView.builder(
+                  : RefreshIndicator(
+                      color: AppColors.brandRed,
+                      onRefresh: _load,
+                      child: ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                      physics: const AlwaysScrollableScrollPhysics(),
                       itemCount: displayed.length,
                       itemBuilder: (context, i) {
                         final item = displayed[i];
@@ -166,6 +198,40 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         );
                       },
                     ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotifError extends StatelessWidget {
+  const _NotifError({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded,
+                size: 52, color: AppColors.inkFaint),
+            const SizedBox(height: 14),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: AppColors.inkSoft, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Retry'),
             ),
           ],
         ),
@@ -284,7 +350,7 @@ class _NotificationCard extends StatelessWidget {
                       Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: AppColors.brandRed,
                           shape: BoxShape.circle,
                         ),

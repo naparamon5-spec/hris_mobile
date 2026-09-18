@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../data/api_client.dart';
+import '../data/hris_api.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
 
@@ -36,24 +38,90 @@ class PersonalBackgroundTab extends StatefulWidget {
 }
 
 class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
-  final Map<String, String> _info = {
-    'Full Name': 'Ramon Napa',
-    'Nickname': 'Mon',
-    'Gender': 'Male',
-    'Civil Status': 'Single',
-    'Birth Date': 'August 14, 1995',
-    'Blood Type': 'O+',
-    'Mobile': '+63 917 882 1920',
-    'Work Email': 'ramon.napa@ardentnetworks.com.ph',
-    'Address': 'Makati City, Metro Manila',
-  };
+  Map<String, String> _info = {};
 
   final List<FamilyMember> _family = [];
   final List<Education> _education = [];
   final List<PrevEmployment> _employment = [];
 
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final bg = await HrisApi.instance.profileBackground();
+      if (!mounted) return;
+      setState(() {
+        _info = bg.personalInfo;
+        _family
+          ..clear()
+          ..addAll(bg.family.map((f) => FamilyMember(
+                f['first_name'] ?? '',
+                f['middle_name'] ?? '',
+                f['last_name'] ?? '',
+                f['relationship'] ?? '',
+                f['birthdate'] ?? '',
+              )));
+        _education
+          ..clear()
+          ..addAll(bg.education.map((e) => Education(
+                e['school'] ?? '',
+                e['attainment'] ?? '',
+                e['year_graduated'] ?? '',
+              )));
+        _employment
+          ..clear()
+          ..addAll(bg.previousEmployment.map((p) => PrevEmployment(
+                p['company'] ?? '',
+                p['address1'] ?? '',
+                p['address2'] ?? '',
+                p['address3'] ?? '',
+                p['position'] ?? '',
+                p['date_from'] ?? '',
+                p['date_to'] ?? '',
+              )));
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return Center(
+          child: CircularProgressIndicator(color: AppColors.brandRed));
+    }
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded,
+                size: 48, color: AppColors.inkFaint),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppColors.inkSoft)),
+            const SizedBox(height: 12),
+            OutlinedButton(onPressed: _load, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
@@ -93,29 +161,6 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
                   _info.values.elementAt(i),
                   isLast: i == _info.length - 1,
                 ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // ---- Emergency Contacts ----
-        SoftCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Emergency Contacts',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.ink,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _row('Contact Name', 'Maria Napa'),
-              _row('Relationship', 'Mother'),
-              _row('Contact Phone', '+63 917 123 4567', isLast: true),
             ],
           ),
         ),
@@ -179,13 +224,9 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
 
   // ---- Actions ----
   Future<void> _editPersonalInfo() async {
-    final result = await showModalBottomSheet<Map<String, String>>(
-      context: context,
+    final result = await showPremiumBottomSheet<Map<String, String>>(
+      context,
       isScrollControlled: true,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
       builder: (_) => _PersonalInfoEditSheet(initial: Map.of(_info)),
     );
     if (result != null) setState(() => _info.addAll(result));
@@ -219,13 +260,9 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
     required String title,
     required Widget Function(BuildContext) builder,
   }) {
-    return showModalBottomSheet<T>(
-      context: context,
+    return showPremiumBottomSheet<T>(
+      context,
       isScrollControlled: true,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
       builder: (ctx) => _SheetScaffold(title: title, child: builder(ctx)),
     );
   }
@@ -458,12 +495,14 @@ class _LabeledField extends StatelessWidget {
     required this.controller,
     this.required = false,
     this.keyboardType,
+    this.enabled = true,
   });
 
   final String label;
   final TextEditingController controller;
   final bool required;
   final TextInputType? keyboardType;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -477,7 +516,34 @@ class _LabeledField extends StatelessWidget {
           TextField(
             controller: controller,
             keyboardType: keyboardType,
-            decoration: const InputDecoration(isDense: true),
+            enabled: enabled,
+            decoration: InputDecoration(
+              isDense: true,
+              filled: true,
+              fillColor: AppColors.fieldFill,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.brandRed, width: 1.6),
+              ),
+              suffixIcon: enabled
+                  ? null
+                  : const Icon(Icons.lock_outline_rounded,
+                      size: 16, color: AppColors.inkFaint),
+            ),
           ),
         ],
       ),
@@ -489,13 +555,13 @@ Widget _label(String text, bool required) {
   return RichText(
     text: TextSpan(
       text: text,
-      style: const TextStyle(
+      style: TextStyle(
         color: AppColors.ink,
         fontSize: 13.5,
         fontWeight: FontWeight.w700,
       ),
       children: required
-          ? const [
+          ? [
               TextSpan(
                   text: ' *', style: TextStyle(color: AppColors.brandRed))
             ]
@@ -660,7 +726,7 @@ Future<DateTime?> _pickDate(BuildContext context) {
     lastDate: DateTime(2035),
     builder: (context, child) => Theme(
       data: Theme.of(context).copyWith(
-        colorScheme: const ColorScheme.light(
+        colorScheme: ColorScheme.light(
           primary: AppColors.brandRed,
           onPrimary: Colors.white,
           surface: Colors.white,
@@ -904,6 +970,9 @@ class _PersonalInfoEditSheet extends StatefulWidget {
 }
 
 class _PersonalInfoEditSheetState extends State<_PersonalInfoEditSheet> {
+  // Fields sourced from the HR master record — shown but not editable here.
+  static const _readOnlyKeys = {'Full Name', 'Telephone'};
+
   late final Map<String, TextEditingController> _controllers = {
     for (final e in widget.initial.entries) e.key: TextEditingController(text: e.value),
   };
@@ -930,7 +999,12 @@ class _PersonalInfoEditSheetState extends State<_PersonalInfoEditSheet> {
       child: Column(
         children: [
           for (final key in _controllers.keys)
-            _LabeledField(label: key, controller: _controllers[key]!),
+            _LabeledField(
+              label: key,
+              controller: _controllers[key]!,
+              // HR-master fields shouldn't be edited from the app.
+              enabled: !_readOnlyKeys.contains(key),
+            ),
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: SizedBox(

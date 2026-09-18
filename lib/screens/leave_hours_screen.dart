@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../data/hris_api.dart';
 import '../theme/app_colors.dart';
+import '../widgets/async_view.dart';
 import '../widgets/ui.dart';
 
 /// Leave Hours — the "Remaining Leave Hours" summary from the HRIS web app:
@@ -9,38 +11,78 @@ import '../widgets/ui.dart';
 class LeaveHoursScreen extends StatelessWidget {
   const LeaveHoursScreen({super.key});
 
+  String _fmt(String? v) => (v == null || v.isEmpty) ? '— —' : v;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Leave Hours')),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-          children: const [
-            SmallCapsHeader('Remaining Leave Hours'),
-            SizedBox(height: 2),
-            Row(
-              children: [
-                Expanded(
-                  child: _HoursCard(
-                    label: 'Approved Leave',
-                    value: '— —',
-                    icon: Icons.directions_walk_rounded,
+        child: AsyncView<LeaveBalance>(
+          load: () => HrisApi.instance.leaveHours(),
+          useGlobalLoader: true,
+          builder: (context, b) => ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            children: [
+              const SmallCapsHeader('Remaining Leave Hours'),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Expanded(
+                    child: _HoursCard(
+                      label: 'Approved Leave',
+                      value: _fmt(b.approvedLeave),
+                      icon: Icons.event_note_rounded,
+                    ),
                   ),
-                ),
-                SizedBox(width: 14),
-                Expanded(
-                  child: _HoursCard(
-                    label: 'Approved UT (AM/PM)',
-                    value: '— —',
-                    icon: Icons.running_with_errors_rounded,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: _HoursCard(
+                      label: 'Approved UT (AM/PM)',
+                      value: _fmt(b.approvedUt),
+                      icon: Icons.timelapse_rounded,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            _EmptyNote(),
-          ],
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _HoursCard(
+                      label: 'Additional VL',
+                      value: _fmt(b.additionalVl),
+                      icon: Icons.more_time_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: _HoursCard(
+                      label: 'SL Paid',
+                      value: _fmt(b.slPaid),
+                      icon: Icons.healing_rounded,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _HoursCard(
+                      label: 'VL Paid',
+                      value: _fmt(b.vlPaid),
+                      icon: Icons.beach_access_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(child: SizedBox()),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const _EmptyNote(),
+            ],
+          ),
         ),
       ),
     );
@@ -84,32 +126,14 @@ class _HoursCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 26),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 30,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.inkSoft,
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 3),
-                child: Text(
-                  'hrs',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.inkFaint,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 30,
+              height: 1,
+              fontWeight: FontWeight.w800,
+              color: AppColors.inkSoft,
+            ),
           ),
         ],
       ),

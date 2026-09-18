@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
 
+import '../data/hris_api.dart';
 import '../data/mock_data.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import '../widgets/async_view.dart';
 import '../widgets/ui.dart';
 
-class PayrollScreen extends StatelessWidget {
+class PayrollScreen extends StatefulWidget {
   const PayrollScreen({super.key});
+
+  @override
+  State<PayrollScreen> createState() => _PayrollScreenState();
+}
+
+class _PayrollScreenState extends State<PayrollScreen> {
+  final _reload = AsyncViewController();
+
+  @override
+  void dispose() {
+    _reload.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,25 +39,45 @@ class PayrollScreen extends StatelessWidget {
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
-          children: [
-            _LatestPayslip(),
-            const SizedBox(height: 24),
-            const SectionHeader(title: 'Breakdown'),
-            const SizedBox(height: 14),
-            _Breakdown(),
-            const SizedBox(height: 24),
-            SectionHeader(
-                title: 'Payslip history',
-                actionLabel: 'Export all',
-                onAction: () => showToast(context, 'Exporting history…')),
-            const SizedBox(height: 14),
-            ...kPayslips.map((p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _PayslipRow(payslip: p),
-                )),
-          ],
+        child: AsyncView<(List<Payslip>, Payslip?)>(
+          controller: _reload,
+          load: () async {
+            final list = await HrisApi.instance.payslips();
+            final latest = list.isEmpty
+                ? null
+                : await HrisApi.instance.payslip(list.first.id!);
+            return (list, latest);
+          },
+          useGlobalLoader: true,
+          builder: (context, data) {
+            final (payslips, latest) = data;
+            return RefreshIndicator(
+              color: AppColors.brandRed,
+              onRefresh: () async => _reload.reload(),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  if (latest != null) _LatestPayslip(payslip: latest),
+                  const SizedBox(height: 24),
+                  const SectionHeader(title: 'Breakdown'),
+                  const SizedBox(height: 14),
+                  _Breakdown(),
+                  const SizedBox(height: 24),
+                  SectionHeader(
+                      title: 'Payslip history',
+                      actionLabel: 'Export all',
+                      onAction: () =>
+                          showToast(context, 'Exporting history…')),
+                  const SizedBox(height: 14),
+                  ...payslips.map((p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _PayslipRow(payslip: p),
+                      )),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -50,6 +85,9 @@ class PayrollScreen extends StatelessWidget {
 }
 
 class _LatestPayslip extends StatelessWidget {
+  const _LatestPayslip({required this.payslip});
+  final Payslip payslip;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -64,26 +102,26 @@ class _LatestPayslip extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
+            children: [
               Text(
-                'Net pay • May 2026',
-                style: TextStyle(
+                'Net pay • ${payslip.period}',
+                style: const TextStyle(
                   color: AppColors.inkSoft,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
               ),
-              Spacer(),
+              const Spacer(),
               StatusPill(
-                label: 'Paid',
+                label: payslip.status,
                 color: AppColors.success,
                 icon: Icons.check_circle_rounded,
               ),
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
-            '₱ 86,420.00',
+          Text(
+            payslip.net,
             style: TextStyle(
               color: AppColors.brandRed,
               fontSize: 34,
@@ -92,9 +130,11 @@ class _LatestPayslip extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Deposited to BPI •••• 4821 on May 30',
-            style: TextStyle(
+          Text(
+            payslip.payDate != null
+                ? 'Deposited on ${payslip.payDate}'
+                : 'Pending deposit',
+            style: const TextStyle(
               color: AppColors.inkSoft,
               fontSize: 12.5,
               fontWeight: FontWeight.w500,
@@ -109,11 +149,11 @@ class _LatestPayslip extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _chip('Gross', '₱ 110,000'),
+                _chip('Gross', payslip.gross ?? '—'),
                 _divider(),
-                _chip('Deductions', '₱ 23,580'),
+                _chip('Deductions', payslip.deductions ?? '—'),
                 _divider(),
-                _chip('Net', '₱ 86,420'),
+                _chip('Net', payslip.net),
               ],
             ),
           ),

@@ -11,7 +11,7 @@ class FeatureScreen extends StatelessWidget {
     super.key,
     required this.title,
     required this.icon,
-    this.color = AppColors.brandRed,
+    this.color = AppColors.defaultBrand,
     this.blurb,
   });
 

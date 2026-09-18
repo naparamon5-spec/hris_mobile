@@ -1,11 +1,55 @@
 import 'package:flutter/material.dart';
 
+import '../data/api_client.dart';
+import '../data/hris_api.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import '../widgets/async_view.dart';
 import '../widgets/ui.dart';
 
-class AttendanceScreen extends StatelessWidget {
+class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
+
+  @override
+  State<AttendanceScreen> createState() => _AttendanceScreenState();
+}
+
+class _AttendanceScreenState extends State<AttendanceScreen> {
+  final _reload = AsyncViewController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _reload.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggle(AttendanceToday today) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    showLoadingOverlay(context);
+    try {
+      if (today.isClockedIn) {
+        await HrisApi.instance.clockOut();
+        if (mounted) {
+          hideLoadingOverlay(context);
+          showToast(context, 'You have successfully clocked out.', isSuccess: true, title: 'Clocked Out');
+        }
+      } else {
+        await HrisApi.instance.clockIn();
+        if (mounted) {
+          hideLoadingOverlay(context);
+          showToast(context, 'You have successfully clocked in.', isSuccess: true, title: 'Clocked In');
+        }
+      }
+      _reload.reload();
+    } on ApiException catch (e) {
+      hideLoadingOverlay(context);
+      if (mounted) showToast(context, e.message, isSuccess: false, title: 'Error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,21 +67,33 @@ class AttendanceScreen extends StatelessWidget {
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
-          children: [
-            _ClockCard(),
-            const SizedBox(height: 22),
-            _SummaryRow(),
-            const SizedBox(height: 24),
-            const SectionHeader(title: 'This week'),
-            const SizedBox(height: 14),
-            _WeeklyChart(),
-            const SizedBox(height: 24),
-            const SectionHeader(title: "Today's log"),
-            const SizedBox(height: 14),
-            _Timeline(),
-          ],
+        child: AsyncView<Attendance>(
+          controller: _reload,
+          load: () => HrisApi.instance.attendance(),
+          builder: (context, a) => RefreshIndicator(
+            color: AppColors.brandRed,
+            onRefresh: () async => _reload.reload(),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                _ClockCard(
+                    today: a.today,
+                    busy: _busy,
+                    onToggle: () => _toggle(a.today)),
+                const SizedBox(height: 22),
+                _SummaryRow(summary: a.summary),
+                const SizedBox(height: 24),
+                const SectionHeader(title: 'This week'),
+                const SizedBox(height: 14),
+                _WeeklyChart(week: a.week),
+                const SizedBox(height: 24),
+                const SectionHeader(title: "Today's log"),
+                const SizedBox(height: 14),
+                _Timeline(today: a.today),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -45,8 +101,15 @@ class AttendanceScreen extends StatelessWidget {
 }
 
 class _ClockCard extends StatelessWidget {
+  const _ClockCard(
+      {required this.today, required this.busy, required this.onToggle});
+  final AttendanceToday today;
+  final bool busy;
+  final VoidCallback onToggle;
+
   @override
   Widget build(BuildContext context) {
+    final clockedIn = today.isClockedIn;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -63,18 +126,26 @@ class _ClockCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.successSoft,
+                  color: clockedIn
+                      ? AppColors.successSoft
+                      : AppColors.fieldFill,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.circle, size: 8, color: AppColors.success),
-                    SizedBox(width: 6),
+                  children: [
+                    Icon(Icons.circle,
+                        size: 8,
+                        color: clockedIn
+                            ? AppColors.success
+                            : AppColors.inkFaint),
+                    const SizedBox(width: 6),
                     Text(
-                      'CLOCKED IN',
+                      clockedIn ? 'CLOCKED IN' : 'CLOCKED OUT',
                       style: TextStyle(
-                        color: AppColors.success,
+                        color: clockedIn
+                            ? AppColors.success
+                            : AppColors.inkSoft,
                         fontWeight: FontWeight.w800,
                         fontSize: 11,
                         letterSpacing: 0.4,
@@ -83,9 +154,9 @@ class _ClockCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Text(
-                'Shift: 08:30 AM – 05:30 PM',
-                style: TextStyle(
+              Text(
+                'Shift: ${today.shift}',
+                style: const TextStyle(
                   color: AppColors.inkSoft,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
@@ -94,9 +165,9 @@ class _ClockCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          const Text(
-            '07 : 12 : 48',
-            style: TextStyle(
+          Text(
+            today.totalHoursToday.isEmpty ? '—' : today.totalHoursToday,
+            style: const TextStyle(
               color: AppColors.ink,
               fontSize: 38,
               fontWeight: FontWeight.w900,
@@ -122,18 +193,21 @@ class _ClockCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: _miniStat('Time in', '08:32 AM',
+                  child: _miniStat('Time in', today.timeIn ?? '—',
                       Icons.login_rounded, AppColors.brandRed),
                 ),
                 Container(width: 1, height: 28, color: AppColors.line),
                 Expanded(
-                  child: _miniStat('Break', '48 min',
+                  child: _miniStat('Break', '${today.breakMinutes} min',
                       Icons.coffee_outlined, AppColors.brandRed),
                 ),
                 Container(width: 1, height: 28, color: AppColors.line),
                 Expanded(
-                  child: _miniStat('Overtime', '0h 00m',
-                      Icons.access_time_rounded, AppColors.brandRed),
+                  child: _miniStat(
+                      'Overtime',
+                      today.overtime.isEmpty ? '0h 00m' : today.overtime,
+                      Icons.access_time_rounded,
+                      AppColors.brandRed),
                 ),
               ],
             ),
@@ -142,9 +216,10 @@ class _ClockCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => showToast(context, 'Clocked out at 04:30 PM'),
+              onPressed: busy ? null : onToggle,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brandRed,
+                backgroundColor:
+                    clockedIn ? AppColors.brandRed : AppColors.success,
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(46),
                 shape: RoundedRectangleBorder(
@@ -152,10 +227,19 @@ class _ClockCard extends StatelessWidget {
                 ),
                 elevation: 0,
               ),
-              icon: const Icon(Icons.logout_rounded, size: 18),
-              label: const Text(
-                'Clock Out',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              icon: busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.2, color: Colors.white),
+                    )
+                  : Icon(clockedIn ? Icons.logout_rounded : Icons.login_rounded,
+                      size: 18),
+              label: Text(
+                clockedIn ? 'Clock Out' : 'Clock In',
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -197,21 +281,24 @@ class _ClockCard extends StatelessWidget {
 }
 
 class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.summary});
+  final AttendanceSummary summary;
+
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Expanded(
-            child: _box('Present', '21', Icons.check_circle_rounded,
-                AppColors.success)),
+            child: _box('Present', '${summary.present}',
+                Icons.check_circle_rounded, AppColors.success)),
         const SizedBox(width: 12),
         Expanded(
-            child:
-                _box('Late', '3', Icons.watch_later_rounded, AppColors.warning)),
+            child: _box('Late', '${summary.late}', Icons.watch_later_rounded,
+                AppColors.warning)),
         const SizedBox(width: 12),
         Expanded(
-            child: _box('Leave', '2', Icons.beach_access_rounded,
-                AppColors.info)),
+            child: _box('Leave', '${summary.leave}',
+                Icons.beach_access_rounded, AppColors.info)),
       ],
     );
   }
@@ -238,26 +325,25 @@ class _SummaryRow extends StatelessWidget {
 }
 
 class _WeeklyChart extends StatelessWidget {
+  const _WeeklyChart({required this.week});
+  final List<AttendanceDay> week;
+
   @override
   Widget build(BuildContext context) {
     // value out of 10 hours
-    final days = const [
-      ('Mon', 8.5, false),
-      ('Tue', 9.0, false),
-      ('Wed', 7.5, false),
-      ('Thu', 8.0, false),
-      ('Fri', 7.2, true), // today
-      ('Sat', 0.0, false),
-      ('Sun', 0.0, false),
-    ];
+    final days = week.map((d) => (d.day, d.hours, d.today)).toList();
+    final worked = week.where((d) => d.hours > 0).toList();
+    final avg = worked.isEmpty
+        ? 0.0
+        : worked.map((d) => d.hours).reduce((a, b) => a + b) / worked.length;
     return SoftCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('Avg 8.0h / day',
-                  style: TextStyle(
+              Text('Avg ${avg.toStringAsFixed(1)}h / day',
+                  style: const TextStyle(
                       fontWeight: FontWeight.w800, fontSize: 15)),
               const Spacer(),
               StatusPill(
@@ -319,17 +405,35 @@ class _WeeklyChart extends StatelessWidget {
 }
 
 class _Timeline extends StatelessWidget {
+  const _Timeline({required this.today});
+  final AttendanceToday today;
+
   @override
   Widget build(BuildContext context) {
-    final events = const [
-      ('Clock in', '08:32 AM', 'Makati HQ', Icons.login_rounded,
-          AppColors.brandRed),
-      ('Break start', '12:05 PM', 'Lunch break', Icons.coffee_rounded,
-          AppColors.inkSoft),
-      ('Break end', '12:53 PM', 'Back to work', Icons.work_rounded,
-          AppColors.inkSoft),
-      ('In progress', 'Now', 'Working…', Icons.more_horiz_rounded,
-          AppColors.brandRed),
+    final events = <(String, String, String, IconData, Color)>[
+      (
+        'Clock in',
+        today.timeIn ?? '—',
+        'Shift start',
+        Icons.login_rounded,
+        AppColors.brandRed
+      ),
+      if (today.isClockedIn)
+        (
+          'In progress',
+          'Now',
+          'Working…',
+          Icons.more_horiz_rounded,
+          AppColors.brandRed
+        )
+      else
+        (
+          'Clock out',
+          today.timeOut ?? '—',
+          'Shift end',
+          Icons.logout_rounded,
+          AppColors.inkSoft
+        ),
     ];
     return SoftCard(
       child: Column(

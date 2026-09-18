@@ -1,139 +1,110 @@
 import 'package:flutter/material.dart';
 
+import '../data/api_client.dart';
+import '../data/hris_api.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
-import 'feature_screen.dart';
+import 'create_other_request_screen.dart';
 
-/// A request type the employee can file from "Other Requests".
-class _RequestType {
-  const _RequestType(this.label, this.icon, this.subtitle);
-  final String label;
-  final IconData icon;
-  final String subtitle;
-}
-
-const _types = <_RequestType>[
-  _RequestType('Certificate of Employment', Icons.badge_outlined,
-      'Request an official COE'),
-  _RequestType('Official Business', Icons.directions_walk_rounded,
-      'File an out-of-office work trip'),
-  _RequestType('Schedule Adjustment', Icons.edit_calendar_rounded,
-      'Request a change to your schedule'),
-  _RequestType('Undertime', Icons.timelapse_rounded,
-      'File an early-out / undertime'),
-  _RequestType('Loan / Cash Advance', Icons.savings_outlined,
-      'Apply for a loan or cash advance'),
-  _RequestType('Reimbursement', Icons.request_quote_outlined,
-      'Claim work-related expenses'),
-];
-
-/// "Other Requests" — a single hub that lists the employee's filed requests
-/// (empty for now) with a Create button that opens a type picker.
-class OtherRequestsScreen extends StatelessWidget {
+/// "Other Requests" — the employee's filed requests from th_request_head
+/// (Request #, Date Applied, Request Type, Approved By, Status), with a search
+/// box and status filter side by side, plus a Create button.
+class OtherRequestsScreen extends StatefulWidget {
   const OtherRequestsScreen({super.key});
 
-  void _openCreate(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.card,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 38,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.line,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 14, 20, 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Create a request',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Select the type of request to file.',
-                  style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
-                ),
-              ),
-            ),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-                itemCount: _types.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, i) {
-                  final t = _types[i];
-                  return ListTile(
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => FeatureScreen(
-                            title: t.label,
-                            icon: t.icon,
-                            color: AppColors.brandRed,
-                          ),
-                        ),
-                      );
-                    },
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: const BorderSide(color: AppColors.line),
-                    ),
-                    leading: IconBadge(
-                        icon: t.icon, color: AppColors.brandRed, size: 42),
-                    title: Text(
-                      t.label,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.5,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    subtitle: Text(
-                      t.subtitle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.inkFaint,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.inkFaint),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+  @override
+  State<OtherRequestsScreen> createState() => _OtherRequestsScreenState();
+}
+
+class _OtherRequestsScreenState extends State<OtherRequestsScreen> {
+  String _selectedStatus = 'All';
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+
+  List<_Other> _all = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => showLoadingOverlay(context, immediate: true));
+    try {
+      final rows = await HrisApi.instance.requestRecords('other');
+      if (!mounted) return;
+      setState(() {
+        _all = rows.map(_Other.fromRequest).toList();
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    } finally {
+      if (mounted) hideLoadingOverlay(context);
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _showFilterSheet() {
+    showPremiumBottomSheet(
+      context,
+      builder: (ctx) => _StatusFilterSheet(
+        current: _selectedStatus,
+        onApply: (s) => setState(() => _selectedStatus = s),
       ),
     );
   }
 
+  Future<void> _openCreate() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const CreateOtherRequestScreen()),
+    );
+    if (created == true) _load();
+  }
+
+  List<_Other> get _filtered {
+    var list = _all.where((r) {
+      if (_selectedStatus != 'All' && r.status != _selectedStatus) return false;
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        final match = r.no.toLowerCase().contains(q) ||
+            r.requestType.toLowerCase().contains(q) ||
+            r.approvedBy.toLowerCase().contains(q) ||
+            r.status.toLowerCase().contains(q);
+        if (!match) return false;
+      }
+      return true;
+    }).toList();
+    // Newest first by Date Applied.
+    list.sort((a, b) => b.sortDate.compareTo(a.sortDate));
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final records = _filtered;
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(title: const Text('Other Requests')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openCreate(context),
+        onPressed: _openCreate,
         backgroundColor: AppColors.success,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
@@ -141,42 +112,397 @@ class OtherRequestsScreen extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 66,
-                height: 66,
-                decoration: const BoxDecoration(
-                  color: AppColors.fieldFill,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.inbox_rounded,
-                    size: 32, color: AppColors.inkFaint),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 46,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.fieldFill,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.line),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search_rounded,
+                              size: 18, color: AppColors.inkFaint),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.ink),
+                              onChanged: (v) =>
+                                  setState(() => _searchQuery = v),
+                              decoration: const InputDecoration(
+                                isCollapsed: true,
+                                filled: false,
+                                hintText: 'Search requests…',
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                hintStyle: TextStyle(
+                                    color: AppColors.inkFaint, fontSize: 14.5),
+                              ),
+                            ),
+                          ),
+                          if (_searchQuery.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                              child: const Icon(Icons.cancel_rounded,
+                                  size: 17, color: AppColors.inkFaint),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: _showFilterSheet,
+                    child: Container(
+                      height: 46,
+                      width: 52,
+                      decoration: BoxDecoration(
+                        color: _selectedStatus != 'All'
+                            ? AppColors.dangerSoft
+                            : AppColors.fieldFill,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: _selectedStatus != 'All'
+                                ? AppColors.brandRed
+                                : AppColors.line),
+                      ),
+                      child: Icon(Icons.tune_rounded,
+                          color: _selectedStatus != 'All'
+                              ? AppColors.brandRed
+                              : AppColors.inkSoft),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'No requests yet',
-                style: TextStyle(
+            ),
+            Expanded(child: _buildList(records)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(List<_Other> records) {
+    if (_loading) return const SizedBox.shrink();
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Text(_error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.inkSoft)),
+        ),
+      );
+    }
+    if (records.isEmpty) return const _EmptyOtherRequests();
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+      itemCount: records.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (_, i) => _OtherRequestCard(record: records[i]),
+    );
+  }
+}
+
+/// One Other Request row, with the fields needed for filtering/sorting.
+class _Other {
+  const _Other({
+    required this.no,
+    required this.dateApplied,
+    required this.requestType,
+    required this.approvedBy,
+    required this.approvedDate,
+    required this.status,
+    required this.year,
+    required this.month,
+    required this.day,
+  });
+
+  final String no;
+  final String dateApplied;
+  final String requestType;
+  final String approvedBy;
+  final String approvedDate;
+  final String status;
+  final int year;
+  final int month;
+  final int day;
+
+  DateTime get sortDate => DateTime(year, month, day);
+
+  factory _Other.fromRequest(RequestRecord r) {
+    final d = parseAppDateTime(r.dateApplied) ?? DateTime(2000);
+    return _Other(
+      no: r.no,
+      dateApplied: r.dateApplied,
+      requestType: r.requestType ?? '',
+      approvedBy: r.approvedBy ?? '',
+      approvedDate: r.approvedDate ?? '',
+      status: r.status,
+      year: d.year,
+      month: d.month,
+      day: d.day,
+    );
+  }
+}
+
+class _OtherRequestCard extends StatelessWidget {
+  const _OtherRequestCard({required this.record});
+  final _Other record;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('#${record.no}',
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink)),
+              const SizedBox(width: 8),
+              if (record.requestType.isNotEmpty)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.fieldFill,
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: Text(record.requestType,
+                      style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.inkSoft)),
+                ),
+              const Spacer(),
+              _StatusBadge(status: record.status),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _row('Date Applied', record.dateApplied),
+          if (record.approvedBy.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            _row('Approved By', record.approvedBy),
+          ],
+          if (record.approvedDate.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            _row('Approved Date', record.approvedDate),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, String value) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 104,
+            child: Text(label.toUpperCase(),
+                style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.inkFaint)),
+          ),
+          Expanded(
+            child: Text(value.isEmpty ? '—' : value,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink)),
+          ),
+        ],
+      );
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = status.toLowerCase();
+    Color bg;
+    Color fg;
+    if (s.contains('approved') && !s.contains('for') && !s.contains('dis')) {
+      bg = AppColors.successSoft;
+      fg = AppColors.success;
+    } else if (s.contains('disapprove') || s.contains('reject')) {
+      bg = AppColors.dangerSoft;
+      fg = AppColors.brandRed;
+    } else if (s.contains('for approval') || s.contains('pending')) {
+      bg = AppColors.warningSoft;
+      fg = AppColors.warning;
+    } else if (s.contains('cancel')) {
+      bg = AppColors.fieldFill;
+      fg = AppColors.inkSoft;
+    } else {
+      bg = AppColors.ink.withValues(alpha: 0.08);
+      fg = AppColors.ink;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(status,
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w800, color: fg)),
+    );
+  }
+}
+
+class _EmptyOtherRequests extends StatelessWidget {
+  const _EmptyOtherRequests();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 66,
+            height: 66,
+            decoration: const BoxDecoration(
+              color: AppColors.fieldFill,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.inbox_rounded,
+                size: 32, color: AppColors.inkFaint),
+          ),
+          const SizedBox(height: 16),
+          const Text('No requests found',
+              style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                ),
+                  color: AppColors.ink)),
+          const SizedBox(height: 4),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              'Try adjusting your search or filters, or tap Create to file a '
+              'new request.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// STATUS FILTER SHEET
+// -----------------------------------------------------------------------------
+class _StatusFilterSheet extends StatefulWidget {
+  const _StatusFilterSheet({required this.current, required this.onApply});
+  final String current;
+  final ValueChanged<String> onApply;
+
+  @override
+  State<_StatusFilterSheet> createState() => _StatusFilterSheetState();
+}
+
+class _StatusFilterSheetState extends State<_StatusFilterSheet> {
+  late String _status = widget.current;
+
+  static const _statuses = [
+    'All', 'Active', 'For Approval', 'Approved', 'Posted', 'Cancelled',
+    'Disapproved'
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.line,
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(height: 4),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 40),
-                child: Text(
-                  'Tap Create to file a certificate, official business, '
-                  'undertime and other requests.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
-                ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Text('Filter Records',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              TextButton(
+                onPressed: () => setState(() => _status = 'All'),
+                child: const Text('Reset'),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          const Text('Status',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: _statuses.map((s) {
+              final sel = _status == s;
+              return ChoiceChip(
+                label: Text(s),
+                selected: sel,
+                selectedColor: AppColors.dangerSoft,
+                labelStyle: TextStyle(
+                  color: sel ? AppColors.brandRed : AppColors.ink,
+                  fontWeight: FontWeight.w700,
+                ),
+                onSelected: (_) => setState(() => _status = s),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                widget.onApply(_status);
+                Navigator.pop(context);
+              },
+              child: const Text('Apply Filters'),
+            ),
+          ),
+        ],
       ),
     );
   }

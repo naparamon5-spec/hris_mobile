@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../data/app_session.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand.dart';
 import 'company_select_screen.dart';
+import 'home_shell.dart';
+import 'login_screen.dart';
 
 /// Branded launch screen. Draws the shield-and-check mark on, then hands off
 /// to the login screen. In production this is also where you'd check for an
@@ -26,6 +29,9 @@ class _SplashScreenState extends State<SplashScreen>
     curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
   );
 
+  // Restore a persisted session in parallel with the intro animation.
+  final Future<bool> _restore = AppSession.instance.restore();
+
   @override
   void initState() {
     super.initState();
@@ -36,11 +42,25 @@ class _SplashScreenState extends State<SplashScreen>
       ..forward();
   }
 
-  void _advance() {
+  Future<void> _advance() async {
+    // Wait for the restore attempt (already running) to finish, then route.
+    final restored = await _restore;
+    if (!mounted) return;
+
+    final Widget next;
+    if (restored) {
+      next = const HomeShell();
+    } else {
+      final tenant = AppSession.instance.tenant;
+      next = tenant != null
+          ? LoginScreen(company: tenant)
+          : const CompanySelectScreen();
+    }
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 350),
-        pageBuilder: (_, _, _) => const CompanySelectScreen(),
+        pageBuilder: (_, _, _) => next,
         transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
       ),
@@ -90,7 +110,7 @@ class _SplashScreenState extends State<SplashScreen>
                 height: 4,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(99),
-                  child: const LinearProgressIndicator(
+                  child: LinearProgressIndicator(
                     backgroundColor: Color(0xFFF3D3D9),
                     valueColor: AlwaysStoppedAnimation(AppColors.brandRed),
                   ),

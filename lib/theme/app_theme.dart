@@ -6,19 +6,23 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData light() {
+  /// [accent] is the brand/company color that themes buttons, inputs, tab
+  /// indicators, links, etc. Defaults to the app's brand red; per-tenant it's
+  /// the selected company's color (e.g. blue for Versatech).
+  static ThemeData light({Color accent = AppColors.defaultBrand}) {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.bg,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.brandRed,
+      colorScheme: ColorScheme.light(
+        primary: accent,
         onPrimary: Colors.white,
-        secondary: AppColors.brandMaroon,
+        secondary: Color.lerp(accent, Colors.black, 0.28) ?? accent,
         onSecondary: Colors.white,
         surface: AppColors.card,
         onSurface: AppColors.ink,
-        error: AppColors.brandRedBright,
+        // Error stays a stable red regardless of tenant accent.
+        error: AppColors.defaultBrand,
       ),
       fontFamily: 'Roboto',
     );
@@ -51,7 +55,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.brandRed,
+          backgroundColor: accent,
           foregroundColor: Colors.white,
           elevation: 0,
           minimumSize: const Size.fromHeight(54),
@@ -81,9 +85,15 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.brandRed,
+          foregroundColor: accent,
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
+      ),
+      // Text-field caret + selection follow the tenant accent.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: accent,
+        selectionColor: accent.withValues(alpha: 0.25),
+        selectionHandleColor: accent,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -103,7 +113,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.brandRed, width: 1.6),
+          borderSide: BorderSide(color: accent, width: 1.6),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(

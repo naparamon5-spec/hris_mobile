@@ -208,7 +208,9 @@ class _ApprovalInboxScreenState extends State<_ApprovalInboxScreen> {
     });
     showToast(
       context,
-      approve ? '${item.no} approved' : '${item.no} rejected',
+      approve ? '${item.no} has been approved.' : '${item.no} has been rejected.',
+      isSuccess: true,
+      title: approve ? 'Approved' : 'Rejected',
     );
   }
 
@@ -408,7 +410,7 @@ class _ApprovalItemCard extends StatelessWidget {
                     onPressed: onReject,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.brandRed,
-                      side: const BorderSide(color: AppColors.dangerSoft, width: 1.6),
+                      side: BorderSide(color: AppColors.dangerSoft, width: 1.6),
                       backgroundColor: AppColors.dangerSoft,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),

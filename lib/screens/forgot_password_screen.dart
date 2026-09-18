@@ -4,6 +4,7 @@ import '../data/tenants.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand.dart';
 import '../widgets/ui.dart';
+import 'company_select_screen.dart';
 
 /// Password recovery, matched to the HRIS web "Forgot Password" page:
 /// title, "We'll send you instructions in email.", Employee ID / Email,
@@ -23,7 +24,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _identifier = TextEditingController();
   bool _sent = false;
 
-  Tenant get _company => widget.company;
+  // Fixed to the company chosen on the company-select screen — it cannot be
+  // changed here.
+  late final Tenant _company = widget.company;
 
   @override
   void dispose() {
@@ -33,7 +36,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   void _sendLink() {
     if (_identifier.text.trim().isEmpty) {
-      showToast(context, 'Enter your Employee ID or email');
+      showToast(context, 'Please enter your Employee ID or email address.',
+          isSuccess: false, title: 'Required Field');
       return;
     }
     setState(() => _sent = true);
@@ -41,17 +45,36 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.card,
-      appBar: AppBar(
-        backgroundColor: AppColors.card,
-        elevation: 0,
-        foregroundColor: AppColors.ink,
+    final accent = _company.color;
+    final base = Theme.of(context);
+    final themed = base.copyWith(
+      colorScheme: base.colorScheme.copyWith(primary: accent),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: accent,
+        selectionColor: accent.withValues(alpha: 0.25),
+        selectionHandleColor: accent,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
-          child: _sent ? _buildSent() : _buildForm(),
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        focusedBorder: (base.inputDecorationTheme.focusedBorder
+                as OutlineInputBorder?)
+            ?.copyWith(borderSide: BorderSide(color: accent, width: 1.6)),
+      ),
+    );
+
+    return Theme(
+      data: themed,
+      child: Scaffold(
+        backgroundColor: AppColors.card,
+        appBar: AppBar(
+          backgroundColor: AppColors.card,
+          elevation: 0,
+          foregroundColor: AppColors.ink,
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+            child: _sent ? _buildSent() : _buildForm(),
+          ),
         ),
       ),
     );
@@ -59,15 +82,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   // ---- Request form (mirrors the website) ----
   Widget _buildForm() {
+    final accent = _company.color;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'Forgot Password',
           style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w900,
-            color: AppColors.brandRed,
+            color: accent,
           ),
         ),
         const SizedBox(height: 8),
@@ -88,60 +113,52 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 18),
         _label('Company'),
         const SizedBox(height: 8),
-        Container(
-          height: 54,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: AppColors.fieldFill,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.line),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  gradient: _company.gradient,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Text(
-                  _company.initial,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
+        // Locked to the company selected on the company-select screen — shown
+        // the same way as there (real logo tile), and not changeable here.
+        Opacity(
+          opacity: 0.85,
+          child: Container(
+            height: 58,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.fieldFill,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Row(
+              children: [
+                TenantLogo(tenant: _company, size: 34),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _company.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _company.name,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-              ),
-              const Icon(Icons.lock_outline_rounded,
-                  size: 18, color: AppColors.inkFaint),
-            ],
+                const Icon(Icons.lock_outline_rounded,
+                    size: 18, color: AppColors.inkFaint),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 22),
         ElevatedButton(
           onPressed: _sendLink,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.brandRed,
+            backgroundColor: accent,
             foregroundColor: Colors.white,
             minimumSize: const Size.fromHeight(54),
             elevation: 0,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            textStyle:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
           child: const Text('Send Link'),
         ),
@@ -153,6 +170,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   // ---- Sent confirmation ----
   Widget _buildSent() {
+    final accent = _company.color;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -187,13 +206,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop(),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.brandRed,
+            backgroundColor: accent,
             foregroundColor: Colors.white,
             minimumSize: const Size.fromHeight(54),
             elevation: 0,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            textStyle:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
           child: const Text('Back to Sign In'),
         ),

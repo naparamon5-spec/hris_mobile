@@ -21,12 +21,10 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   late int _index = widget.initialIndex;
 
-  final _tabs = const [
-    DashboardScreen(),
-    RequestsScreen(),
-    WhosOutScreen(),
-    ProfileScreen(),
-  ];
+  // Tabs are built lazily: only a visited tab is instantiated, so sign-in
+  // shows the Dashboard immediately instead of loading all four tabs (and
+  // their network calls) at once. Visited tabs stay alive via IndexedStack.
+  late final Set<int> _visited = {widget.initialIndex};
 
   static const _items = [
     _NavItem(Icons.grid_view_rounded, 'Home'),
@@ -35,10 +33,39 @@ class _HomeShellState extends State<HomeShell> {
     _NavItem(Icons.person_rounded, 'Profile'),
   ];
 
+  Widget _tabFor(int i) {
+    switch (i) {
+      case 0:
+        return const DashboardScreen();
+      case 1:
+        return const RequestsScreen();
+      case 2:
+        return const WhosOutScreen();
+      default:
+        return const ProfileScreen();
+    }
+  }
+
+  void _select(int i) => setState(() {
+        _index = i;
+        _visited.add(i);
+      });
+
   @override
   Widget build(BuildContext context) {
+    // The loading overlay is mounted globally in main.dart's MaterialApp
+    // builder, so it is not wrapped here.
     return Scaffold(
-      body: IndexedStack(index: _index, children: _tabs),
+      body: HomeShellScope(
+        selectTab: _select,
+        child: IndexedStack(
+          index: _index,
+          children: [
+            for (int i = 0; i < _items.length; i++)
+              _visited.contains(i) ? _tabFor(i) : const SizedBox.shrink(),
+          ],
+        ),
+      ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: AppColors.card,
@@ -57,7 +84,7 @@ class _HomeShellState extends State<HomeShell> {
                   _NavButton(
                     item: _items[i],
                     selected: _index == i,
-                    onTap: () => setState(() => _index = i),
+                    onTap: () => _select(i),
                   ),
               ],
             ),
@@ -66,6 +93,24 @@ class _HomeShellState extends State<HomeShell> {
       ),
     );
   }
+}
+
+/// Lets descendants (e.g. the dashboard) switch the shell's active tab instead
+/// of pushing a full-screen route, so the bottom nav stays visible.
+class HomeShellScope extends InheritedWidget {
+  const HomeShellScope({
+    super.key,
+    required this.selectTab,
+    required super.child,
+  });
+
+  final void Function(int index) selectTab;
+
+  static HomeShellScope? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<HomeShellScope>();
+
+  @override
+  bool updateShouldNotify(HomeShellScope oldWidget) => false;
 }
 
 class _NavItem {

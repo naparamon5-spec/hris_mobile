@@ -13,12 +13,8 @@ import '../widgets/ui.dart';
 /// upload it as their profile photo — mirroring Sprout HR's "Edit Profile
 /// Photo" cropper.
 Future<void> editProfilePhoto(BuildContext context) async {
-  final action = await showModalBottomSheet<String>(
-    context: context,
-    backgroundColor: AppColors.card,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
+  final action = await showPremiumBottomSheet<String>(
+    context,
     builder: (ctx) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -34,7 +30,7 @@ Future<void> editProfilePhoto(BuildContext context) async {
           ),
           const SizedBox(height: 8),
           ListTile(
-            leading: const Icon(Icons.photo_library_outlined,
+            leading: Icon(Icons.photo_library_outlined,
                 color: AppColors.brandRed),
             title: const Text('Choose from Library',
                 style: TextStyle(fontWeight: FontWeight.w700)),
@@ -42,7 +38,7 @@ Future<void> editProfilePhoto(BuildContext context) async {
           ),
           ListTile(
             leading:
-                const Icon(Icons.photo_camera_outlined, color: AppColors.brandRed),
+                Icon(Icons.photo_camera_outlined, color: AppColors.brandRed),
             title: const Text('Take Photo',
                 style: TextStyle(fontWeight: FontWeight.w700)),
             onTap: () => Navigator.pop(ctx, 'camera'),
@@ -65,7 +61,7 @@ Future<void> editProfilePhoto(BuildContext context) async {
 
   if (action == 'remove') {
     ProfileState.instance.clearPhoto();
-    showToast(context, 'Profile photo removed');
+    showToast(context, 'Your profile photo has been removed.', isSuccess: true, title: 'Photo Removed');
     return;
   }
 
@@ -121,7 +117,7 @@ class _EditProfilePhotoScreenState extends State<_EditProfilePhotoScreen> {
       ProfileState.instance.setPhoto(byteData.buffer.asUint8List());
       if (!mounted) return;
       Navigator.of(context).pop();
-      showToast(context, 'Profile photo updated');
+      showToast(context, 'Your profile photo has been successfully updated.', isSuccess: true, title: 'Photo Updated');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

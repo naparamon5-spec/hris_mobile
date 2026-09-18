@@ -34,7 +34,7 @@ class AniHrisIcon extends StatelessWidget {
                   offset: Offset(0, size * 0.06),
                 ),
                 BoxShadow(
-                  color: AppColors.brandRed.withValues(alpha: 0.08),
+                  color: AppColors.defaultBrand.withValues(alpha: 0.08),
                   blurRadius: size * 0.08,
                   offset: const Offset(0, 2),
                 ),
@@ -45,7 +45,8 @@ class AniHrisIcon extends StatelessWidget {
       child: Text(
         'H',
         style: TextStyle(
-          color: AppColors.brandRed,
+          // The 'H' logo mark stays the brand red for every company.
+          color: AppColors.defaultBrand,
           fontSize: size * 0.58,
           fontWeight: FontWeight.w900,
           fontFamily: 'Roboto',

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../data/hris_api.dart';
 import '../theme/app_colors.dart';
+import '../widgets/async_view.dart';
 import '../widgets/ui.dart';
 
 /// A single "out of office" entry shown on the Who's Out calendar.
@@ -11,7 +13,21 @@ class OutEntry {
     required this.end,
     required this.type,
     this.approved = true,
+    this.colorOverride,
   });
+
+  /// Builds an entry from a real backend record. Colour is by category —
+  /// Leave of Absence (red) vs Call Approval (blue) — since the view has no
+  /// approval status of its own; everyone in it is genuinely out.
+  factory OutEntry.fromRecord(WhosOutRecord r) => OutEntry(
+        name: r.name,
+        start: r.from,
+        end: r.to,
+        type: r.typeLabel,
+        colorOverride: r.type.toLowerCase() == 'ca'
+            ? AppColors.success
+            : AppColors.brandRedSoft,
+      );
 
   final String name;
   final DateTime start;
@@ -23,7 +39,12 @@ class OutEntry {
   /// Approved entries render green; pending/filed entries render red.
   final bool approved;
 
-  Color get color => approved ? AppColors.success : AppColors.brandRedSoft;
+  /// Explicit chip colour (set for real records); falls back to the
+  /// approved/pending colour used by the dashboard's mock preview.
+  final Color? colorOverride;
+
+  Color get color =>
+      colorOverride ?? (approved ? AppColors.success : AppColors.brandRedSoft);
 
   bool covers(DateTime day) {
     final d = DateTime(day.year, day.month, day.day);
@@ -44,9 +65,30 @@ class WhosOutScreen extends StatefulWidget {
 }
 
 class _WhosOutScreenState extends State<WhosOutScreen> {
-  // Anchor "today" to the app's demo date so the calendar has data around it.
-  final DateTime _today = kToday;
+  final DateTime _today = DateTime.now();
   late DateTime _month = DateTime(_today.year, _today.month);
+
+  final _reload = AsyncViewController();
+
+  /// Precomputed day -> entries index, so each day cell is an O(1) lookup
+  /// instead of scanning every record (keeps the frame cheap and the loader
+  /// animation smooth).
+  Map<String, List<OutEntry>> _byDay = const {};
+
+  static String _dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
+
+  void _indexEntries(List<OutEntry> entries) {
+    final map = <String, List<OutEntry>>{};
+    for (final e in entries) {
+      var d = DateTime(e.start.year, e.start.month, e.start.day);
+      final end = DateTime(e.end.year, e.end.month, e.end.day);
+      while (!d.isAfter(end)) {
+        (map[_dayKey(d)] ??= []).add(e);
+        d = d.add(const Duration(days: 1));
+      }
+    }
+    _byDay = map;
+  }
 
   static const _monthNames = [
     'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
@@ -54,23 +96,44 @@ class _WhosOutScreenState extends State<WhosOutScreen> {
   ];
   static const _weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  void _prev() =>
-      setState(() => _month = DateTime(_month.year, _month.month - 1));
-  void _next() =>
-      setState(() => _month = DateTime(_month.year, _month.month + 1));
-  void _goToday() =>
-      setState(() => _month = DateTime(_today.year, _today.month));
+  @override
+  void dispose() {
+    _reload.dispose();
+    super.dispose();
+  }
 
-  List<OutEntry> _entriesFor(DateTime day) => whosOutOn(day);
+  /// Fetches the currently displayed month from the backend (same source and
+  /// filter as the web calendar) and maps rows to calendar entries.
+  Future<List<OutEntry>> _load() async {
+    final records =
+        await HrisApi.instance.whosOutMonth(_month.month, _month.year);
+    return records.map(OutEntry.fromRecord).toList();
+  }
+
+  void _prev() {
+    setState(() => _month = DateTime(_month.year, _month.month - 1));
+    _reload.reload();
+  }
+
+  void _next() {
+    setState(() => _month = DateTime(_month.year, _month.month + 1));
+    _reload.reload();
+  }
+
+  void _goToday() {
+    setState(() => _month = DateTime(_today.year, _today.month));
+    _reload.reload();
+  }
+
+  List<OutEntry> _entriesFor(DateTime day) => _byDay[_dayKey(day)] ?? const [];
 
   void _showDaySheet(DateTime day) {
     final entries = _entriesFor(day);
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
+    showPremiumBottomSheet(
+      context,
+      // Let the sheet grow with the list and scroll instead of overflowing
+      // when many people are out on the same day.
+      isScrollControlled: true,
       builder: (ctx) => _DayOutSheet(day: day, entries: entries),
     );
   }
@@ -84,8 +147,6 @@ class _WhosOutScreenState extends State<WhosOutScreen> {
       42,
       (i) => gridStart.add(Duration(days: i)),
     );
-
-    final outToday = _entriesFor(_today).length;
 
     return SafeArea(
       bottom: false,
@@ -174,54 +235,79 @@ class _WhosOutScreenState extends State<WhosOutScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          // Calendar grid (6 weeks)
+          // Calendar grid + footer, driven by the live month fetch.
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-              child: Column(
-                children: [
-                  for (int w = 0; w < 6; w++)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (int d = 0; d < 7; d++)
-                          Expanded(
-                            child: _DayCell(
-                              day: days[w * 7 + d],
-                              inMonth: days[w * 7 + d].month == _month.month,
-                              isToday: _isSameDay(days[w * 7 + d], _today),
-                              entries: _entriesFor(days[w * 7 + d]),
-                              onTap: () => _showDaySheet(days[w * 7 + d]),
+            child: AsyncView<List<OutEntry>>(
+              controller: _reload,
+              load: _load,
+              useGlobalLoader: true,
+              builder: (context, entries) {
+                // Index the entries once so day cells are O(1) lookups.
+                _indexEntries(entries);
+                final outToday = _entriesFor(_today).length;
+                return Column(
+                  children: [
+                    Expanded(
+                      child: RefreshIndicator(
+                        color: AppColors.brandRed,
+                        onRefresh: () async => _reload.reload(),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                          child: Column(
+                            children: [
+                              for (int w = 0; w < 6; w++)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    for (int d = 0; d < 7; d++)
+                                      Expanded(
+                                        child: _DayCell(
+                                          day: days[w * 7 + d],
+                                          inMonth: days[w * 7 + d].month ==
+                                              _month.month,
+                                          isToday: _isSameDay(
+                                              days[w * 7 + d], _today),
+                                          entries:
+                                              _entriesFor(days[w * 7 + d]),
+                                          onTap: () =>
+                                              _showDaySheet(days[w * 7 + d]),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Legend + today's count
+                    Container(
+                      decoration: const BoxDecoration(
+                        color: AppColors.card,
+                        border: Border(top: BorderSide(color: AppColors.line)),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                      child: Row(
+                        children: [
+                          _legendDot(AppColors.brandRedSoft, 'Leave'),
+                          const SizedBox(width: 16),
+                          _legendDot(AppColors.success, 'Call Approval'),
+                          const Spacer(),
+                          Text(
+                            '$outToday out today',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.inkSoft,
                             ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
-                ],
-              ),
-            ),
-          ),
-          // Legend + today's count
-          Container(
-            decoration: const BoxDecoration(
-              color: AppColors.card,
-              border: Border(top: BorderSide(color: AppColors.line)),
-            ),
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-            child: Row(
-              children: [
-                _legendDot(AppColors.success, 'Approved'),
-                const SizedBox(width: 16),
-                _legendDot(AppColors.brandRedSoft, 'Pending'),
-                const Spacer(),
-                Text(
-                  '$outToday out today',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.inkSoft,
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -324,7 +410,7 @@ class _DayCell extends StatelessWidget {
                         width: 20,
                         height: 20,
                         alignment: Alignment.center,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: AppColors.brandRed,
                           shape: BoxShape.circle,
                         ),
@@ -411,98 +497,107 @@ class _DayOutSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 38,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.line,
-                borderRadius: BorderRadius.circular(2),
+    // Cap the sheet so it never exceeds the screen; the people list scrolls.
+    final maxHeight = MediaQuery.of(context).size.height * 0.75;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.line,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '${_wd[day.weekday - 1]}, ${_months[day.month - 1]} ${day.day}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            entries.isEmpty
-                ? 'No one is out on this day.'
-                : '${entries.length} ${entries.length == 1 ? "person" : "people"} out',
-            style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
-          ),
-          const SizedBox(height: 14),
-          if (entries.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 26),
-              decoration: BoxDecoration(
-                color: AppColors.fieldFill,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Column(
-                children: [
-                  Icon(Icons.event_available_rounded,
-                      size: 34, color: AppColors.inkFaint),
-                  SizedBox(height: 8),
-                  Text('Full attendance',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.inkSoft,
-                      )),
-                ],
-              ),
-            )
-          else
-            ...entries.map((e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: SoftCard(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        InitialsAvatar(name: e.name, size: 40, color: e.color),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                e.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
+            const SizedBox(height: 16),
+            Text(
+              '${_wd[day.weekday - 1]}, ${_months[day.month - 1]} ${day.day}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              entries.isEmpty
+                  ? 'No one is out on this day.'
+                  : '${entries.length} ${entries.length == 1 ? "person" : "people"} out',
+              style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            if (entries.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 26),
+                decoration: BoxDecoration(
+                  color: AppColors.fieldFill,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.event_available_rounded,
+                        size: 34, color: AppColors.inkFaint),
+                    SizedBox(height: 8),
+                    Text('Full attendance',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.inkSoft,
+                        )),
+                  ],
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: entries.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
+                  itemBuilder: (_, i) {
+                    final e = entries[i];
+                    return SoftCard(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          InitialsAvatar(
+                              name: e.name, size: 40, color: e.color),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  e.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                e.type,
-                                style: const TextStyle(
-                                  color: AppColors.inkSoft,
-                                  fontSize: 12,
+                                const SizedBox(height: 2),
+                                Text(
+                                  e.type,
+                                  style: const TextStyle(
+                                    color: AppColors.inkSoft,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        StatusPill(
-                          label: e.approved ? 'Approved' : 'Pending',
-                          color: e.approved
-                              ? AppColors.success
-                              : AppColors.brandRed,
-                        ),
-                      ],
-                    ),
-                  ),
-                )),
-        ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

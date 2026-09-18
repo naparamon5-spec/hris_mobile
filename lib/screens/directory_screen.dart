@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../data/hris_api.dart';
 import '../data/mock_data.dart';
 import '../theme/app_colors.dart';
+import '../widgets/async_view.dart';
 import '../widgets/ui.dart';
 
 class DirectoryScreen extends StatefulWidget {
@@ -12,12 +14,19 @@ class DirectoryScreen extends StatefulWidget {
 }
 
 class _DirectoryScreenState extends State<DirectoryScreen> {
+  final _reload = AsyncViewController();
   String _query = '';
   final _depts = const ['All', 'Engineering', 'Human Resources', 'Finance'];
   int _dept = 0;
 
-  List<Employee> get _filtered {
-    return kEmployees.where((e) {
+  @override
+  void dispose() {
+    _reload.dispose();
+    super.dispose();
+  }
+
+  List<Employee> _applyFilter(List<Employee> all) {
+    return all.where((e) {
       final matchesQuery = _query.isEmpty ||
           e.name.toLowerCase().contains(_query.toLowerCase()) ||
           e.role.toLowerCase().contains(_query.toLowerCase());
@@ -85,22 +94,43 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text('${_filtered.length} team members',
-                  style: const TextStyle(
-                      color: AppColors.inkSoft,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13)),
-            ),
-            const SizedBox(height: 10),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-                itemCount: _filtered.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (_, i) =>
-                    _EmployeeCard(employee: _filtered[i]),
+              child: AsyncView<List<Employee>>(
+                controller: _reload,
+                load: () => HrisApi.instance.directory(),
+                useGlobalLoader: true,
+                builder: (context, all) {
+                  final filtered = _applyFilter(all);
+                  return RefreshIndicator(
+                    color: AppColors.brandRed,
+                    onRefresh: () async => _reload.reload(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                          child: Text('${filtered.length} team members',
+                              style: const TextStyle(
+                                  color: AppColors.inkSoft,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13)),
+                        ),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            itemCount: filtered.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (_, i) =>
+                                _EmployeeCard(employee: filtered[i]),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -164,8 +194,8 @@ class _EmployeeCard extends StatelessWidget {
   }
 
   void _openProfile(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
+    showPremiumBottomSheet(
+      context,
       isScrollControlled: true,
       builder: (_) => _EmployeeSheet(employee: employee, color: _statusColor),
     );
@@ -251,7 +281,7 @@ class _EmployeeSheet extends StatelessWidget {
             Icon(icon, color: AppColors.brandRed, size: 22),
             const SizedBox(height: 6),
             Text(label,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppColors.brandRed,
                     fontWeight: FontWeight.w700,
                     fontSize: 12.5)),
