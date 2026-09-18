@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'api_client.dart';
+import 'notifications/push_service.dart';
 import 'session_store.dart';
 import 'tenants.dart';
 
@@ -156,6 +159,9 @@ class AppSession extends ChangeNotifier {
       tenantId: tenant?.id,
     );
 
+    // Register this device for push notifications (best-effort).
+    await _registerPush();
+
     notifyListeners();
   }
 
@@ -272,6 +278,8 @@ class AppSession extends ChangeNotifier {
   /// Clears the session. Best-effort call to the backend logout; local state is
   /// cleared regardless.
   Future<void> logout() async {
+    // Drop this device's push token while the auth header is still valid.
+    await _unregisterPush();
     try {
       await api.post('/auth/logout');
     } catch (_) {
@@ -293,5 +301,40 @@ class AppSession extends ChangeNotifier {
   void setRole(UserRole role) {
     _role = role;
     notifyListeners();
+  }
+
+  // ---- Push notifications ----
+  String? _fcmToken;
+
+  /// Sends this device's FCM token to the backend and keeps it updated on
+  /// rotation. Best-effort: any failure (e.g. Firebase not yet configured) is
+  /// swallowed so it never blocks sign-in.
+  Future<void> _registerPush() async {
+    try {
+      final token = await PushService.instance.getToken();
+      if (token == null || token.isEmpty) return;
+      _fcmToken = token;
+      final platform = Platform.isIOS ? 'ios' : 'android';
+      await api.post('/auth/fcm-token',
+          body: {'fcm_token': token, 'platform': platform});
+      PushService.instance.onTokenRefresh((t) async {
+        _fcmToken = t;
+        try {
+          await api.post('/auth/fcm-token',
+              body: {'fcm_token': t, 'platform': platform});
+        } catch (_) {}
+      });
+    } catch (_) {
+      // Firebase not configured / permission denied — ignore.
+    }
+  }
+
+  Future<void> _unregisterPush() async {
+    final t = _fcmToken;
+    if (t == null) return;
+    try {
+      await api.post('/auth/fcm-token/remove', body: {'fcm_token': t});
+    } catch (_) {}
+    _fcmToken = null;
   }
 }

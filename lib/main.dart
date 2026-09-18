@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data/app_session.dart';
+import 'data/notifications/push_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'widgets/ui.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
+  // Initialize push notifications (FCM). Best-effort — a missing Firebase
+  // config never blocks app startup.
+  await PushService.instance.initialize();
   runApp(const HrisApp());
 }
 

@@ -1204,4 +1204,26 @@ class HrisApi {
       _dataList(await _api.get('/auth/approvals?scope=$scope&module=$module'))
           .map(ApprovalTask.fromJson)
           .toList();
+
+  // ---- Push notifications (FCM device tokens) ----
+
+  /// Register this device's FCM token so the backend can push to it.
+  Future<void> registerFcmToken({
+    required String token,
+    required String platform,
+    String? deviceId,
+    String? deviceModel,
+  }) async {
+    await _api.post('/auth/fcm-token', body: {
+      'fcm_token': token,
+      'platform': platform,
+      if (deviceId != null) 'device_id': deviceId,
+      if (deviceModel != null) 'device_model': deviceModel,
+    });
+  }
+
+  /// Remove a device token (on logout) so a signed-out phone stops receiving.
+  Future<void> unregisterFcmToken(String token) async {
+    await _api.post('/auth/fcm-token/remove', body: {'fcm_token': token});
+  }
 }

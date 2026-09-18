@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.hris_mobile"
+    namespace = "com.ardentnetworks.hris"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,8 +20,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.hris_mobile"
+        applicationId = "com.ardentnetworks.hris"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -41,4 +40,11 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Apply the Google Services plugin only once google-services.json is added, so
+// `flutter run` works before Firebase is configured. Drop the file in
+// android/app/google-services.json (from the Firebase console) to enable FCM.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }

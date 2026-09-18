@@ -1,4 +1,4 @@
-package com.example.hris_mobile
+package com.ardentnetworks.hris
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
