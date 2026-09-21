@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../data/api_client.dart';
+import '../data/hris_api.dart';
 import '../data/tenants.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand.dart';
@@ -34,13 +36,36 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  void _sendLink() {
-    if (_identifier.text.trim().isEmpty) {
+  bool _sending = false;
+
+  Future<void> _sendLink() async {
+    if (_sending) return;
+    final id = _identifier.text.trim();
+    if (id.isEmpty) {
       showToast(context, 'Please enter your Employee ID or email address.',
           isSuccess: false, title: 'Required Field');
       return;
     }
-    setState(() => _sent = true);
+    setState(() => _sending = true);
+    showLoadingOverlay(context);
+    try {
+      await HrisApi.instance
+          .forgotPassword(identifier: id, tenant: _company.id);
+      if (!mounted) return;
+      hideLoadingOverlay(context);
+      setState(() => _sent = true);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      hideLoadingOverlay(context);
+      showToast(context, e.message, isSuccess: false, title: 'Error');
+    } catch (_) {
+      if (!mounted) return;
+      hideLoadingOverlay(context);
+      showToast(context, 'Something went wrong. Please try again.',
+          isSuccess: false);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/api_client.dart';
 import '../data/hris_api.dart';
 import '../data/mock_data.dart';
+import '../data/notifications/notification_routes.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
 
@@ -192,7 +193,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               if (originalIndex != -1) {
                                 _markSingleAsRead(originalIndex);
                               }
-                              showToast(context, item.title);
+                              openNotification(context, item);
                             },
                           ),
                         );

@@ -873,6 +873,15 @@ class HrisApi {
           .map(Tenant.fromJson)
           .toList();
 
+  // Requests a password-reset email for the given employee ID or email address
+  // in the selected tenant. The backend always returns success regardless of
+  // whether the account exists (no account enumeration).
+  Future<void> forgotPassword({required String identifier, String? tenant}) =>
+      _api.post('/public/forgot-password', body: {
+        'identifier': identifier,
+        if (tenant != null && tenant.isNotEmpty) 'tenant': tenant,
+      });
+
   // ---- Profile ----
   Future<Profile> getProfile() async =>
       Profile.fromJson(_asMap(await _api.get('/auth/profile')));

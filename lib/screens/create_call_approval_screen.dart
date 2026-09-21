@@ -16,10 +16,24 @@ class CreateCallApprovalScreen extends StatefulWidget {
     super.key,
     required this.type,
     required this.title,
+    this.initialId,
+    this.initialNo,
+    this.initialDate,
+    this.initialRows,
   });
 
   final String type;
   final String title;
+
+  /// When set, the screen loads the record for editing and PUTs on submit.
+  final int? initialId;
+  final String? initialNo;
+  final DateTime? initialDate;
+
+  /// Seed rows shown before the server fetch resolves — one per line the user
+  /// entered on Create. Each map may carry: from (TimeOfDay), to (TimeOfDay),
+  /// customer (String), purpose (String).
+  final List<Map<String, dynamic>>? initialRows;
 
   @override
   State<CreateCallApprovalScreen> createState() =>
@@ -35,7 +49,8 @@ class _CallRow {
 
   int get _minutes {
     var mins = (to.hour * 60 + to.minute) - (from.hour * 60 + from.minute);
-    return mins < 0 ? 0 : mins;
+    if (mins < 0) mins += 24 * 60;
+    return mins;
   }
 
   String get hrs =>
@@ -65,9 +80,137 @@ class _CallRow {
 }
 
 class _CreateCallApprovalScreenState extends State<CreateCallApprovalScreen> {
-  DateTime _date = DateTime.now();
-  final List<_CallRow> _rows = [_CallRow()];
+  late DateTime _date;
+  final List<_CallRow> _rows = [];
   bool _submitting = false;
+
+  bool get _isEditing => widget.initialId != null;
+
+  /// Blocks the form until the full record is fetched (edit mode) only if
+  /// we have no initial rows to show immediately.
+  bool _loadingRecord = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _date = widget.initialDate ?? DateTime.now();
+    final seeds = widget.initialRows;
+    if (seeds != null && seeds.isNotEmpty) {
+      for (final s in seeds) {
+        _rows.add(_rowFromSeed(s));
+      }
+    } else {
+      _rows.add(_CallRow());
+    }
+
+    if (_isEditing && widget.initialId! > 0) {
+      if (seeds == null || seeds.isEmpty) {
+        _loadingRecord = true;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadServerRecord());
+    }
+  }
+
+  Future<void> _loadServerRecord() async {
+    try {
+      final r =
+          await HrisApi.instance.getRequest(widget.type, widget.initialId!);
+      if (!mounted) return;
+      // Apply server values BEFORE the form's inputs are built. No later
+      // overwrite = no lost keystrokes.
+      final d = parseAppDateTime(r.txnDate) ??
+          parseAppDateTime(r.rawJson?['ca_date']) ??
+          parseAppDateTime(r.rawJson?['date']) ??
+          parseAppDateTime(r.dateFrom);
+      if (d != null) _date = d;
+      final serverRows = _extractRowsFromRaw(r.rawJson);
+      if (serverRows.isNotEmpty) {
+        for (final row in _rows) {
+          row.dispose();
+        }
+        _rows
+          ..clear()
+          ..addAll(serverRows.map(_rowFromSeed));
+      }
+    } catch (_) {
+      // Fall back to whatever was passed in — form still opens.
+    } finally {
+      if (mounted) setState(() => _loadingRecord = false);
+    }
+  }
+
+  /// Pull the list of call rows out of the raw record JSON, tolerating the
+  /// various shapes the backend might return them in.
+  List<Map<String, dynamic>> _extractRowsFromRaw(Map<String, dynamic>? raw) {
+    if (raw == null) return const [];
+    final sources = <Map>[raw, if (raw['data'] is Map) raw['data'] as Map];
+    for (final s in sources) {
+      for (final key in const [
+        'rows',
+        'lines',
+        'details',
+        'items',
+        'entries',
+        'call_rows',
+        'ca_rows',
+      ]) {
+        final v = s[key];
+        if (v is List && v.isNotEmpty) {
+          return v.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList();
+        }
+      }
+    }
+    return const [];
+  }
+
+  _CallRow _rowFromSeed(Map<String, dynamic> s) {
+    final row = _CallRow();
+    final from = _timeFromSeed(s, const ['from', 'time_from', 'date_from', 'from_time']);
+    final to = _timeFromSeed(s, const ['to', 'time_to', 'date_to', 'to_time']);
+    if (from != null) row.from = from;
+    if (to != null) row.to = to;
+    row.customer.text = _stringFromSeed(s, const ['customer', 'customer_name', 'client']);
+    row.purpose.text =
+        _stringFromSeed(s, const ['purpose', 'reason', 'remarks', 'details', 'notes']);
+    return row;
+  }
+
+  TimeOfDay? _timeFromSeed(Map<String, dynamic> s, List<String> keys) {
+    for (final k in keys) {
+      final v = s[k];
+      if (v == null) continue;
+      if (v is TimeOfDay) return v;
+      final str = v.toString().trim();
+      if (str.isEmpty) continue;
+      // Try ISO-8601 first (server returns datetimes for date_from/date_to).
+      final iso = DateTime.tryParse(str);
+      if (iso != null) {
+        final local = iso.isUtc ? iso.toLocal() : iso;
+        return TimeOfDay(hour: local.hour, minute: local.minute);
+      }
+      // Otherwise HH:mm[am/pm] or HH:mm.
+      final m = RegExp(r'(\d{1,2}):(\d{2})\s*([AaPp][Mm])?').firstMatch(str);
+      if (m != null) {
+        var h = int.parse(m.group(1)!);
+        final min = int.parse(m.group(2)!);
+        final ampm = m.group(3)?.toLowerCase();
+        if (ampm == 'pm' && h < 12) h += 12;
+        if (ampm == 'am' && h == 12) h = 0;
+        return TimeOfDay(hour: h % 24, minute: min);
+      }
+    }
+    return null;
+  }
+
+  String _stringFromSeed(Map<String, dynamic> s, List<String> keys) {
+    for (final k in keys) {
+      final v = s[k];
+      if (v == null) continue;
+      final str = v.toString().trim();
+      if (str.isNotEmpty) return str;
+    }
+    return '';
+  }
 
   @override
   void dispose() {
@@ -128,15 +271,24 @@ class _CreateCallApprovalScreenState extends State<CreateCallApprovalScreen> {
     if (_submitting) return;
     setState(() => _submitting = true);
     try {
-      await HrisApi.instance.createRequest(widget.type, {
+      final payload = {
         'date': _fmtDate(_date),
         'txn_date': _fmtDate(_date),
         'rows': _rows.map((r) => r.toJson(_date)).toList(),
-      });
-      if (!mounted) return;
-      await showToast(context,
-          '${widget.title} has been created. Open it and tap “Send for Approval” when ready.',
-          isSuccess: true, title: 'Record Created');
+      };
+      if (_isEditing) {
+        await HrisApi.instance
+            .updateRequest(widget.type, widget.initialId!, payload);
+        if (!mounted) return;
+        await showToast(context, '${widget.title} record has been updated.',
+            isSuccess: true, title: 'Record Updated');
+      } else {
+        await HrisApi.instance.createRequest(widget.type, payload);
+        if (!mounted) return;
+        await showToast(context,
+            '${widget.title} has been created. Open it and tap “Send for Approval” when ready.',
+            isSuccess: true, title: 'Record Created');
+      }
       if (!mounted) return;
       Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -150,8 +302,14 @@ class _CreateCallApprovalScreenState extends State<CreateCallApprovalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: Text('Create ${widget.title}')),
-      body: SafeArea(
+      appBar: AppBar(
+          title: Text(_isEditing
+              ? 'Edit ${widget.initialNo ?? widget.title}'
+              : 'Create ${widget.title}')),
+      body: _loadingRecord
+          ? Center(
+              child: CircularProgressIndicator(color: AppColors.brandRed))
+          : SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
@@ -242,8 +400,8 @@ class _CreateCallApprovalScreenState extends State<CreateCallApprovalScreen> {
                           child: CircularProgressIndicator(
                               strokeWidth: 2.4, color: Colors.white),
                         )
-                      : const Text('Create',
-                          style: TextStyle(
+                      : Text(_isEditing ? 'Save Changes' : 'Create',
+                          style: const TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 15)),
                 ),
               ),
@@ -256,7 +414,11 @@ class _CreateCallApprovalScreenState extends State<CreateCallApprovalScreen> {
 
   Widget _rowCard(int i) {
     final row = _rows[i];
+    // ObjectKey ties the widget subtree to the _CallRow instance — not the
+    // index — so adding/removing rows can't scramble which controller a
+    // TextField is bound to.
     return Container(
+      key: ObjectKey(row),
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(

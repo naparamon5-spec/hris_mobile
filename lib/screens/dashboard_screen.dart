@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/app_session.dart';
 import '../data/hris_api.dart';
+import '../data/inbox_badges.dart';
 import '../data/mock_data.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
@@ -143,13 +144,19 @@ class _TopBar extends StatelessWidget {
             ],
           ),
         ),
-        _circleIcon(
-          context,
-          icon: Icons.notifications_none_rounded,
-          tooltip: 'Notifications',
-          badge: true,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+        ListenableBuilder(
+          listenable: InboxBadges.instance,
+          builder: (context, _) => _circleIcon(
+            context,
+            icon: Icons.notifications_none_rounded,
+            tooltip: 'Notifications',
+            badge: InboxBadges.instance.hasUnread,
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+              InboxBadges.instance.refresh();
+            },
           ),
         ),
       ],
@@ -849,20 +856,9 @@ class _RecentCard extends StatelessWidget {
   const _RecentCard({required this.item});
   final _RecentItem item;
 
-  Color get _badgeColor {
-    switch (item.app) {
-      case 'LOA':
-        return AppColors.info;
-      case 'OT':
-        return AppColors.warning;
-      case 'CA':
-        return AppColors.success;
-      case 'MAD':
-        return AppColors.brandRed;
-      default:
-        return AppColors.inkSoft;
-    }
-  }
+  // Left badge stays on the brand red for every application type so the recent
+  // activity list reads as one system (previously mixed red/green/yellow/blue).
+  Color get _badgeColor => AppColors.brandRed;
 
   @override
   Widget build(BuildContext context) {
@@ -915,12 +911,15 @@ class _RecentCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text(
-                      item.detail,
-                      style: const TextStyle(
-                        color: AppColors.inkSoft,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        item.detail,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.inkSoft,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     if (item.date.isNotEmpty) ...[
@@ -929,11 +928,14 @@ class _RecentCard extends StatelessWidget {
                         style:
                             TextStyle(color: AppColors.inkFaint, fontSize: 12),
                       ),
-                      Text(
-                        item.date,
-                        style: const TextStyle(
-                          color: AppColors.inkFaint,
-                          fontSize: 12,
+                      Flexible(
+                        child: Text(
+                          item.date,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.inkFaint,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],

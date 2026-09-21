@@ -8,6 +8,8 @@ import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'widgets/ui.dart';
 
+final GlobalKey<NavigatorState> hrisNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -16,6 +18,7 @@ void main() async {
   ));
   // Initialize push notifications (FCM). Best-effort — a missing Firebase
   // config never blocks app startup.
+  PushService.setNavigatorKey(hrisNavigatorKey);
   await PushService.instance.initialize();
   runApp(const HrisApp());
 }
@@ -36,6 +39,7 @@ class HrisApp extends StatelessWidget {
         AppColors.applyAccent(accent);
         return MaterialApp(
           title: 'ANI HRIS',
+          navigatorKey: hrisNavigatorKey,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(accent: accent),
           // Mount the loading overlay above the Navigator so showLoadingOverlay()

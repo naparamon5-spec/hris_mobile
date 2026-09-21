@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'notification_routes.dart';
+
 /// Push notifications via Firebase Cloud Messaging — mirrors eforward_app's
 /// FirebaseNotificationService. Key platform rule (learned from eforward):
 ///   • iOS: Firebase is the sole notification delegate and displays banners
@@ -157,11 +159,29 @@ class PushService {
     } catch (_) {}
   }
 
-  /// Route based on the notification's `type` data field. Extend as needed.
-  static void _navigate(Map<String, dynamic> data) {
+  static Map<String, dynamic>? _pendingTap;
+
+  /// Route based on `type` / `request_type` in the FCM data payload.
+  static void _navigate(Map<String, dynamic> data, {int attempt = 0}) {
     debugPrint('👆 Notification tapped: $data');
-    // Example:
-    // if (data['type'] == 'decision') { navigatorKey?.currentState?.push(...); }
+    final nav = navigatorKey?.currentState;
+    if (nav == null) {
+      if (attempt >= 8) return;
+      _pendingTap = data;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        final pending = _pendingTap;
+        if (pending == null) return;
+        _pendingTap = null;
+        _navigate(pending, attempt: attempt + 1);
+      });
+      return;
+    }
+    final screen = screenForNotification(
+      kind: '${data['type'] ?? data['kind'] ?? ''}',
+      requestType: '${data['request_type'] ?? ''}',
+    );
+    if (screen == null) return;
+    nav.push(MaterialPageRoute(builder: (_) => screen));
   }
 
   /// The device FCM token. On iOS the APNs token must arrive first, so retry.
@@ -174,7 +194,14 @@ class PushService {
           apns = await FirebaseMessaging.instance.getAPNSToken();
         }
         if (apns == null) {
-          debugPrint('❌ APNs token null — upload the APNs .p8 key in Firebase.');
+          // The iOS Simulator never issues an APNs token; only worry the user
+          // when the app is running on a real device.
+          final isSimulator =
+              Platform.environment.containsKey('SIMULATOR_DEVICE_NAME');
+          if (!isSimulator) {
+            debugPrint(
+                'APNs token unavailable — on a real device this usually means the APNs .p8 key needs to be uploaded in Firebase.');
+          }
           return null;
         }
       }

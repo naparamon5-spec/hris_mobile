@@ -668,8 +668,8 @@ class _ResultModal extends StatelessWidget {
   final Widget? illustration;
 
   Color get _accent => switch (kind) {
-        ResultKind.success => AppColors.brandRedSoft,
-        ResultKind.error => AppColors.brandRed,
+        ResultKind.success => AppColors.success,
+        ResultKind.error => AppColors.defaultBrand,
         ResultKind.warning => AppColors.warning,
       };
 
@@ -1072,8 +1072,8 @@ class _ResultPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = Offset(size.width / 2, size.height / 2);
     final base = switch (kind) {
-      ResultKind.success => AppColors.brandRedSoft,
-      ResultKind.error => AppColors.brandRed,
+      ResultKind.success => AppColors.success,
+      ResultKind.error => AppColors.defaultBrand,
       ResultKind.warning => AppColors.warning,
     };
     final dark = Color.lerp(base, Colors.black, 0.20)!;

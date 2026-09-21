@@ -228,20 +228,44 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         title: Text('$verb ${tasks.length} record${tasks.length == 1 ? '' : 's'}',
             style: const TextStyle(fontWeight: FontWeight.w800)),
         content: Text(
             'Are you sure you want to ${verb.toLowerCase()} the ${tasks.length} selected filing${tasks.length == 1 ? '' : 's'}?'),
+        // Two equal-width buttons on the same row — no floating "No" text.
+        actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
-          TextButton(
+          Expanded(
+            child: OutlinedButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('No')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.ink,
+                side: const BorderSide(color: AppColors.line),
+                minimumSize: const Size.fromHeight(46),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('No',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
                 backgroundColor:
-                    approve ? AppColors.success : AppColors.brandRed),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Yes, $verb'),
+                    approve ? AppColors.success : AppColors.brandRed,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                minimumSize: const Size.fromHeight(46),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Yes, $verb',
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+            ),
           ),
         ],
       ),
@@ -649,8 +673,8 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
                   minimumSize: const Size.fromHeight(50),
                 ),
                 icon: const Icon(Icons.close_rounded, size: 18),
-                label: Text('Disapprove (${_selected.length})',
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                label: const Text('Disapprove',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
               ),
             ),
             const SizedBox(width: 12),
@@ -664,8 +688,8 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
                   minimumSize: const Size.fromHeight(50),
                 ),
                 icon: const Icon(Icons.check_rounded, size: 18),
-                label: Text('Approve (${_selected.length})',
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                label: const Text('Approve',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
               ),
             ),
           ],

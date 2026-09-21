@@ -26,6 +26,14 @@ IconData iconFromToken(String? token) {
       return Icons.campaign_rounded;
     case 'celebration':
       return Icons.celebration_rounded;
+    case 'assignment':
+      return Icons.assignment_turned_in_rounded;
+    case 'cancel':
+      return Icons.cancel_rounded;
+    case 'payments':
+      return Icons.payments_rounded;
+    case 'people':
+      return Icons.emoji_people_rounded;
     default:
       return Icons.notifications_rounded;
   }
@@ -247,6 +255,9 @@ class AppNotification {
     required this.icon,
     required this.color,
     this.unread = false,
+    this.kind = '',
+    this.requestType = '',
+    this.requestId = '',
   });
 
   final int? id;
@@ -256,15 +267,21 @@ class AppNotification {
   final IconData icon;
   final Color color;
   final bool unread;
+  final String kind;
+  final String requestType;
+  final String requestId;
 
   factory AppNotification.fromJson(Map<String, dynamic> j) => AppNotification(
-        id: j['id'] as int?,
+        id: (j['id'] as num?)?.toInt(),
         title: (j['title'] ?? '') as String,
         body: (j['body'] ?? '') as String,
         time: (j['time'] ?? '') as String,
         icon: iconFromToken(j['icon'] as String?),
         color: AppColors.defaultBrand,
         unread: (j['unread'] ?? false) as bool,
+        kind: (j['kind'] ?? j['type'] ?? '') as String,
+        requestType: (j['request_type'] ?? '') as String,
+        requestId: '${j['request_id'] ?? j['id'] ?? ''}',
       );
 
   AppNotification copyWith({bool? unread}) => AppNotification(
@@ -275,6 +292,9 @@ class AppNotification {
         icon: icon,
         color: color,
         unread: unread ?? this.unread,
+        kind: kind,
+        requestType: requestType,
+        requestId: requestId,
       );
 }
 

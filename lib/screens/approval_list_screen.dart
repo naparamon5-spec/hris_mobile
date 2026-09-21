@@ -898,6 +898,12 @@ class _ApprovalCard extends StatelessWidget {
               ],
             ],
           ),
+          // Show reason for MAD/OT and purpose for CA — from the DB.
+          if ((record.reason ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _kv(type == 'call-approval' ? 'Purpose' : 'Reason',
+                (record.reason ?? '').trim()),
+          ],
         ],
       ),
     );
@@ -979,13 +985,9 @@ class _ApprovalActionSheet extends StatelessWidget {
       case 'For Approval':
       case 'For Witness Approval':
       case 'Pending':
-        // Awaiting a decision — an approver can approve/disapprove; the filer
-        // can still edit, resend, or cancel it.
+        // This is the filer's own record — only owner-side actions here.
+        // Approve/Disapprove belongs on the Approvals inbox (department head).
         return [
-          _ApprovalActionItem('Approve', Icons.check_circle_outline_rounded,
-              color: AppColors.success),
-          _ApprovalActionItem('Disapprove', Icons.highlight_off_rounded,
-              color: AppColors.brandRed, destructive: true),
           _ApprovalActionItem('Edit Record', Icons.edit_outlined,
               color: AppColors.info),
           _ApprovalActionItem('Resend', Icons.send_rounded, color: AppColors.warning),
@@ -1016,7 +1018,14 @@ class _ApprovalActionSheet extends StatelessWidget {
 
       final isOvertime = type == 'overtime';
       final Widget dest = type == 'call-approval'
-          ? CreateCallApprovalScreen(type: type, title: title)
+          ? CreateCallApprovalScreen(
+              type: type,
+              title: title,
+              initialId: record.id > 0 ? record.id : null,
+              initialNo: record.no,
+              initialDate: initialDate,
+              initialRows: _rowsFromRequest(record.requestRecord),
+            )
           : CreateTimeEntryScreen(
               type: type,
               title: title,
@@ -1025,6 +1034,10 @@ class _ApprovalActionSheet extends StatelessWidget {
               initialId: record.id > 0 ? record.id : null,
               initialNo: record.no,
               initialDate: initialDate,
+              initialFrom: _timeFrom(record.requestRecord?.timeFrom) ??
+                  _timeFrom(record.requestRecord?.dateFrom),
+              initialTo: _timeFrom(record.requestRecord?.timeTo) ??
+                  _timeFrom(record.requestRecord?.dateTo),
               initialReason: record.reason,
             );
       final saved = await Navigator.of(context).push<bool>(
@@ -1315,4 +1328,53 @@ class _ApprovalActionItem {
   final IconData icon;
   final Color? color;
   final bool destructive;
+}
+
+// -----------------------------------------------------------------------------
+// EDIT PREFILL HELPERS
+// -----------------------------------------------------------------------------
+
+/// Pull the Call Approval rows (Time From / Time To / Customer / Purpose) out
+/// of the raw record JSON so the Edit screen can show them immediately, before
+/// the server round-trip finishes.
+List<Map<String, dynamic>>? _rowsFromRequest(RequestRecord? r) {
+  if (r == null) return null;
+  final raw = r.rawJson;
+  if (raw == null) return null;
+  final sources = <Map>[raw, if (raw['data'] is Map) raw['data'] as Map];
+  for (final s in sources) {
+    for (final key in const [
+      'rows',
+      'lines',
+      'details',
+      'items',
+      'entries',
+      'call_rows',
+      'ca_rows',
+    ]) {
+      final v = s[key];
+      if (v is List && v.isNotEmpty) {
+        return v.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList();
+      }
+    }
+  }
+  return null;
+}
+
+/// Parse a clock string ("14:30", "02:30 PM") or an ISO datetime into a
+/// TimeOfDay for prefilling the Edit form. Returns null when unparseable.
+TimeOfDay? _timeFrom(String? s) {
+  if (s == null) return null;
+  final str = s.trim();
+  if (str.isEmpty) return null;
+  final iso = DateTime.tryParse(str);
+  if (iso != null) return TimeOfDay(hour: iso.hour, minute: iso.minute);
+  final m = RegExp(r'(\d{1,2}):(\d{2})\s*([AaPp][Mm])?').firstMatch(str);
+  if (m == null) return null;
+  var h = int.parse(m.group(1)!);
+  final min = int.parse(m.group(2)!);
+  final ampm = m.group(3)?.toLowerCase();
+  if (ampm == 'pm' && h < 12) h += 12;
+  if (ampm == 'am' && h == 12) h = 0;
+  return TimeOfDay(hour: h % 24, minute: min);
 }

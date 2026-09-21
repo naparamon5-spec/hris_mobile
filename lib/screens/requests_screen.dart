@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/app_session.dart';
 import '../data/hris_api.dart';
+import '../data/inbox_badges.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
 import 'approval_list_screen.dart';
@@ -13,14 +14,26 @@ import 'payslip_screen.dart';
 import 'timesheet_screen.dart';
 
 /// RECORD / REQUEST hub — mirrors the same-named group in the HRIS web sidebar.
-class RequestsScreen extends StatelessWidget {
+class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});
+
+  @override
+  State<RequestsScreen> createState() => _RequestsScreenState();
+}
+
+class _RequestsScreenState extends State<RequestsScreen> {
+  // A key that changes each time we return from an approvals screen forces the
+  // FutureBuilder to re-fetch the pending counts (real-time counter).
+  Key _accessKey = UniqueKey();
+  void _refreshAccess() => setState(() => _accessKey = UniqueKey());
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       bottom: false,
-      child: ListView(
+      child: ListenableBuilder(
+        listenable: InboxBadges.instance,
+        builder: (context, _) => ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         children: [
           const Text(
@@ -102,15 +115,22 @@ class RequestsScreen extends StatelessWidget {
             icon: Icons.view_week_rounded,
             label: 'Timesheet',
             color: AppColors.inkSoft,
-            onTap: () => _go(context, const TimesheetScreen()),
+            badge: InboxBadges.instance.timesheetNew,
+            onTap: () {
+              InboxBadges.instance.consumeKinds(InboxBadges.timesheetKinds);
+              _go(context, const TimesheetScreen());
+            },
           ),
           const SizedBox(height: 10),
           NavListTile(
             icon: Icons.receipt_long_rounded,
             label: 'Payslip',
             color: AppColors.inkSoft,
-            badge: true,
-            onTap: () => _go(context, const PayslipScreen()),
+            badge: InboxBadges.instance.payslipNew,
+            onTap: () {
+              InboxBadges.instance.consumeKinds(InboxBadges.payslipKinds);
+              _go(context, const PayslipScreen());
+            },
           ),
           // ---- Versatech only: additional request types ----
           if (AppSession.instance.tenant?.id == 'versatech') ...[
@@ -125,6 +145,7 @@ class RequestsScreen extends StatelessWidget {
           // ---- Approvers only — shown when the signed-in user is a department
           // approver in vw_emp_list_with_approver (real data, not just role). ----
           FutureBuilder<ApprovalAccess>(
+            key: _accessKey,
             future: HrisApi.instance.approvalAccess(),
             builder: (context, snap) {
               final acc = snap.data;
@@ -143,26 +164,32 @@ class RequestsScreen extends StatelessWidget {
                         : 'Records Approval',
                     color: AppColors.inkSoft,
                     badge: acc.pending > 0,
-                    onTap: () => _go(
-                      context,
-                      const ApprovalsCenterScreen(
-                        module: 'records',
-                        scope: 'pending',
-                      ),
-                    ),
+                    onTap: () async {
+                      await _go(
+                        context,
+                        const ApprovalsCenterScreen(
+                          module: 'records',
+                          scope: 'pending',
+                        ),
+                      );
+                      _refreshAccess();
+                    },
                   ),
                   const SizedBox(height: 10),
                   NavListTile(
                     icon: Icons.task_alt_rounded,
                     label: 'Approved Records',
                     color: AppColors.inkSoft,
-                    onTap: () => _go(
-                      context,
-                      const ApprovalsCenterScreen(
-                        module: 'records',
-                        scope: 'history',
-                      ),
-                    ),
+                    onTap: () async {
+                      await _go(
+                        context,
+                        const ApprovalsCenterScreen(
+                          module: 'records',
+                          scope: 'history',
+                        ),
+                      );
+                      _refreshAccess();
+                    },
                   ),
                   // Request Approval covers the Other Requests, which are
                   // Versatech-only.
@@ -175,26 +202,32 @@ class RequestsScreen extends StatelessWidget {
                           : 'Request Approval',
                       color: AppColors.inkSoft,
                       badge: acc.pendingRequests > 0,
-                      onTap: () => _go(
-                        context,
-                        const ApprovalsCenterScreen(
-                          module: 'requests',
-                          scope: 'pending',
-                        ),
-                      ),
+                      onTap: () async {
+                        await _go(
+                          context,
+                          const ApprovalsCenterScreen(
+                            module: 'requests',
+                            scope: 'pending',
+                          ),
+                        );
+                        _refreshAccess();
+                      },
                     ),
                     const SizedBox(height: 10),
                     NavListTile(
                       icon: Icons.fact_check_outlined,
                       label: 'Approved Requests',
                       color: AppColors.inkSoft,
-                      onTap: () => _go(
-                        context,
-                        const ApprovalsCenterScreen(
-                          module: 'requests',
-                          scope: 'history',
-                        ),
-                      ),
+                      onTap: () async {
+                        await _go(
+                          context,
+                          const ApprovalsCenterScreen(
+                            module: 'requests',
+                            scope: 'history',
+                          ),
+                        );
+                        _refreshAccess();
+                      },
                     ),
                   ],
                 ],
@@ -202,10 +235,11 @@ class RequestsScreen extends StatelessWidget {
             },
           ),
         ],
+        ),
       ),
     );
   }
 
-  void _go(BuildContext context, Widget screen) =>
+  Future<void> _go(BuildContext context, Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 }

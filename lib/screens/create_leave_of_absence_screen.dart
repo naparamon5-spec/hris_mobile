@@ -332,13 +332,16 @@ class _CreateLeaveOfAbsenceScreenState
     return Scaffold(
       backgroundColor: AppColors.bg,
       // Keep the whole form on one screen — no scrolling.
-      resizeToAvoidBottomInset: false,
+      // Let the keyboard shift the layout so the Reason field stays visible.
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(_isEditing
             ? 'Edit ${widget.initialNo ?? "Leave of Absence"}'
             : 'Create Leave of Absence'),
       ),
-      body: SafeArea(
+      body: _loadingServer
+          ? Center(child: CircularProgressIndicator(color: AppColors.brandRed))
+          : SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
           child: Column(
@@ -390,39 +393,34 @@ class _CreateLeaveOfAbsenceScreenState
                 ),
               ),
               const SizedBox(height: 12),
-              // Reason flexes to fill whatever height is left.
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Reason',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Expanded(
-                      child: TextField(
-                        controller: _reason,
-                        expands: true,
-                        maxLines: null,
-                        textAlignVertical: TextAlignVertical.top,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: InputDecoration(
-                          hintText: 'Add a reason for this request…',
-                          filled: true,
-                          fillColor: AppColors.fieldFill,
-                          enabledBorder: _border(_kFieldBorder, _kBorderWidth),
-                          focusedBorder: _border(AppColors.brandRed, 1.8),
-                        ),
-                      ),
-                    ),
-                  ],
+              const Text(
+                'Reason',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppColors.ink,
                 ),
               ),
+              const SizedBox(height: 7),
+              // Use bounded minLines/maxLines instead of expands:true —
+              // expanding TextFields inside nested Expanded columns drop
+              // keystrokes on iOS when the keyboard reflows the layout.
+              TextField(
+                controller: _reason,
+                minLines: 4,
+                maxLines: 8,
+                textAlignVertical: TextAlignVertical.top,
+                textCapitalization: TextCapitalization.sentences,
+                keyboardType: TextInputType.multiline,
+                decoration: InputDecoration(
+                  hintText: 'Add a reason for this request…',
+                  filled: true,
+                  fillColor: AppColors.fieldFill,
+                  enabledBorder: _border(_kFieldBorder, _kBorderWidth),
+                  focusedBorder: _border(AppColors.brandRed, 1.8),
+                ),
+              ),
+              const Spacer(),
               const SizedBox(height: 14),
               Row(
                 children: [

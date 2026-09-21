@@ -737,6 +737,12 @@ class _LoaCard extends StatelessWidget {
               Expanded(child: _kv('Approved date', record.approvedDate)),
             ],
           ),
+          // Reason on the LOA card (single-day records carry it; multi-day
+          // posted rows don't and stay hidden).
+          if ((record.reason ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _kv('Reason', (record.reason ?? '').trim()),
+          ],
         ],
       ),
     );
@@ -796,18 +802,17 @@ class _LoaActionSheet extends StatelessWidget {
           _LoaAction('Edit Record', Icons.edit_outlined, color: AppColors.info),
           _LoaAction('Send for Approval', Icons.verified_outlined,
               color: AppColors.warning),
+          _LoaAction('Resend', Icons.send_rounded, color: AppColors.warning),
+          _LoaAction('Reverse Record', Icons.undo_rounded,
+              color: Color(0xFF6B7280), destructive: true),
           _LoaAction('Cancel Record', Icons.cancel_outlined,
               color: AppColors.brandRed, destructive: true),
         ];
       case 'For Approval':
       case 'Pending':
-        // Awaiting a decision — an approver can approve/disapprove; the filer
-        // can still edit, resend, or cancel it.
+        // This is the filer's own record — only owner-side actions here.
+        // Approve/Disapprove belongs on the Approvals inbox (department head).
         return [
-          _LoaAction('Approve', Icons.check_circle_outline_rounded,
-              color: AppColors.success),
-          _LoaAction('Disapprove', Icons.highlight_off_rounded,
-              color: AppColors.brandRed, destructive: true),
           _LoaAction('Edit Record', Icons.edit_outlined, color: AppColors.info),
           _LoaAction('Resend', Icons.send_rounded, color: AppColors.warning),
           _LoaAction('Cancel Record', Icons.cancel_outlined,
@@ -818,6 +823,9 @@ class _LoaActionSheet extends StatelessWidget {
           _LoaAction('Send for Approval', Icons.verified_outlined,
               color: AppColors.warning),
           _LoaAction('Edit Record', Icons.edit_outlined, color: AppColors.info),
+          _LoaAction('Resend', Icons.send_rounded, color: AppColors.warning),
+          _LoaAction('Reverse Record', Icons.undo_rounded,
+              color: Color(0xFF6B7280), destructive: true),
           _LoaAction('Cancel Record', Icons.cancel_outlined,
               color: AppColors.brandRed, destructive: true),
         ];

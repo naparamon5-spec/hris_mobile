@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../data/inbox_badges.dart';
 import 'dashboard_screen.dart';
 import 'requests_screen.dart';
 import 'whos_out_screen.dart';
@@ -25,6 +26,12 @@ class _HomeShellState extends State<HomeShell> {
   // shows the Dashboard immediately instead of loading all four tabs (and
   // their network calls) at once. Visited tabs stay alive via IndexedStack.
   late final Set<int> _visited = {widget.initialIndex};
+
+  @override
+  void initState() {
+    super.initState();
+    InboxBadges.instance.refresh();
+  }
 
   static const _items = [
     _NavItem(Icons.grid_view_rounded, 'Home'),
