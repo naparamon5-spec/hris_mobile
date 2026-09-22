@@ -14,13 +14,22 @@ import 'package:flutter/foundation.dart';
 class ApiConfig {
   ApiConfig._();
 
+  /// Flip to `false` to point the app at a local dev server instead of the
+  /// deployed backend (useful when developing against `hris-server` on your
+  /// Mac). Ships as `true` so release builds always hit production.
+  static const bool useProduction = true;
+
+  /// The deployed HRIS backend.
+  static const String _productionBaseUrl =
+      'https://hris-api.ardentnetworks.com.ph/api/v1';
+
   static const int _port = 3000;
 
   /// Set this to your Mac's LAN IP (e.g. '192.168.1.20') when testing on a
   /// real phone on the same Wi-Fi. Leave null for emulators/simulators.
   static const String? lanHostOverride = null;
 
-  /// Host portion of the backend URL, resolved for the current platform.
+  /// Host portion of the local backend URL, resolved for the current platform.
   static String get _host {
     if (lanHostOverride != null) return lanHostOverride!;
     if (kIsWeb) return 'localhost';
@@ -28,7 +37,8 @@ class ApiConfig {
     return 'localhost';
   }
 
-  /// Base URL including the API version prefix, e.g.
-  /// `http://10.0.2.2:3000/api/v1`.
-  static String get baseUrl => 'http://$_host:$_port/api/v1';
+  /// Base URL including the API version prefix. Production by default; the
+  /// local per-platform host when [useProduction] is false.
+  static String get baseUrl =>
+      useProduction ? _productionBaseUrl : 'http://$_host:$_port/api/v1';
 }
