@@ -1,6 +1,8 @@
 # hris_mobile
 
-A new Flutter project.
+ANI HRIS mobile app (Flutter).
+
+**Developed By Ramon Jr A Napa**
 
 ## Getting Started
 

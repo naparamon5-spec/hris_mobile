@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../data/api_client.dart';
 import '../data/app_session.dart';
@@ -41,6 +42,9 @@ class _LoginScreenState extends State<LoginScreen> {
   BiometricCapabilities? _caps;
   bool _capsLoaded = false;
 
+  /// The running app's version (e.g. "1.1.4"), shown in the footer.
+  String _appVersion = '';
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +55,16 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     });
     _probeBiometrics();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = info.version);
+    } catch (_) {
+      // Leave blank; the footer just shows "Protected by ANI SSO".
+    }
   }
 
   Future<void> _probeBiometrics() async {
@@ -368,10 +382,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           const Spacer(),
                           const SizedBox(height: 12),
-                          const Center(
+                          Center(
                             child: Text(
-                              'Protected by ANI SSO • v1.0.0',
-                              style: TextStyle(
+                              _appVersion.isEmpty
+                                  ? 'Developed By MIS'
+                                  : 'Developed By MIS • v$_appVersion',
+                              style: const TextStyle(
                                 color: AppColors.inkFaint,
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w500,
@@ -403,58 +419,38 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     final caps = _caps!;
-    // The primary (largest) affordance reflects the device's main modality.
-    final IconData primaryIcon;
-    final String primaryLabel;
-    if (caps.hasFace) {
-      primaryIcon = Icons.face_rounded;
-      primaryLabel = 'Face';
-    } else if (caps.hasIris) {
-      primaryIcon = Icons.remove_red_eye_rounded;
-      primaryLabel = 'Iris';
-    } else {
-      primaryIcon = Icons.fingerprint_rounded;
-      primaryLabel = 'Fingerprint';
-    }
-
-    final hasAnyBiometric =
-        caps.hasFingerprint || caps.hasFace || caps.hasIris;
-
     final savedId = AppSession.instance.savedUserId ?? '';
 
-    // Square action tiles: the modalities the device reports, plus a PIN
-    // fallback. Centered so one tile (PIN-only) or several read as a group.
-    final tiles = <Widget>[
-      if (caps.hasFingerprint)
-        _bioTile(
-          icon: Icons.fingerprint_rounded,
-          label: 'Fingerprint',
-          onTap: _bioLoading
-              ? null
-              : () => _authenticateWithBiometrics(reason: 'sign in'),
-        ),
-      if (caps.hasFace)
-        _bioTile(
-          icon: Icons.face_rounded,
-          label: 'Face ID',
-          onTap: _bioLoading
-              ? null
-              : () => _authenticateWithBiometrics(reason: 'sign in'),
-        ),
-      if (caps.hasIris)
-        _bioTile(
-          icon: Icons.remove_red_eye_rounded,
-          label: 'Iris',
-          onTap: _bioLoading
-              ? null
-              : () => _authenticateWithBiometrics(reason: 'sign in'),
-        ),
-      _bioTile(
-        icon: Icons.pin_rounded,
-        label: 'PIN code',
-        onTap: (_bioLoading || !caps.deviceSupported) ? null : _signInWithPin,
-      ),
-    ];
+    // A single method, following the default fallback chain:
+    //   Face ID  ->  Fingerprint  ->  Iris  ->  PIN code
+    // Only the best available one is shown.
+    final Widget methodIcon;
+    final String methodLabel;
+    final VoidCallback? onMethodTap;
+    if (caps.hasFace) {
+      methodIcon = FaceIdIcon(size: 48, color: AppColors.brandRed);
+      methodLabel = 'Face ID';
+      onMethodTap =
+          _bioLoading ? null : () => _authenticateWithBiometrics(reason: 'sign in');
+    } else if (caps.hasFingerprint) {
+      methodIcon = Icon(Icons.fingerprint_rounded,
+          size: 50, color: AppColors.brandRed);
+      methodLabel = 'Fingerprint';
+      onMethodTap =
+          _bioLoading ? null : () => _authenticateWithBiometrics(reason: 'sign in');
+    } else if (caps.hasIris) {
+      methodIcon = Icon(Icons.remove_red_eye_rounded,
+          size: 48, color: AppColors.brandRed);
+      methodLabel = 'Iris';
+      onMethodTap =
+          _bioLoading ? null : () => _authenticateWithBiometrics(reason: 'sign in');
+    } else {
+      methodIcon =
+          Icon(Icons.pin_rounded, size: 46, color: AppColors.brandRed);
+      methodLabel = 'PIN code';
+      onMethodTap =
+          (_bioLoading || !caps.deviceSupported) ? null : _signInWithPin;
+    }
 
     return SizedBox(
       width: double.infinity,
@@ -501,50 +497,40 @@ class _LoginScreenState extends State<LoginScreen> {
           // PIN action drops lower into the screen.
           const SizedBox(height: 72),
         ],
-        // ---- Primary biometric affordance (only when enrolled) ----
-        if (hasAnyBiometric) ...[
-          GestureDetector(
-            onTap: _bioLoading
-                ? null
-                : () => _authenticateWithBiometrics(reason: 'sign in'),
-            child: Column(
-              children: [
-                Container(
-                  height: 96,
-                  width: 96,
-                  decoration: BoxDecoration(
-                    color: AppColors.dangerSoft,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: AppColors.brandRed.withValues(alpha: 0.25)),
-                  ),
-                  child: _bioLoading
-                      ? const Padding(
-                          padding: EdgeInsets.all(30),
-                          child: CircularProgressIndicator(strokeWidth: 3),
-                        )
-                      : Icon(primaryIcon, size: 46, color: AppColors.brandRed),
+        // ---- Single sign-in method (best available in the fallback chain) ----
+        GestureDetector(
+          onTap: onMethodTap,
+          child: Column(
+            children: [
+              Container(
+                height: 104,
+                width: 104,
+                decoration: BoxDecoration(
+                  color: AppColors.dangerSoft,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: AppColors.brandRed.withValues(alpha: 0.25)),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  _bioLoading ? 'Signing in…' : 'Tap to sign in with $primaryLabel',
-                  style: const TextStyle(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
+                alignment: Alignment.center,
+                child: _bioLoading
+                    ? const SizedBox(
+                        height: 40,
+                        width: 40,
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      )
+                    : methodIcon,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                _bioLoading ? 'Signing in…' : 'Tap to sign in with $methodLabel',
+                style: const TextStyle(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14.5,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 22),
-        ],
-        // ---- Square action tiles (centered) ----
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 14,
-          runSpacing: 14,
-          children: tiles,
         ),
         const SizedBox(height: 20),
         TextButton(
@@ -569,40 +555,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ],
-      ),
-    );
-  }
-
-  /// A fixed-size square tile for a biometric modality or the PIN fallback.
-  Widget _bioTile({
-    required IconData icon,
-    required String label,
-    required VoidCallback? onTap,
-  }) {
-    return Material(
-      color: AppColors.fieldFill,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          height: 96,
-          width: 96,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.line),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 28, color: AppColors.ink),
-              const SizedBox(height: 8),
-              Text(label,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 12.5)),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -852,4 +804,110 @@ class _TwoFactorLoginSheetState extends State<_TwoFactorLoginSheet> {
       ),
     );
   }
+}
+
+/// The iOS "Face ID" glyph: a rounded square with corner brackets framing a
+/// simple face (two eyes, a nose, a smile). Drawn so it matches the platform's
+/// Face ID look rather than a generic smiley.
+class FaceIdIcon extends StatelessWidget {
+  const FaceIdIcon({super.key, this.size = 48, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _FaceIdPainter(color)),
+    );
+  }
+}
+
+class _FaceIdPainter extends CustomPainter {
+  _FaceIdPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.055
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final w = size.width;
+    final h = size.height;
+    final corner = w * 0.22; // length of each corner bracket
+    final inset = w * 0.06;
+    final radius = w * 0.14;
+
+    // --- Four corner brackets ---
+    // Top-left
+    canvas.drawPath(
+      Path()
+        ..moveTo(inset, inset + corner)
+        ..lineTo(inset, inset + radius)
+        ..arcToPoint(Offset(inset + radius, inset), radius: Radius.circular(radius))
+        ..lineTo(inset + corner, inset),
+      p,
+    );
+    // Top-right
+    canvas.drawPath(
+      Path()
+        ..moveTo(w - inset - corner, inset)
+        ..lineTo(w - inset - radius, inset)
+        ..arcToPoint(Offset(w - inset, inset + radius), radius: Radius.circular(radius))
+        ..lineTo(w - inset, inset + corner),
+      p,
+    );
+    // Bottom-right
+    canvas.drawPath(
+      Path()
+        ..moveTo(w - inset, h - inset - corner)
+        ..lineTo(w - inset, h - inset - radius)
+        ..arcToPoint(Offset(w - inset - radius, h - inset), radius: Radius.circular(radius))
+        ..lineTo(w - inset - corner, h - inset),
+      p,
+    );
+    // Bottom-left
+    canvas.drawPath(
+      Path()
+        ..moveTo(inset + corner, h - inset)
+        ..lineTo(inset + radius, h - inset)
+        ..arcToPoint(Offset(inset, h - inset - radius), radius: Radius.circular(radius))
+        ..lineTo(inset, h - inset - corner),
+      p,
+    );
+
+    // --- Eyes ---
+    final eyeTop = h * 0.36;
+    final eyeBottom = h * 0.46;
+    canvas.drawLine(Offset(w * 0.36, eyeTop), Offset(w * 0.36, eyeBottom), p);
+    canvas.drawLine(Offset(w * 0.64, eyeTop), Offset(w * 0.64, eyeBottom), p);
+
+    // --- Nose ---
+    canvas.drawPath(
+      Path()
+        ..moveTo(w * 0.5, h * 0.42)
+        ..lineTo(w * 0.5, h * 0.56)
+        ..lineTo(w * 0.57, h * 0.56),
+      p,
+    );
+
+    // --- Smile ---
+    canvas.drawPath(
+      Path()
+        ..moveTo(w * 0.36, h * 0.64)
+        ..arcToPoint(Offset(w * 0.64, h * 0.64),
+            radius: Radius.circular(w * 0.22), clockwise: false),
+      p,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FaceIdPainter old) => old.color != color;
 }
