@@ -209,6 +209,11 @@ class _LoginScreenState extends State<LoginScreen> {
     // the field focus borders, Log In button and link buttons match it.
     final base = Theme.of(context);
     final accent = widget.company.color;
+    // Biometric-first view: the saved-credentials panel is shown (not the
+    // password form). Used to hide password-only helper links and rebalance
+    // the vertical spacing.
+    final showBiometric =
+        AppSession.instance.hasSavedCredentials && !_showPasswordFallback;
     final themed = base.copyWith(
       colorScheme: base.colorScheme.copyWith(primary: accent),
       textSelectionTheme: TextSelectionThemeData(
@@ -291,6 +296,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      // In biometric mode, breathe: push the compact panel down
+                      // toward the center so it doesn't hug the header.
+                      if (showBiometric) const Spacer(),
                       ListenableBuilder(
                         listenable: Listenable.merge(
                             [SecurityState.instance, AppSession.instance]),
@@ -309,31 +317,33 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
                           const SizedBox(height: 18),
-                          // ---- Helper links ----
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _linkButton(
-                                icon: Icons.lock_outline_rounded,
-                                label: 'Forgot your password?',
-                                color: AppColors.inkSoft,
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => ForgotPasswordScreen(
-                                      company: widget.company,
+                          // ---- Helper links (password flow only) ----
+                          if (!showBiometric) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _linkButton(
+                                  icon: Icons.lock_outline_rounded,
+                                  label: 'Forgot your password?',
+                                  color: AppColors.inkSoft,
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ForgotPasswordScreen(
+                                        company: widget.company,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              _linkButton(
-                                icon: Icons.assignment_outlined,
-                                label: 'For examination?',
-                                color: widget.company.color,
-                                onTap: () {},
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
+                                _linkButton(
+                                  icon: Icons.assignment_outlined,
+                                  label: 'For examination?',
+                                  color: widget.company.color,
+                                  onTap: () {},
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           // ---- Switch company ----
                           Center(
                             child: TextButton.icon(
