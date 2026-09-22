@@ -1122,6 +1122,14 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
     super.initState();
     _sec.addListener(_onStateChange);
     _loadTwoFactor();
+    // Keep the toggle in sync with reality: it's ON iff biometric credentials
+    // are actually saved (survives sign-out and app updates, where the stored
+    // preference flag may lag behind).
+    final enrolled = AppSession.instance.hasSavedCredentials;
+    if (_sec.biometricsEnabled != enrolled) {
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _sec.setBiometricsEnabled(enrolled));
+    }
   }
 
   @override

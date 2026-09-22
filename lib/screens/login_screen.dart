@@ -295,17 +295,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         listenable: Listenable.merge(
                             [SecurityState.instance, AppSession.instance]),
                         builder: (context, _) {
-                          final bioOn =
-                              SecurityState.instance.biometricsEnabled;
-                          // Biometric-first only when it's enabled AND there are
-                          // saved credentials to reuse; otherwise the password
-                          // form comes first.
+                          // Saved credentials in the secure enclave are the real
+                          // signal: they persist across sign-out and app
+                          // updates. If they exist, biometric sign-in is
+                          // available — show the panel first. (Enabling saves
+                          // them; disabling clears them.)
                           final canBiometric =
-                              bioOn && AppSession.instance.hasSavedCredentials;
+                              AppSession.instance.hasSavedCredentials;
                           if (canBiometric && !_showPasswordFallback) {
                             return _biometricPanel();
                           }
-                          return _credentialForm(bioOn: bioOn);
+                          return _credentialForm(bioOn: canBiometric);
                         },
                       ),
                           const SizedBox(height: 18),
