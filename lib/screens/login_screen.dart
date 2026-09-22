@@ -344,22 +344,25 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 8),
                           ],
-                          // ---- Switch company ----
-                          Center(
-                            child: TextButton.icon(
-                              onPressed: _switchCompany,
-                              icon: const Icon(Icons.swap_horiz_rounded,
-                                  size: 18),
-                              label: const Text('Switch company'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppColors.ink,
-                                textStyle: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w700,
+                          // ---- Switch company (password flow only) ----
+                          // In biometric mode it's reachable via "Enter
+                          // password", keeping the panel clean.
+                          if (!showBiometric)
+                            Center(
+                              child: TextButton.icon(
+                                onPressed: _switchCompany,
+                                icon: const Icon(Icons.swap_horiz_rounded,
+                                    size: 18),
+                                label: const Text('Switch company'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.ink,
+                                  textStyle: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                           const Spacer(),
                           const SizedBox(height: 12),
                           const Center(

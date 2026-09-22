@@ -187,28 +187,37 @@ class AppSession extends ChangeNotifier {
   /// Restores a persisted session on app launch. Returns true if the user is
   /// signed in afterwards. Renews the access token via the refresh token.
   Future<bool> restore() async {
-    final stored = await _store.read();
-    if (stored == null) return false;
-
-    _refreshToken = stored.refreshToken;
-    api.accessToken = stored.accessToken;
-    if (stored.user != null) _applyUser(stored.user!);
-    if (stored.tenantId != null) {
+    // Always restore the last chosen company + biometric enrollment first —
+    // even with no active session — so that after sign-out + restart the app
+    // returns to that company's login screen (biometric panel) instead of the
+    // company picker.
+    final lastTenantId = await _store.readTenantId();
+    if (lastTenantId != null) {
       for (final t in kTenants) {
-        if (t.id == stored.tenantId) {
+        if (t.id == lastTenantId) {
           tenant = t;
           break;
         }
       }
     }
-
-    // Restore biometric enrollment so biometric sign-in works after restart.
     final bio = await _store.readBiometric();
     if (bio != null) {
       _bioUserId = bio.userId;
       _bioRefreshToken = bio.refreshToken;
       _biometricCredsSaved = true;
     }
+
+    final stored = await _store.read();
+    if (stored == null) {
+      // No active session, but we may still have a remembered company/biometric
+      // enrollment above — let the UI route accordingly.
+      if (tenant != null || _biometricCredsSaved) notifyListeners();
+      return false;
+    }
+
+    _refreshToken = stored.refreshToken;
+    api.accessToken = stored.accessToken;
+    if (stored.user != null) _applyUser(stored.user!);
 
     // Renew the access token; if that fails the session is no longer valid.
     final ok = await _refreshAccessToken();

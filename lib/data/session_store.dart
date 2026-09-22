@@ -39,6 +39,11 @@ class SessionStore {
   /// Updates just the access token (after a refresh).
   Future<void> saveAccessToken(String? token) => _write(_kAccess, token);
 
+  /// The last chosen company id, kept across sign-out so the app can return to
+  /// that company's login screen (with the biometric panel) rather than the
+  /// company picker.
+  Future<String?> readTenantId() => _read(_kTenant);
+
   Future<StoredSession?> read() async {
     final access = await _read(_kAccess);
     final refresh = await _read(_kRefresh);
