@@ -406,182 +406,145 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final savedId = AppSession.instance.savedUserId ?? '';
 
+    // Square action tiles: the modalities the device reports, plus a PIN
+    // fallback. Centered so one tile (PIN-only) or several read as a group.
+    final tiles = <Widget>[
+      if (caps.hasFingerprint)
+        _bioTile(
+          icon: Icons.fingerprint_rounded,
+          label: 'Fingerprint',
+          onTap: _bioLoading
+              ? null
+              : () => _authenticateWithBiometrics(reason: 'sign in'),
+        ),
+      if (caps.hasFace)
+        _bioTile(
+          icon: Icons.face_rounded,
+          label: 'Face ID',
+          onTap: _bioLoading
+              ? null
+              : () => _authenticateWithBiometrics(reason: 'sign in'),
+        ),
+      if (caps.hasIris)
+        _bioTile(
+          icon: Icons.remove_red_eye_rounded,
+          label: 'Iris',
+          onTap: _bioLoading
+              ? null
+              : () => _authenticateWithBiometrics(reason: 'sign in'),
+        ),
+      _bioTile(
+        icon: Icons.pin_rounded,
+        label: 'PIN code',
+        onTap: (_bioLoading || !caps.deviceSupported) ? null : _signInWithPin,
+      ),
+    ];
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // ---- Signed-in Employee ID (read-only) ----
+        // ---- Signed-in Employee ID (compact, centered, read-only) ----
         if (savedId.isNotEmpty) ...[
           const Text(
-            'Employee ID',
+            'Signing in as',
             style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: AppColors.ink,
+              fontWeight: FontWeight.w600,
+              fontSize: 12.5,
+              color: AppColors.inkSoft,
             ),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
             decoration: BoxDecoration(
               color: AppColors.fieldFill,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(30),
               border: Border.all(color: AppColors.line),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.badge_outlined,
-                    size: 20, color: AppColors.inkSoft),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    savedId,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AppColors.ink,
-                    ),
+                    size: 18, color: AppColors.inkSoft),
+                const SizedBox(width: 9),
+                Text(
+                  savedId,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    letterSpacing: 0.3,
+                    color: AppColors.inkSoft,
                   ),
                 ),
-                const Icon(Icons.check_circle_rounded,
-                    size: 20, color: AppColors.success),
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
         ],
-        if (hasAnyBiometric)
+        // ---- Primary biometric affordance (only when enrolled) ----
+        if (hasAnyBiometric) ...[
           GestureDetector(
             onTap: _bioLoading
                 ? null
                 : () => _authenticateWithBiometrics(reason: 'sign in'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 22),
-              decoration: BoxDecoration(
-                color: AppColors.dangerSoft,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: AppColors.brandRed.withValues(alpha: 0.25)),
-              ),
-              child: Column(
-                children: [
-                  _bioLoading
-                      ? SizedBox(
-                          height: 48,
-                          width: 48,
-                          child: CircularProgressIndicator(
-                              color: AppColors.brandRed),
-                        )
-                      : Icon(primaryIcon, size: 48, color: AppColors.brandRed),
-                  const SizedBox(height: 10),
-                  Text(
-                    _bioLoading
-                        ? 'Signing in…'
-                        : 'Tap to sign in with $primaryLabel',
-                    style: TextStyle(
-                      color: AppColors.brandRed,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
+            child: Column(
+              children: [
+                Container(
+                  height: 96,
+                  width: 96,
+                  decoration: BoxDecoration(
+                    color: AppColors.dangerSoft,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: AppColors.brandRed.withValues(alpha: 0.25)),
                   ),
-                ],
-              ),
-            ),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.fieldFill,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.line),
-            ),
-            child: Row(
-              children: const [
-                Icon(Icons.info_outline_rounded,
-                    size: 18, color: AppColors.inkSoft),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'No biometrics enrolled on this device. Use your device PIN or password.',
-                    style: TextStyle(color: AppColors.inkSoft, fontSize: 12.5),
+                  child: _bioLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(30),
+                          child: CircularProgressIndicator(strokeWidth: 3),
+                        )
+                      : Icon(primaryIcon, size: 46, color: AppColors.brandRed),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _bioLoading ? 'Signing in…' : 'Tap to sign in with $primaryLabel',
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
                   ),
                 ),
               ],
             ),
           ),
-        const SizedBox(height: 14),
-        // Only the modalities the device reports, plus the PIN fallback.
-        Row(
-          children: [
-            if (caps.hasFingerprint) ...[
-              Expanded(
-                child: _bioOption(
-                  icon: Icons.fingerprint_rounded,
-                  label: 'Fingerprint',
-                  onTap: _bioLoading
-                      ? null
-                      : () => _authenticateWithBiometrics(reason: 'sign in'),
-                ),
-              ),
-              const SizedBox(width: 12),
-            ],
-            if (caps.hasFace) ...[
-              Expanded(
-                child: _bioOption(
-                  icon: Icons.face_rounded,
-                  label: 'Face',
-                  onTap: _bioLoading
-                      ? null
-                      : () => _authenticateWithBiometrics(reason: 'sign in'),
-                ),
-              ),
-              const SizedBox(width: 12),
-            ],
-            if (caps.hasIris) ...[
-              Expanded(
-                child: _bioOption(
-                  icon: Icons.remove_red_eye_rounded,
-                  label: 'Iris',
-                  onTap: _bioLoading
-                      ? null
-                      : () => _authenticateWithBiometrics(reason: 'sign in'),
-                ),
-              ),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: _bioOption(
-                icon: Icons.pin_rounded,
-                label: 'PIN code',
-                onTap:
-                    (_bioLoading || !caps.deviceSupported) ? null : _signInWithPin,
-              ),
-            ),
-          ],
+          const SizedBox(height: 22),
+        ],
+        // ---- Square action tiles (centered) ----
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 14,
+          runSpacing: 14,
+          children: tiles,
         ),
-        const SizedBox(height: 18),
-        Center(
-          child: TextButton(
-            onPressed: _bioLoading
-                ? null
-                : () {
-                    // Prefill the Employee ID so only the password is needed.
-                    final id = AppSession.instance.savedUserId;
-                    if (id != null && id.isNotEmpty) _employeeId.text = id;
-                    setState(() => _showPasswordFallback = true);
-                  },
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.inkSoft,
-            ),
-            child: Text(
-              'Enter password',
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: widget.company.color,
-                decoration: TextDecoration.underline,
-                decorationColor: widget.company.color,
-              ),
+        const SizedBox(height: 20),
+        TextButton(
+          onPressed: _bioLoading
+              ? null
+              : () {
+                  // Prefill the Employee ID so only the password is needed.
+                  final id = AppSession.instance.savedUserId;
+                  if (id != null && id.isNotEmpty) _employeeId.text = id;
+                  setState(() => _showPasswordFallback = true);
+                },
+          style: TextButton.styleFrom(foregroundColor: AppColors.inkSoft),
+          child: Text(
+            'Enter password',
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: widget.company.color,
+              decoration: TextDecoration.underline,
+              decorationColor: widget.company.color,
             ),
           ),
         ),
@@ -589,29 +552,33 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _bioOption(
-      {required IconData icon,
-      required String label,
-      required VoidCallback? onTap}) {
+  /// A fixed-size square tile for a biometric modality or the PIN fallback.
+  Widget _bioTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+  }) {
     return Material(
       color: AppColors.fieldFill,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          height: 96,
+          width: 96,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: AppColors.line),
           ),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 26, color: AppColors.ink),
-              const SizedBox(height: 6),
+              Icon(icon, size: 28, color: AppColors.ink),
+              const SizedBox(height: 8),
               Text(label,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 13)),
+                      fontWeight: FontWeight.w700, fontSize: 12.5)),
             ],
           ),
         ),
