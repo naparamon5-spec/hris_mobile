@@ -292,12 +292,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 24),
                       ListenableBuilder(
-                        listenable: SecurityState.instance,
+                        listenable: Listenable.merge(
+                            [SecurityState.instance, AppSession.instance]),
                         builder: (context, _) {
                           final bioOn =
                               SecurityState.instance.biometricsEnabled;
-                          // Biometric-first only when there are credentials to
-                          // reuse; otherwise the password form must come first.
+                          // Biometric-first only when it's enabled AND there are
+                          // saved credentials to reuse; otherwise the password
+                          // form comes first.
                           final canBiometric =
                               bioOn && AppSession.instance.hasSavedCredentials;
                           if (canBiometric && !_showPasswordFallback) {
@@ -402,9 +404,51 @@ class _LoginScreenState extends State<LoginScreen> {
     final hasAnyBiometric =
         caps.hasFingerprint || caps.hasFace || caps.hasIris;
 
+    final savedId = AppSession.instance.savedUserId ?? '';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ---- Signed-in Employee ID (read-only) ----
+        if (savedId.isNotEmpty) ...[
+          const Text(
+            'Employee ID',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColors.fieldFill,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.badge_outlined,
+                    size: 20, color: AppColors.inkSoft),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    savedId,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.check_circle_rounded,
+                    size: 20, color: AppColors.success),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
         if (hasAnyBiometric)
           GestureDetector(
             onTap: _bioLoading
@@ -517,16 +561,27 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 18),
         Center(
-          child: TextButton.icon(
+          child: TextButton(
             onPressed: _bioLoading
                 ? null
-                : () => setState(() => _showPasswordFallback = true),
-            icon: const Icon(Icons.password_rounded, size: 16),
-            label: const Text('Use Employee ID & Password'),
+                : () {
+                    // Prefill the Employee ID so only the password is needed.
+                    final id = AppSession.instance.savedUserId;
+                    if (id != null && id.isNotEmpty) _employeeId.text = id;
+                    setState(() => _showPasswordFallback = true);
+                  },
             style: TextButton.styleFrom(
               foregroundColor: AppColors.inkSoft,
-              textStyle: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            child: Text(
+              'Enter password',
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: widget.company.color,
+                decoration: TextDecoration.underline,
+                decorationColor: widget.company.color,
+              ),
             ),
           ),
         ),

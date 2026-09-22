@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'data/app_session.dart';
+import 'data/security_state.dart';
 import 'data/notifications/push_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
@@ -19,6 +20,8 @@ void main() async {
   try {
     await dotenv.load(fileName: '.env');
   } catch (_) {}
+  // Restore the persisted biometric preference before the login screen builds.
+  await SecurityState.instance.load();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,

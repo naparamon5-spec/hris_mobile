@@ -87,6 +87,10 @@ class AppSession extends ChangeNotifier {
   String? get userId => _userId;
   String? get userName => _userName;
 
+  /// The Employee ID saved for biometric sign-in (shown on the login screen's
+  /// biometric panel). Null when there are no saved biometric credentials.
+  String? get savedUserId => hasSavedCredentials ? _rememberedUserId : null;
+
   /// Job title (position) and employer, from the login response.
   String? get position => _position;
   String? get company => _company;
@@ -239,6 +243,7 @@ class AppSession extends ChangeNotifier {
     _rememberedPassword = password;
     _biometricCredsSaved = true;
     await _store.saveBiometric(_userId, password);
+    notifyListeners();
   }
 
   /// Forgets the stored biometric credentials (on disabling biometrics).
@@ -246,6 +251,7 @@ class AppSession extends ChangeNotifier {
     _rememberedPassword = null;
     _biometricCredsSaved = false;
     await _store.clearBiometric();
+    notifyListeners();
   }
 
   /// Completes a login that returned [TwoFactorRequiredException], re-submitting
