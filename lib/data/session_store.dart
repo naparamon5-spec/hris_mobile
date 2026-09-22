@@ -21,6 +21,9 @@ class SessionStore {
   // Refresh token captured when biometrics is enabled. Biometric sign-in uses
   // it to restore the session WITHOUT ever storing or replaying the password.
   static const _kBioRefresh = 'bio_refresh_token';
+  // The company the enrollment belongs to — the biometric panel is only offered
+  // for this company (a different company must sign in with a password).
+  static const _kBioTenant = 'bio_tenant_id';
   // Legacy key from the password-based biometric login; cleaned up on migration.
   static const _kBioPassLegacy = 'bio_password';
 
@@ -67,24 +70,28 @@ class SessionStore {
   }
 
   // ---- Biometric enrollment (kept across restarts so biometric works) ----
-  // Stores the Employee ID + a refresh token; never the password.
-  Future<void> saveBiometric(String? userId, String? refreshToken) async {
+  // Stores the Employee ID + a refresh token + the company; never the password.
+  Future<void> saveBiometric(
+      String? userId, String? refreshToken, String? tenantId) async {
     await _write(_kBioUser, userId);
     await _write(_kBioRefresh, refreshToken);
+    await _write(_kBioTenant, tenantId);
     // Drop any password left over from the old scheme.
     await _storage.delete(key: _kBioPassLegacy);
   }
 
-  Future<({String userId, String refreshToken})?> readBiometric() async {
+  Future<({String userId, String refreshToken, String? tenantId})?>
+      readBiometric() async {
     final u = await _read(_kBioUser);
     final r = await _read(_kBioRefresh);
     if (u == null || u.isEmpty || r == null || r.isEmpty) return null;
-    return (userId: u, refreshToken: r);
+    return (userId: u, refreshToken: r, tenantId: await _read(_kBioTenant));
   }
 
   Future<void> clearBiometric() async {
     await _storage.delete(key: _kBioUser);
     await _storage.delete(key: _kBioRefresh);
+    await _storage.delete(key: _kBioTenant);
     await _storage.delete(key: _kBioPassLegacy);
   }
 

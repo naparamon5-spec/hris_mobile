@@ -80,6 +80,7 @@ class AppSession extends ChangeNotifier {
   // is never stored or replayed. _bioUserId is shown on the login screen.
   String? _bioUserId;
   String? _bioRefreshToken;
+  String? _bioTenantId;
   bool _biometricCredsSaved = false;
 
   UserRole get role => _role;
@@ -89,6 +90,10 @@ class AppSession extends ChangeNotifier {
   /// The Employee ID saved for biometric sign-in (shown on the login screen's
   /// biometric panel). Null when there are no saved biometric credentials.
   String? get savedUserId => hasSavedCredentials ? _bioUserId : null;
+
+  /// The company id the biometric enrollment belongs to. The login screen only
+  /// offers the biometric panel when the selected company matches this.
+  String? get savedTenantId => hasSavedCredentials ? _bioTenantId : null;
 
   /// Job title (position) and employer, from the login response.
   String? get position => _position;
@@ -167,7 +172,8 @@ class AppSession extends ChangeNotifier {
     if (_biometricCredsSaved && _refreshToken != null) {
       _bioUserId = _userId;
       _bioRefreshToken = _refreshToken;
-      await _store.saveBiometric(_userId, _refreshToken);
+      _bioTenantId = tenant?.id;
+      await _store.saveBiometric(_userId, _refreshToken, tenant?.id);
     }
 
     // Register this device for push notifications (best-effort).
@@ -204,6 +210,7 @@ class AppSession extends ChangeNotifier {
     if (bio != null) {
       _bioUserId = bio.userId;
       _bioRefreshToken = bio.refreshToken;
+      _bioTenantId = bio.tenantId;
       _biometricCredsSaved = true;
     }
 
@@ -262,8 +269,9 @@ class AppSession extends ChangeNotifier {
     }
     _bioUserId = _userId;
     _bioRefreshToken = _refreshToken;
+    _bioTenantId = tenant?.id;
     _biometricCredsSaved = true;
-    await _store.saveBiometric(_userId, _refreshToken);
+    await _store.saveBiometric(_userId, _refreshToken, tenant?.id);
     notifyListeners();
   }
 
@@ -271,6 +279,7 @@ class AppSession extends ChangeNotifier {
   Future<void> clearBiometricCredentials() async {
     _bioUserId = null;
     _bioRefreshToken = null;
+    _bioTenantId = null;
     _biometricCredsSaved = false;
     await _store.clearBiometric();
     notifyListeners();

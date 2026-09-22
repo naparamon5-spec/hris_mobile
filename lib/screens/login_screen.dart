@@ -212,8 +212,9 @@ class _LoginScreenState extends State<LoginScreen> {
     // Biometric-first view: the saved-credentials panel is shown (not the
     // password form). Used to hide password-only helper links and rebalance
     // the vertical spacing.
-    final showBiometric =
-        AppSession.instance.hasSavedCredentials && !_showPasswordFallback;
+    final showBiometric = AppSession.instance.hasSavedCredentials &&
+        AppSession.instance.savedTenantId == widget.company.id &&
+        !_showPasswordFallback;
     final themed = base.copyWith(
       colorScheme: base.colorScheme.copyWith(primary: accent),
       textSelectionTheme: TextSelectionThemeData(
@@ -308,8 +309,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           // updates. If they exist, biometric sign-in is
                           // available — show the panel first. (Enabling saves
                           // them; disabling clears them.)
+                          // Only offer biometrics for the company the
+                          // enrollment belongs to; a different company must use
+                          // a password.
                           final canBiometric =
-                              AppSession.instance.hasSavedCredentials;
+                              AppSession.instance.hasSavedCredentials &&
+                                  AppSession.instance.savedTenantId ==
+                                      widget.company.id;
                           if (canBiometric && !_showPasswordFallback) {
                             return _biometricPanel();
                           }
