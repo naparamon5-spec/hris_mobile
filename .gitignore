@@ -46,6 +46,7 @@ app.*.map.json
 
 # Secrets — never commit
 .env
+.env.example
 
 # Firebase config (secrets)
 android/app/google-services.json
