@@ -14,14 +14,16 @@ import 'package:flutter/foundation.dart';
 class ApiConfig {
   ApiConfig._();
 
-  /// Flip to `false` to point the app at a local dev server instead of the
-  /// deployed backend (useful when developing against `hris-server` on your
-  /// Mac). Ships as `true` so release builds always hit production.
-  static const bool useProduction = true;
-
-  /// The deployed HRIS backend.
-  static const String _productionBaseUrl =
-      'https://hris-api.ardentnetworks.com.ph/api/v1';
+  /// Backend base URL, supplied at build/run time as an environment value:
+  ///
+  ///   flutter run   --dart-define=API_BASE_URL=https://hris-api.ardentnetworks.com.ph/api/v1
+  ///   flutter build --dart-define=API_BASE_URL=https://hris-api.ardentnetworks.com.ph/api/v1
+  ///
+  /// (or via a --dart-define-from-file JSON). When it isn't provided, the app
+  /// falls back to the local per-platform dev host below, so `flutter run`
+  /// with no defines keeps talking to a local `hris-server`.
+  static const String _envBaseUrl =
+      String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
   static const int _port = 3000;
 
@@ -37,8 +39,8 @@ class ApiConfig {
     return 'localhost';
   }
 
-  /// Base URL including the API version prefix. Production by default; the
-  /// local per-platform host when [useProduction] is false.
+  /// Base URL including the API version prefix. Uses the API_BASE_URL
+  /// environment value when set; otherwise the local per-platform dev host.
   static String get baseUrl =>
-      useProduction ? _productionBaseUrl : 'http://$_host:$_port/api/v1';
+      _envBaseUrl.isNotEmpty ? _envBaseUrl : 'http://$_host:$_port/api/v1';
 }
