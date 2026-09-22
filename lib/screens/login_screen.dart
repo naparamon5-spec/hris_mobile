@@ -440,7 +440,9 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     ];
 
-    return Column(
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // ---- Signed-in Employee ID (compact, centered, read-only) ----
@@ -549,6 +551,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ],
+      ),
     );
   }
 
