@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'data/app_session.dart';
 import 'data/notifications/push_service.dart';
@@ -12,6 +13,12 @@ final GlobalKey<NavigatorState> hrisNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Load the frontend .env (API base URL) before anything makes a request.
+  // Best-effort — a missing/omitted file just falls back to the dart-define
+  // or the local dev host (see ApiConfig).
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {}
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
