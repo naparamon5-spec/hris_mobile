@@ -297,9 +297,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      // In biometric mode, breathe: push the compact panel down
-                      // toward the center so it doesn't hug the header.
-                      if (showBiometric) const Spacer(),
                       ListenableBuilder(
                         listenable: Listenable.merge(
                             [SecurityState.instance, AppSession.instance]),
@@ -500,7 +497,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          // Gap so the ID sits up near the company logo while the biometric /
+          // PIN action drops lower into the screen.
+          const SizedBox(height: 72),
         ],
         // ---- Primary biometric affordance (only when enrolled) ----
         if (hasAnyBiometric) ...[
