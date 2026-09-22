@@ -233,39 +233,45 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
             style: const TextStyle(fontWeight: FontWeight.w800)),
         content: Text(
             'Are you sure you want to ${verb.toLowerCase()} the ${tasks.length} selected filing${tasks.length == 1 ? '' : 's'}?'),
-        // Two equal-width buttons on the same row — no floating "No" text.
-        actionsAlignment: MainAxisAlignment.spaceBetween,
+        // A single Row here — AlertDialog's default OverflowBar stacks
+        // Expanded children vertically, which produced the ugly full-width
+        // stacked buttons.
         actions: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.ink,
-                side: const BorderSide(color: AppColors.line),
-                minimumSize: const Size.fromHeight(46),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.ink,
+                    side: const BorderSide(color: AppColors.line),
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Cancel',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
               ),
-              child: const Text('No',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    approve ? AppColors.success : AppColors.brandRed,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                minimumSize: const Size.fromHeight(46),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        approve ? AppColors.success : AppColors.brandRed,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  // Single word so it never wraps inside the narrow Expanded.
+                  child: Text(verb,
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                ),
               ),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text('Yes, $verb',
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
-            ),
+            ],
           ),
         ],
       ),
@@ -799,7 +805,9 @@ class _TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SoftCard(
-      onTap: selectable ? onToggle : onTap,
+      // Tap anywhere on the card opens the detail sheet — the checkbox has
+      // its own tap target for multi-select so both actions coexist.
+      onTap: onTap,
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -807,14 +815,21 @@ class _TaskCard extends StatelessWidget {
           Row(
             children: [
               if (selectable) ...[
-                Icon(
-                  selected
-                      ? Icons.check_box_rounded
-                      : Icons.check_box_outline_blank_rounded,
-                  size: 22,
-                  color: selected ? AppColors.brandRed : AppColors.inkFaint,
+                InkWell(
+                  onTap: onToggle,
+                  customBorder: const CircleBorder(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      selected
+                          ? Icons.check_box_rounded
+                          : Icons.check_box_outline_blank_rounded,
+                      size: 22,
+                      color: selected ? AppColors.brandRed : AppColors.inkFaint,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 6),
               ],
               _AppBadge(app: task.app),
               const SizedBox(width: 10),
@@ -846,46 +861,21 @@ class _TaskCard extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 11),
             child: Divider(height: 1),
           ),
-          if (isRequests) ...[
-            if (task.company.isNotEmpty) ...[
-              _kv('Company', task.company),
-              const SizedBox(height: 10),
+          // All four screens (Records Approval, Approved Records, Request
+          // Approval, Approved Requests) use the same compact card — only the
+          // top-line dates. The full details live in the detail sheet, which
+          // opens when the card is tapped.
+          Row(
+            children: [
+              Expanded(
+                child: _kv(
+                  isRequests ? 'Request date' : 'Application date',
+                  task.dateApplied,
+                ),
+              ),
+              Expanded(child: _kv('Date sent', task.dateSent)),
             ],
-            Row(
-              children: [
-                Expanded(child: _kv('Request date', task.dateApplied)),
-                Expanded(child: _kv('Date sent', task.dateSent)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _kv('Request type', task.requestTypeName),
-            if (task.approvedDate.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _kv('Approved date', task.approvedDate),
-            ],
-          ] else ...[
-            Row(
-              children: [
-                Expanded(child: _kv('Application date', task.dateApplied)),
-                Expanded(child: _kv('Date sent', task.dateSent)),
-              ],
-            ),
-            if (task.txnDate.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _kv('Record date', task.txnDate),
-            ],
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(child: _kv('Applied hrs', task.appliedHours)),
-                Expanded(child: _kv('Approved OT', task.approvedOtHours)),
-              ],
-            ),
-            if (task.approvedDate.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _kv('Approved date', task.approvedDate),
-            ],
-          ],
+          ),
         ],
       ),
     );
@@ -1059,6 +1049,8 @@ class _ApprovalDetailSheetState extends State<_ApprovalDetailSheet> {
             if (t.txnDate.isNotEmpty) _kv('Record date', t.txnDate),
             _kv('Applied hours', t.appliedHours),
             _kv('Approved OT hours', t.approvedOtHours),
+            // Reason (LOA / MAD / OT) or Purpose (CA) — from the head table.
+            _kv(t.app == 'CA' ? 'Purpose' : 'Reason', t.reason),
           ],
           if (t.approvedDate.isNotEmpty) _kv('Approved date', t.approvedDate),
           if (t.approvedBy.isNotEmpty) _kv('Decided by', t.approvedBy),

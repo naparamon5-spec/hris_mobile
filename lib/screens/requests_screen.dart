@@ -150,8 +150,6 @@ class _RequestsScreenState extends State<RequestsScreen> {
             builder: (context, snap) {
               final acc = snap.data;
               if (acc == null || !acc.isApprover) return const SizedBox.shrink();
-              final isVersatech =
-                  AppSession.instance.tenant?.id == 'versatech';
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -191,45 +189,45 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       _refreshAccess();
                     },
                   ),
-                  // Request Approval covers the Other Requests, which are
-                  // Versatech-only.
-                  if (isVersatech) ...[
-                    const SizedBox(height: 10),
-                    NavListTile(
-                      icon: Icons.assignment_turned_in_rounded,
-                      label: acc.pendingRequests > 0
-                          ? 'Request Approval (${acc.pendingRequests})'
-                          : 'Request Approval',
-                      color: AppColors.inkSoft,
-                      badge: acc.pendingRequests > 0,
-                      onTap: () async {
-                        await _go(
-                          context,
-                          const ApprovalsCenterScreen(
-                            module: 'requests',
-                            scope: 'pending',
-                          ),
-                        );
-                        _refreshAccess();
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    NavListTile(
-                      icon: Icons.fact_check_outlined,
-                      label: 'Approved Requests',
-                      color: AppColors.inkSoft,
-                      onTap: () async {
-                        await _go(
-                          context,
-                          const ApprovalsCenterScreen(
-                            module: 'requests',
-                            scope: 'history',
-                          ),
-                        );
-                        _refreshAccess();
-                      },
-                    ),
-                  ],
+                  // Request Approval covers the Other Requests (COE/EPP/ITR/
+                  // COL/BUP/ID from th_request_head). Shown to every approver;
+                  // if the tenant has no such requests, the list is simply
+                  // empty and the badge stays clear.
+                  const SizedBox(height: 10),
+                  NavListTile(
+                    icon: Icons.assignment_turned_in_rounded,
+                    label: acc.pendingRequests > 0
+                        ? 'Request Approval (${acc.pendingRequests})'
+                        : 'Request Approval',
+                    color: AppColors.inkSoft,
+                    badge: acc.pendingRequests > 0,
+                    onTap: () async {
+                      await _go(
+                        context,
+                        const ApprovalsCenterScreen(
+                          module: 'requests',
+                          scope: 'pending',
+                        ),
+                      );
+                      _refreshAccess();
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  NavListTile(
+                    icon: Icons.fact_check_outlined,
+                    label: 'Approved Requests',
+                    color: AppColors.inkSoft,
+                    onTap: () async {
+                      await _go(
+                        context,
+                        const ApprovalsCenterScreen(
+                          module: 'requests',
+                          scope: 'history',
+                        ),
+                      );
+                      _refreshAccess();
+                    },
+                  ),
                 ],
               );
             },
