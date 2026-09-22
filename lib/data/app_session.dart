@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 
 import 'api_client.dart';
 import 'notifications/push_service.dart';
+import 'security_state.dart';
 import 'session_store.dart';
 import 'tenants.dart';
 
@@ -212,6 +213,14 @@ class AppSession extends ChangeNotifier {
       _bioRefreshToken = bio.refreshToken;
       _bioTenantId = bio.tenantId;
       _biometricCredsSaved = true;
+    }
+
+    // Reconcile: if biometrics was turned OFF in Settings but stale credentials
+    // are still in the keychain (e.g. a delete that didn't persist), purge them
+    // so the login screen never shows the biometric panel while it's disabled.
+    // (SecurityState.load() runs before restore() in main().)
+    if (_biometricCredsSaved && !SecurityState.instance.biometricsEnabled) {
+      await clearBiometricCredentials();
     }
 
     final stored = await _store.read();

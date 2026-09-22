@@ -135,8 +135,8 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Runs the real OS biometric prompt (fingerprint / face / iris — whatever
   /// the device offers), then authenticates against the backend.
   Future<void> _authenticateWithBiometrics({String reason = 'Sign in'}) async {
-    if (!SecurityState.instance.biometricsEnabled) {
-      showToast(context, 'Biometrics is currently disabled. Please enable it in Settings.', isSuccess: false, title: 'Disabled');
+    if (!AppSession.instance.hasSavedCredentials) {
+      showToast(context, 'Biometric sign-in isn\'t set up. Please sign in with your password.', isSuccess: false, title: 'Not available');
       return;
     }
     if (_bioLoading) return;

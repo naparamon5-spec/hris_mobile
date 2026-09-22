@@ -1176,8 +1176,10 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
         if (mounted) showToast(context, 'The password you entered is incorrect. Please try again.', isSuccess: false, title: 'Incorrect Password');
         return;
       }
-      await AppSession.instance.saveBiometricCredentials();
+      // Set the preference before saving creds so a crash between the two can
+      // never leave creds with the flag off (which reconciliation would purge).
       _sec.setBiometricsEnabled(true);
+      await AppSession.instance.saveBiometricCredentials();
       if (mounted) {
         hideLoadingOverlay(context);
         showToast(context, 'You can now sign in quickly using biometrics.',
