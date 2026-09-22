@@ -69,18 +69,17 @@ class AppSession extends ChangeNotifier {
   String? _company;
   String? _refreshToken;
 
-  // Last successful credentials, kept in memory so biometric / PIN unlock can
-  // re-authenticate. In a production app this would be a refresh token in
-  // secure storage rather than the password; this is a demo stand-in.
+  // Last login attempt's credentials, kept in memory only so a 2FA step can
+  // re-submit them with the one-time code. Never persisted.
   String? _rememberedUserId;
   String? _rememberedPassword;
   bool _rememberedRemember = false;
 
-  // True only when biometric credentials are actually persisted (saved when
-  // enabling biometrics, or restored from secure storage). Kept separate from
-  // the transient _remembered* values that every login attempt overwrites, so a
-  // failed password login never makes the screen fall back to the biometric
-  // panel.
+  // Biometric enrollment (persisted in the OS secure enclave via SessionStore).
+  // Biometric sign-in restores the session from _bioRefreshToken — the password
+  // is never stored or replayed. _bioUserId is shown on the login screen.
+  String? _bioUserId;
+  String? _bioRefreshToken;
   bool _biometricCredsSaved = false;
 
   UserRole get role => _role;
@@ -89,7 +88,7 @@ class AppSession extends ChangeNotifier {
 
   /// The Employee ID saved for biometric sign-in (shown on the login screen's
   /// biometric panel). Null when there are no saved biometric credentials.
-  String? get savedUserId => hasSavedCredentials ? _rememberedUserId : null;
+  String? get savedUserId => hasSavedCredentials ? _bioUserId : null;
 
   /// Job title (position) and employer, from the login response.
   String? get position => _position;
@@ -104,8 +103,8 @@ class AppSession extends ChangeNotifier {
   /// password login attempt — successful or failed — does not flip this.
   bool get hasSavedCredentials =>
       _biometricCredsSaved &&
-      (_rememberedUserId?.isNotEmpty ?? false) &&
-      (_rememberedPassword?.isNotEmpty ?? false);
+      (_bioUserId?.isNotEmpty ?? false) &&
+      (_bioRefreshToken?.isNotEmpty ?? false);
 
   /// True for manager / head / executive — the roles that can approve records
   /// and requests and see the extra request types.
@@ -163,6 +162,14 @@ class AppSession extends ChangeNotifier {
       tenantId: tenant?.id,
     );
 
+    // If biometrics is already enrolled, refresh the stored token to the latest
+    // one so it never goes stale mid-enrollment.
+    if (_biometricCredsSaved && _refreshToken != null) {
+      _bioUserId = _userId;
+      _bioRefreshToken = _refreshToken;
+      await _store.saveBiometric(_userId, _refreshToken);
+    }
+
     // Register this device for push notifications (best-effort).
     await _registerPush();
 
@@ -195,11 +202,11 @@ class AppSession extends ChangeNotifier {
       }
     }
 
-    // Restore biometric credentials so biometric sign-in works after restart.
+    // Restore biometric enrollment so biometric sign-in works after restart.
     final bio = await _store.readBiometric();
     if (bio != null) {
-      _rememberedUserId = bio.userId;
-      _rememberedPassword = bio.password;
+      _bioUserId = bio.userId;
+      _bioRefreshToken = bio.refreshToken;
       _biometricCredsSaved = true;
     }
 
@@ -235,20 +242,26 @@ class AppSession extends ChangeNotifier {
     }
   }
 
-  /// Stores the current user's password so biometric sign-in can reuse it,
-  /// including across app restarts. Called after the password is verified when
-  /// enabling biometrics.
-  Future<void> saveBiometricCredentials(String password) async {
-    _rememberedUserId = _userId;
-    _rememberedPassword = password;
+  /// Enables biometric sign-in by capturing the current session's refresh token
+  /// (never the password) in the secure enclave. Call after the password has
+  /// been verified in Settings. Throws if there is no live session to capture.
+  Future<void> saveBiometricCredentials() async {
+    if (_refreshToken == null || _refreshToken!.isEmpty) {
+      throw ApiException(
+        'Please sign in again before enabling biometric sign-in.',
+      );
+    }
+    _bioUserId = _userId;
+    _bioRefreshToken = _refreshToken;
     _biometricCredsSaved = true;
-    await _store.saveBiometric(_userId, password);
+    await _store.saveBiometric(_userId, _refreshToken);
     notifyListeners();
   }
 
-  /// Forgets the stored biometric credentials (on disabling biometrics).
+  /// Forgets the stored biometric enrollment (on disabling biometrics).
   Future<void> clearBiometricCredentials() async {
-    _rememberedPassword = null;
+    _bioUserId = null;
+    _bioRefreshToken = null;
     _biometricCredsSaved = false;
     await _store.clearBiometric();
     notifyListeners();
@@ -265,20 +278,51 @@ class AppSession extends ChangeNotifier {
     );
   }
 
-  /// Signs in via biometrics / PIN, reusing the credentials from the last
-  /// password login this app run. Throws if there are none (e.g. fresh install
-  /// or after a full restart) so the caller can show the password form.
+  /// Signs in via biometrics / PIN by restoring the session from the stored
+  /// refresh token — no password is replayed. Throws [ApiException] if there is
+  /// no enrollment, or if the token has expired/been revoked (in which case the
+  /// enrollment is cleared so the UI falls back to the password form).
   Future<void> biometricLogin() async {
     if (!hasSavedCredentials) {
       throw ApiException(
         'Sign in with your Employee ID and password once to enable biometric sign-in.',
       );
     }
-    await login(
-      userId: _rememberedUserId!,
-      password: _rememberedPassword!,
-      remember: _rememberedRemember,
-    );
+    try {
+      final data = await api.post('/public/refresh', body: {
+        'refreshToken': _bioRefreshToken,
+      });
+      if (data is! Map || data['accessToken'] is! String) {
+        throw ApiException('Could not restore your session.');
+      }
+      api.accessToken = data['accessToken'] as String;
+      _refreshToken = _bioRefreshToken;
+
+      Map<String, dynamic>? userMap;
+      if (data['user'] is Map) {
+        userMap = (data['user'] as Map).cast<String, dynamic>();
+        _applyUser(userMap);
+      }
+
+      // Persist the restored session so a later cold start resumes without
+      // needing biometrics again.
+      await _store.saveSession(
+        accessToken: api.accessToken,
+        refreshToken: _refreshToken,
+        user: userMap,
+        tenantId: tenant?.id,
+      );
+
+      await _registerPush();
+      notifyListeners();
+    } on ApiException {
+      // Refresh token expired (>30d) or revoked — drop enrollment so the user
+      // re-enables biometrics after a normal password sign-in.
+      await clearBiometricCredentials();
+      throw ApiException(
+        'Your biometric sign-in has expired. Please sign in with your password.',
+      );
+    }
   }
 
   /// Clears the session. Best-effort call to the backend logout; local state is

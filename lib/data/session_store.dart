@@ -18,7 +18,11 @@ class SessionStore {
   static const _kUser = 'user_json';
   static const _kTenant = 'tenant_id';
   static const _kBioUser = 'bio_user_id';
-  static const _kBioPass = 'bio_password';
+  // Refresh token captured when biometrics is enabled. Biometric sign-in uses
+  // it to restore the session WITHOUT ever storing or replaying the password.
+  static const _kBioRefresh = 'bio_refresh_token';
+  // Legacy key from the password-based biometric login; cleaned up on migration.
+  static const _kBioPassLegacy = 'bio_password';
 
   Future<void> saveSession({
     required String? accessToken,
@@ -57,22 +61,26 @@ class SessionStore {
     );
   }
 
-  // ---- Biometric credentials (kept across restarts so biometric works) ----
-  Future<void> saveBiometric(String? userId, String? password) async {
+  // ---- Biometric enrollment (kept across restarts so biometric works) ----
+  // Stores the Employee ID + a refresh token; never the password.
+  Future<void> saveBiometric(String? userId, String? refreshToken) async {
     await _write(_kBioUser, userId);
-    await _write(_kBioPass, password);
+    await _write(_kBioRefresh, refreshToken);
+    // Drop any password left over from the old scheme.
+    await _storage.delete(key: _kBioPassLegacy);
   }
 
-  Future<({String userId, String password})?> readBiometric() async {
+  Future<({String userId, String refreshToken})?> readBiometric() async {
     final u = await _read(_kBioUser);
-    final p = await _read(_kBioPass);
-    if (u == null || u.isEmpty || p == null || p.isEmpty) return null;
-    return (userId: u, password: p);
+    final r = await _read(_kBioRefresh);
+    if (u == null || u.isEmpty || r == null || r.isEmpty) return null;
+    return (userId: u, refreshToken: r);
   }
 
   Future<void> clearBiometric() async {
     await _storage.delete(key: _kBioUser);
-    await _storage.delete(key: _kBioPass);
+    await _storage.delete(key: _kBioRefresh);
+    await _storage.delete(key: _kBioPassLegacy);
   }
 
   /// Clears the session tokens/user (keeps biometric creds unless told).
