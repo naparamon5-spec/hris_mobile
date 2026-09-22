@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../data/app_session.dart';
+import '../data/app_version_gate.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand.dart';
+import 'app_update_screen.dart';
 import 'company_select_screen.dart';
 import 'home_shell.dart';
 import 'login_screen.dart';
@@ -47,6 +49,22 @@ class _SplashScreenState extends State<SplashScreen>
     final restored = await _restore;
     if (!mounted) return;
 
+    // Launch-time version gate. A forced update replaces everything with a
+    // blocking wall; a soft update is shown as a dialog after routing. Any
+    // failure resolves to "none", so the check never keeps a user out.
+    final decision =
+        await AppVersionGate.instance.check(tenantId: AppVersionGate.currentTenantId);
+    if (!mounted) return;
+
+    if (decision.action == UpdateAction.forced) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ForceUpdateScreen(storeUrl: decision.storeUrl),
+        ),
+      );
+      return;
+    }
+
     final Widget next;
     if (restored) {
       next = const HomeShell();
@@ -65,6 +83,16 @@ class _SplashScreenState extends State<SplashScreen>
             FadeTransition(opacity: anim, child: child),
       ),
     );
+
+    // Soft prompt: after the destination is on screen, offer the update.
+    if (decision.action == UpdateAction.soft) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = context;
+        if (ctx.mounted) {
+          showSoftUpdateDialog(ctx, storeUrl: decision.storeUrl);
+        }
+      });
+    }
   }
 
   @override

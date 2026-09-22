@@ -873,6 +873,17 @@ class HrisApi {
           .map(Tenant.fromJson)
           .toList();
 
+  // ---- App version gate (public — checked on launch, before login) ----
+  // Returns { minSupportedVersion, latestVersion, storeUrl, platform }.
+  Future<Map<String, dynamic>> appVersion({
+    required String platform,
+    String? tenant,
+  }) async {
+    final q = StringBuffer('/public/app-version?platform=$platform');
+    if (tenant != null && tenant.isNotEmpty) q.write('&tenant=$tenant');
+    return _asMap((await _api.get(q.toString()))['data']);
+  }
+
   // Requests a password-reset email for the given employee ID or email address
   // in the selected tenant. The backend always returns success regardless of
   // whether the account exists (no account enumeration).
