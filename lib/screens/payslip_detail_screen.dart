@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/app_session.dart';
 import '../data/hris_api.dart';
 import '../data/mock_data.dart';
 import '../theme/app_colors.dart';
@@ -30,14 +31,71 @@ class _PayslipDetailScreenState extends State<PayslipDetailScreen> {
 
   Future<void> _download() async {
     if (_downloading) return;
+    final format = await _pickFormat();
+    if (format == null || !mounted) return;
     setState(() => _downloading = true);
     await captureAndShare(
       context,
       _boundaryKey,
       'Payslip_${widget.id}',
       shareText: 'Payslip ${widget.id}',
+      format: format,
     );
     if (mounted) setState(() => _downloading = false);
+  }
+
+  /// Ask whether to save the payslip as an image or a PDF.
+  Future<DownloadFormat?> _pickFormat() {
+    return showModalBottomSheet<DownloadFormat>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.line,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Download payslip as',
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w800)),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.image_outlined,
+                  color: AppColors.brandRed),
+              title: const Text('Image (PNG)',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Save to Photos or share'),
+              onTap: () => Navigator.pop(ctx, DownloadFormat.image),
+            ),
+            ListTile(
+              leading: Icon(Icons.picture_as_pdf_outlined,
+                  color: AppColors.brandRed),
+              title: const Text('PDF document',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Save to Files or print'),
+              onTap: () => Navigator.pop(ctx, DownloadFormat.pdf),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -78,14 +136,34 @@ class _PayslipSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tenantId = AppSession.instance.tenant?.id;
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.line),
       ),
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
-      child: Column(
+      child: Stack(
+        children: [
+          // Company logo watermark, faint and centered, behind the content.
+          if (tenantId != null)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: 0.05,
+                  child: Center(
+                    child: Image.asset(
+                      'assets/logos/$tenantId.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('PAYSLIP',
@@ -142,6 +220,8 @@ class _PayslipSheet extends StatelessWidget {
                         color: AppColors.brandRed)),
               ],
             ),
+          ),
+        ],
           ),
         ],
       ),

@@ -1,13 +1,38 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
 import 'ui.dart';
+
+/// Captured content can be saved/shared either as a PNG image or a PDF.
+enum DownloadFormat { image, pdf }
+
+/// Renders the widget behind [boundaryKey] to high-resolution PNG bytes.
+/// Throws on failure. Returns the encoded PNG bytes.
+Future<Uint8List> _capturePng(GlobalKey boundaryKey, double pixelRatio) async {
+  var obj = boundaryKey.currentContext?.findRenderObject();
+  if (obj is RenderRepaintBoundary && obj.debugNeedsPaint) {
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    await SchedulerBinding.instance.endOfFrame;
+    obj = boundaryKey.currentContext?.findRenderObject();
+  }
+  if (obj is! RenderRepaintBoundary) {
+    throw StateError('The content is not ready yet.');
+  }
+  final image = await obj.toImage(pixelRatio: pixelRatio);
+  final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  if (byteData == null) throw StateError('Could not encode the image.');
+  return byteData.buffer.asUint8List();
+}
 
 /// Renders the widget behind [boundaryKey] to a high-resolution PNG and opens
 /// the native share/save sheet so the user can save it to Photos/Files or send
@@ -18,6 +43,7 @@ Future<bool> captureAndShare(
   GlobalKey boundaryKey,
   String fileName, {
   String? shareText,
+  DownloadFormat format = DownloadFormat.image,
 }) async {
   // Read everything that needs `context` up front, before any await.
   final dpr = MediaQuery.of(context).devicePixelRatio;
@@ -29,28 +55,35 @@ Future<bool> captureAndShare(
   }
 
   try {
-    // Make sure the boundary has painted before we grab it.
-    var obj = boundaryKey.currentContext?.findRenderObject();
-    if (obj is RenderRepaintBoundary && obj.debugNeedsPaint) {
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      await SchedulerBinding.instance.endOfFrame;
-      obj = boundaryKey.currentContext?.findRenderObject();
-    }
-    if (obj is! RenderRepaintBoundary) {
-      throw StateError('The content is not ready yet.');
-    }
-
-    final image = await obj.toImage(pixelRatio: pixelRatio);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    image.dispose();
-    if (byteData == null) throw StateError('Could not encode the image.');
-    final bytes = byteData.buffer.asUint8List();
-
+    final pngBytes = await _capturePng(boundaryKey, pixelRatio);
     final dir = await getTemporaryDirectory();
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
-    final file = File('${dir.path}/$safeName.png');
-    await file.writeAsBytes(bytes, flush: true);
 
+    if (format == DownloadFormat.pdf) {
+      // Embed the captured payslip image onto a single portrait page.
+      final doc = pw.Document();
+      final img = pw.MemoryImage(pngBytes);
+      doc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(24),
+          build: (_) => pw.Center(
+            child: pw.Image(img, fit: pw.BoxFit.contain),
+          ),
+        ),
+      );
+      final file = File('${dir.path}/$safeName.pdf');
+      await file.writeAsBytes(await doc.save(), flush: true);
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'application/pdf', name: '$safeName.pdf')],
+        text: shareText,
+        sharePositionOrigin: origin,
+      );
+      return true;
+    }
+
+    final file = File('${dir.path}/$safeName.png');
+    await file.writeAsBytes(pngBytes, flush: true);
     await Share.shareXFiles(
       [XFile(file.path, mimeType: 'image/png', name: '$safeName.png')],
       text: shareText,
