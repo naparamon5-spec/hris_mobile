@@ -461,11 +461,6 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
             icon: Icon(_isSearching ? Icons.close_rounded : Icons.search_rounded),
           ),
           IconButton(
-            tooltip: 'Refresh',
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          IconButton(
             tooltip: 'Sort order',
             onPressed: () {
               setState(() => _sortAscending = !_sortAscending);
@@ -918,7 +913,7 @@ class _ApprovalCard extends StatelessWidget {
         return AppColors.inkSoft; // Neutral — draft, not yet submitted
       case 'Cancelled':
       case 'Void':
-        return AppColors.inkFaint;
+        return AppColors.brandRed; // Red — cancelled/voided
       case 'Rejected':
       case 'Disapproved':
       case 'Witness Disapproved':

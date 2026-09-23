@@ -159,13 +159,6 @@ class _OtherRequestsScreenState extends State<OtherRequestsScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         title: const Text('Other Requests'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreate,
@@ -545,8 +538,8 @@ class _StatusBadge extends StatelessWidget {
       bg = AppColors.warningSoft;
       fg = AppColors.warning;
     } else if (s.contains('cancel')) {
-      bg = AppColors.fieldFill;
-      fg = AppColors.inkSoft;
+      bg = AppColors.dangerSoft;
+      fg = AppColors.brandRed;
     } else {
       bg = AppColors.ink.withValues(alpha: 0.08);
       fg = AppColors.ink;
