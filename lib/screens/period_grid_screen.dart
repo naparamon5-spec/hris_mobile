@@ -33,10 +33,15 @@ class PeriodGridScreen extends StatefulWidget {
     required this.periods,
     required this.kind,
     this.embedded = false,
+    this.headerAction,
   });
 
   /// When true, renders only the body (the parent supplies Scaffold + AppBar).
   final bool embedded;
+
+  /// Optional widget shown next to the year dropdown (e.g. a bulk-download
+  /// button on the payslip page).
+  final Widget? headerAction;
 
   final String title;
 
@@ -175,36 +180,45 @@ class _PeriodGridScreenState extends State<PeriodGridScreen> {
                       color: AppColors.ink,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => _pickYear(context, years),
-                    child: Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.fieldFill,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.line),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.event_rounded,
-                              size: 16, color: AppColors.inkSoft),
-                          const SizedBox(width: 8),
-                          Text(
-                            _year,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink,
-                            ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.headerAction != null) ...[
+                        widget.headerAction!,
+                        const SizedBox(width: 10),
+                      ],
+                      GestureDetector(
+                        onTap: () => _pickYear(context, years),
+                        child: Container(
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: AppColors.fieldFill,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.line),
                           ),
-                          const SizedBox(width: 6),
-                          const Icon(Icons.keyboard_arrow_down_rounded,
-                              size: 20, color: AppColors.inkSoft),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.event_rounded,
+                                  size: 16, color: AppColors.inkSoft),
+                              const SizedBox(width: 8),
+                              Text(
+                                _year,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.keyboard_arrow_down_rounded,
+                                  size: 20, color: AppColors.inkSoft),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
