@@ -1363,10 +1363,10 @@ class _ApprovalActionSheet extends StatelessWidget {
               Expanded(
                 child: Text(
                   a.label,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: color,
+                    color: AppColors.ink,
                   ),
                 ),
               ),
