@@ -825,8 +825,11 @@ class _LoaActionSheet extends StatelessWidget {
     }
   }
 
-  Future<void> _run(BuildContext context, _LoaAction a) async {
-    Navigator.pop(context); // close the sheet
+  Future<void> _run(BuildContext sheetContext, _LoaAction a) async {
+    // Use the root navigator's context so the loading overlay and onRefresh()
+    // still run after the sheet is popped (the sheet's own context unmounts).
+    final context = Navigator.of(sheetContext, rootNavigator: true).context;
+    Navigator.pop(sheetContext); // close the sheet
 
     if (a.label == 'Edit Record') {
       final fromDt = parseAppDateTime(record.dateFrom, isFrom: true);

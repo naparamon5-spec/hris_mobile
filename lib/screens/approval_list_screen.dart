@@ -999,8 +999,13 @@ class _ApprovalActionSheet extends StatelessWidget {
     }
   }
 
-  Future<void> _run(BuildContext context, _ApprovalActionItem a) async {
-    Navigator.pop(context);
+  Future<void> _run(BuildContext sheetContext, _ApprovalActionItem a) async {
+    // Use the ROOT navigator's context for everything after the sheet closes.
+    // The sheet's own context becomes unmounted the moment we pop it, which
+    // would make every `context.mounted` check false — skipping the loading
+    // overlay dismissal (stuck spinner) and onRefresh() (stale status).
+    final context = Navigator.of(sheetContext, rootNavigator: true).context;
+    Navigator.pop(sheetContext);
 
     if (a.label == 'Edit Record') {
       final initialDate = parseAppDateTime(record.dateFrom) ??
