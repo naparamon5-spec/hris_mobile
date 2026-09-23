@@ -923,6 +923,8 @@ class _ApprovalCard extends StatelessWidget {
   }
 
   void _openActions(BuildContext context) {
+    // A posted record has no available actions — don't open the sheet at all.
+    if (record.status == 'Posted') return;
     showPremiumBottomSheet(
       context,
       isScrollControlled: true,
@@ -1313,14 +1315,6 @@ class _ApprovalActionSheet extends StatelessWidget {
           Text('$title • ${record.txnDate}',
               style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
           const SizedBox(height: 16),
-          if (actions.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'No actions available for a posted record.',
-                style: TextStyle(fontSize: 13.5, color: AppColors.inkSoft),
-              ),
-            ),
           for (final a in actions) ...[
             _tile(context, a),
             const SizedBox(height: 10),
