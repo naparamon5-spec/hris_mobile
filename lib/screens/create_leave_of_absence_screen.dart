@@ -304,10 +304,9 @@ class _CreateLeaveOfAbsenceScreenState
 
   Future<void> _submit() async {
     if (_submitting) return;
-    if (_to.isBefore(_from)) {
-      showToast(context, '"To" date must be after "From" date.', isSuccess: false, title: 'Invalid Date Range');
-      return;
-    }
+    // The invalid range is already flagged inline (red fields), so just block
+    // the submit quietly — no sliding toast.
+    if (_invalidRange) return;
     setState(() => _submitting = true);
     showLoadingOverlay(context);
     try {

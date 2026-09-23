@@ -214,7 +214,7 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
             : 'Create ${widget.title}'),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,58 +263,53 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
                 child: _HoursField(value: _appliedHours),
               ),
               const SizedBox(height: 12),
-              // Reason flexes to fill whatever height is left.
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Reason',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Expanded(
-                      child: TextField(
-                        controller: _reason,
-                        expands: true,
-                        maxLines: null,
-                        textAlignVertical: TextAlignVertical.top,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: InputDecoration(
-                          hintText: 'Add a reason for this request…',
-                          filled: true,
-                          fillColor: AppColors.fieldFill,
-                          enabledBorder: _border(_kFieldBorder, _kBorderWidth),
-                          focusedBorder: _border(AppColors.brandRed, 1.8),
-                        ),
-                      ),
-                    ),
-                  ],
+              const Text(
+                'Reason',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppColors.ink,
                 ),
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed:
-                          _submitting ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: _submitting ? null : _submit,
-                      child: Text(_isEditing ? 'Save Changes' : 'Create'),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 7),
+              TextField(
+                controller: _reason,
+                minLines: 4,
+                maxLines: 8,
+                textAlignVertical: TextAlignVertical.top,
+                textCapitalization: TextCapitalization.sentences,
+                keyboardType: TextInputType.multiline,
+                decoration: InputDecoration(
+                  hintText: 'Add a reason for this request…',
+                  filled: true,
+                  fillColor: AppColors.fieldFill,
+                  enabledBorder: _border(_kFieldBorder, _kBorderWidth),
+                  focusedBorder: _border(AppColors.brandRed, 1.8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed:
+                      _submitting ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: _submitting ? null : _submit,
+                  child: Text(_isEditing ? 'Save Changes' : 'Create'),
+                ),
               ),
             ],
           ),
