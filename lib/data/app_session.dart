@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -237,7 +238,12 @@ class AppSession extends ChangeNotifier {
 
     // Renew the access token; if that fails the session is no longer valid.
     final ok = await _refreshAccessToken();
-    if (ok) notifyListeners();
+    if (ok) {
+      // Re-register this device for push on every launch (tokens rotate and
+      // dead ones are pruned server-side), not only on a fresh login.
+      unawaited(_registerPush());
+      notifyListeners();
+    }
     return ok;
   }
 
@@ -386,21 +392,32 @@ class AppSession extends ChangeNotifier {
   /// Sends this device's FCM token to the backend and keeps it updated on
   /// rotation. Best-effort: any failure (e.g. Firebase not yet configured) is
   /// swallowed so it never blocks sign-in.
+  bool _tokenRefreshBound = false;
+
   Future<void> _registerPush() async {
-    try {
-      final token = await PushService.instance.getToken();
-      if (token == null || token.isEmpty) return;
-      _fcmToken = token;
-      final platform = Platform.isIOS ? 'ios' : 'android';
-      await api.post('/auth/fcm-token',
-          body: {'fcm_token': token, 'platform': platform});
+    final platform = Platform.isIOS ? 'ios' : 'android';
+
+    // Bind the refresh listener FIRST (once), so a token that only becomes
+    // available later — iOS APNs is often not ready at login time — is still
+    // sent to the backend when it arrives or rotates.
+    if (!_tokenRefreshBound) {
+      _tokenRefreshBound = true;
       PushService.instance.onTokenRefresh((t) async {
+        if (t.isEmpty || !isSignedIn) return;
         _fcmToken = t;
         try {
           await api.post('/auth/fcm-token',
               body: {'fcm_token': t, 'platform': platform});
         } catch (_) {}
       });
+    }
+
+    try {
+      final token = await PushService.instance.getToken();
+      if (token == null || token.isEmpty) return;
+      _fcmToken = token;
+      await api.post('/auth/fcm-token',
+          body: {'fcm_token': token, 'platform': platform});
     } catch (_) {
       // Firebase not configured / permission denied — ignore.
     }

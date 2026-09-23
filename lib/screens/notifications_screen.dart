@@ -74,6 +74,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  /// Sends a test push to this device and reports the pipeline status, so we
+  /// can tell whether the token is registered and whether FCM delivered.
+  Future<void> _testPush() async {
+    showLoadingOverlay(context);
+    try {
+      final res = await HrisApi.instance.testPush();
+      if (!mounted) return;
+      hideLoadingOverlay(context);
+      final tokens = res['tokens_registered'] ?? 0;
+      final sent = res['push_sent'] ?? 0;
+      final disabled = res['push_disabled'] == true;
+      final ok = sent is int && sent > 0;
+      final msg = disabled
+          ? 'Push is disabled on the server (no Firebase key).'
+          : (tokens == 0
+              ? 'No device is registered for push. Fully close and reopen the app after signing in, then try again.'
+              : ok
+                  ? 'Sent to $sent device(s). You should see a banner shortly.'
+                  : 'Registered $tokens token(s) but FCM sent 0 — check the APNs key in Firebase.');
+      showToast(context, msg,
+          isSuccess: ok, title: ok ? 'Test sent' : 'Push check');
+      _load();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      hideLoadingOverlay(context);
+      showToast(context, e.message, isSuccess: false, title: 'Error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
@@ -88,6 +117,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         automaticallyImplyLeading: canPop,
         title: const Text('Notifications'),
         actions: [
+          IconButton(
+            tooltip: 'Send test notification',
+            icon: const Icon(Icons.notifications_active_outlined),
+            onPressed: _testPush,
+          ),
           if (unreadCount > 0)
             TextButton(
               onPressed: _markAllRead,

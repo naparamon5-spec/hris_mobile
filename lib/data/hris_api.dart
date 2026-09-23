@@ -962,6 +962,11 @@ class HrisApi {
     await _api.post('/auth/2fa/disable', body: {'code': code});
   }
 
+  /// Sends a test push to this device to verify delivery. Returns how many
+  /// tokens are registered and how many pushes were sent.
+  Future<Map<String, dynamic>> testPush() async =>
+      _asMap(await _api.post('/auth/fcm-token/test'));
+
   // ---- Directory ----
   Future<List<Employee>> directory({String? search, String? department}) async {
     final q = <String>[];
