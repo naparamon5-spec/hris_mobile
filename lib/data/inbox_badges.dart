@@ -37,11 +37,15 @@ class InboxBadges extends ChangeNotifier {
   }
 
   /// Keep the OS app-icon badge in sync with the in-app unread count.
+  /// updateBadge is async, so swallow its Future errors too (e.g. a
+  /// MissingPluginException before a full rebuild, or unsupported devices) —
+  /// otherwise they surface as an unhandled exception.
   void _syncAppBadge(int count) {
+    final n = count < 0 ? 0 : count;
     try {
-      AppBadgePlus.updateBadge(count < 0 ? 0 : count);
+      AppBadgePlus.updateBadge(n).catchError((_) {});
     } catch (_) {
-      // Badging unsupported on this device — ignore.
+      // Ignore — badging is best-effort.
     }
   }
 
