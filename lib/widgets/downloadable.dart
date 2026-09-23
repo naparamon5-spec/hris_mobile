@@ -15,6 +15,38 @@ import 'ui.dart';
 /// Captured content can be saved/shared either as a PNG image or a PDF.
 enum DownloadFormat { image, pdf }
 
+/// Writes [pdfBytes] to a temp file and opens the share/save sheet.
+Future<bool> sharePdfBytes(
+  BuildContext context,
+  Uint8List pdfBytes,
+  String fileName, {
+  String? shareText,
+}) async {
+  Rect origin = const Rect.fromLTWH(0, 0, 1, 1);
+  final box = context.findRenderObject();
+  if (box is RenderBox && box.hasSize) {
+    origin = box.localToGlobal(Offset.zero) & box.size;
+  }
+  try {
+    final dir = await getTemporaryDirectory();
+    final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    final file = File('${dir.path}/$safeName.pdf');
+    await file.writeAsBytes(pdfBytes, flush: true);
+    await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'application/pdf', name: '$safeName.pdf')],
+      text: shareText,
+      sharePositionOrigin: origin,
+    );
+    return true;
+  } catch (e) {
+    if (context.mounted) {
+      await showToast(context, "We couldn't prepare the PDF.\n($e)",
+          isSuccess: false, title: 'Download Failed');
+    }
+    return false;
+  }
+}
+
 /// Renders the widget behind [boundaryKey] to high-resolution PNG bytes.
 /// Throws on failure. Returns the encoded PNG bytes.
 Future<Uint8List> _capturePng(GlobalKey boundaryKey, double pixelRatio) async {

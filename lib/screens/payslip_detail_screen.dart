@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/app_session.dart';
 import '../data/hris_api.dart';
 import '../data/mock_data.dart';
+import '../data/payslip_pdf.dart';
 import '../theme/app_colors.dart';
 import '../widgets/async_view.dart';
 import '../widgets/downloadable.dart';
@@ -29,18 +30,26 @@ class _PayslipDetailScreenState extends State<PayslipDetailScreen> {
   final _boundaryKey = GlobalKey();
   bool _downloading = false;
 
-  Future<void> _download() async {
+  Future<void> _download(Payslip slip) async {
     if (_downloading) return;
     final format = await _pickFormat();
     if (format == null || !mounted) return;
     setState(() => _downloading = true);
-    await captureAndShare(
-      context,
-      _boundaryKey,
-      'Payslip_${widget.id}',
-      shareText: 'Payslip ${widget.id}',
-      format: format,
-    );
+    if (format == DownloadFormat.pdf) {
+      // Data-driven PDF laid out like the HRIS web payslip.
+      final bytes = await buildPayslipPdf(slip);
+      if (mounted) {
+        await sharePdfBytes(context, bytes, 'Payslip_${widget.id}',
+            shareText: 'Payslip ${widget.id}');
+      }
+    } else {
+      await captureAndShare(
+        context,
+        _boundaryKey,
+        'Payslip_${widget.id}',
+        shareText: 'Payslip ${widget.id}',
+      );
+    }
     if (mounted) setState(() => _downloading = false);
   }
 
@@ -119,7 +128,7 @@ class _PayslipDetailScreenState extends State<PayslipDetailScreen> {
             ),
             _DownloadBar(
               busy: _downloading,
-              onDownload: _download,
+              onDownload: () => _download(slip),
             ),
           ],
         ),
