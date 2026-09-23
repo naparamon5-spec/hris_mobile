@@ -74,7 +74,11 @@ class _AsyncViewState<T> extends State<AsyncView<T>> {
   void _reload() {
     _settledNotified = false;
     _globalLoaderShown = false;
-    setState(() => _future = widget.load());
+    // Block body (not `=> _future = ...`) so the setState callback returns void
+    // rather than the Future from widget.load(), which trips a Flutter assert.
+    setState(() {
+      _future = widget.load();
+    });
   }
 
   @override
