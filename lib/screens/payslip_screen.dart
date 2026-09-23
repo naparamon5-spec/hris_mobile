@@ -58,30 +58,16 @@ class _DownloadButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        width: 40,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: enabled ? AppColors.dangerSoft : AppColors.fieldFill,
+          color: AppColors.fieldFill,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: enabled ? AppColors.brandRed : AppColors.line),
+          border: Border.all(color: AppColors.line),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.file_download_outlined,
-                size: 18,
-                color: enabled ? AppColors.brandRed : AppColors.inkFaint),
-            const SizedBox(width: 6),
-            Text(
-              'Download',
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: enabled ? AppColors.brandRed : AppColors.inkFaint,
-              ),
-            ),
-          ],
-        ),
+        child: Icon(Icons.file_download_outlined,
+            size: 20,
+            color: enabled ? AppColors.inkSoft : AppColors.inkFaint),
       ),
     );
   }
