@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/api_client.dart';
 import '../data/app_session.dart';
@@ -1116,12 +1118,17 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
 
   bool? _twoFactorOn; // null while loading
   bool _twoFactorBusy = false;
+  String _appVersion = '';
+
+  static const _privacyUrl = 'https://hris.ardentnetworks.com.ph/privacy-policy';
+  static const _supportUrl = 'https://hris.ardentnetworks.com.ph/support';
 
   @override
   void initState() {
     super.initState();
     _sec.addListener(_onStateChange);
     _loadTwoFactor();
+    _loadAppVersion();
     // Keep the toggle in sync with reality: it's ON iff biometric credentials
     // are actually saved (survives sign-out and app updates, where the stored
     // preference flag may lag behind).
@@ -1140,6 +1147,25 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
 
   void _onStateChange() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = info.version);
+    } catch (_) {}
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        showToast(context, 'Could not open the link.', isSuccess: false);
+      }
+    }
   }
 
   Future<void> _loadTwoFactor() async {
@@ -1555,6 +1581,56 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
             ],
           ),
         ),
+        const SizedBox(height: 14),
+
+        // Help & Legal
+        SoftCard(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Text(
+                    'Help & Legal',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  Spacer(),
+                  Icon(Icons.info_outline_rounded,
+                      size: 18, color: AppColors.inkSoft),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.privacy_tip_outlined,
+                    color: AppColors.inkSoft),
+                title: const Text('Privacy Policy',
+                    style:
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                trailing: const Icon(Icons.open_in_new_rounded,
+                    size: 18, color: AppColors.inkFaint),
+                onTap: () => _openUrl(_privacyUrl),
+              ),
+              const Divider(height: 1, color: AppColors.line),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.support_agent_rounded,
+                    color: AppColors.inkSoft),
+                title: const Text('Support',
+                    style:
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                trailing: const Icon(Icons.open_in_new_rounded,
+                    size: 18, color: AppColors.inkFaint),
+                onTap: () => _openUrl(_supportUrl),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 20),
 
         // Log out button
@@ -1569,9 +1645,10 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
           label: const Text('Log out'),
         ),
         const SizedBox(height: 14),
-        const Center(
-          child: Text('ANI HRIS • v1.0.0',
-              style: TextStyle(
+        Center(
+          child: Text(
+              _appVersion.isEmpty ? 'ANI HRIS' : 'ANI HRIS • v$_appVersion',
+              style: const TextStyle(
                   color: AppColors.inkFaint,
                   fontSize: 12,
                   fontWeight: FontWeight.w500)),

@@ -27,15 +27,24 @@ class _RequestsScreenState extends State<RequestsScreen> {
   Key _accessKey = UniqueKey();
   void _refreshAccess() => setState(() => _accessKey = UniqueKey());
 
+  Future<void> _handleRefresh() async {
+    await InboxBadges.instance.refresh();
+    if (mounted) _refreshAccess();
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       bottom: false,
       child: ListenableBuilder(
         listenable: InboxBadges.instance,
-        builder: (context, _) => ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-        children: [
+        builder: (context, _) => RefreshIndicator(
+          color: AppColors.brandRed,
+          onRefresh: _handleRefresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            children: [
           const Text(
             'File Request',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
@@ -233,6 +242,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
             },
           ),
         ],
+          ),
         ),
       ),
     );

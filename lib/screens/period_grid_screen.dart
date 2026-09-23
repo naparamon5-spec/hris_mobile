@@ -34,6 +34,7 @@ class PeriodGridScreen extends StatefulWidget {
     required this.kind,
     this.embedded = false,
     this.headerAction,
+    this.onRefresh,
   });
 
   /// When true, renders only the body (the parent supplies Scaffold + AppBar).
@@ -42,6 +43,9 @@ class PeriodGridScreen extends StatefulWidget {
   /// Optional widget shown next to the year dropdown (e.g. a bulk-download
   /// button on the payslip page).
   final Widget? headerAction;
+
+  /// Optional pull-to-refresh callback.
+  final Future<void> Function()? onRefresh;
 
   final String title;
 
@@ -224,18 +228,64 @@ class _PeriodGridScreenState extends State<PeriodGridScreen> {
               ),
             ),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-                itemCount: periods.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, i) => _PeriodCard(
-                  year: periods[i].year ?? _year,
-                  idLabel: widget.idLabel,
-                  entry: periods[i],
-                  kind: widget.kind,
-                  title: widget.title,
-                ),
-              ),
+              child: widget.onRefresh != null
+                  ? RefreshIndicator(
+                      color: AppColors.brandRed,
+                      onRefresh: widget.onRefresh!,
+                      child: periods.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                const SizedBox(height: 80),
+                                Center(
+                                  child: Text(
+                                    'No ${widget.title.toLowerCase()} records found for $_year',
+                                    style: const TextStyle(
+                                      color: AppColors.inkSoft,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+                              itemCount: periods.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: (context, i) => _PeriodCard(
+                                year: periods[i].year ?? _year,
+                                idLabel: widget.idLabel,
+                                entry: periods[i],
+                                kind: widget.kind,
+                                title: widget.title,
+                              ),
+                            ),
+                    )
+                  : periods.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No ${widget.title.toLowerCase()} records found for $_year',
+                            style: const TextStyle(
+                              color: AppColors.inkSoft,
+                              fontSize: 14,
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+                          itemCount: periods.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, i) => _PeriodCard(
+                            year: periods[i].year ?? _year,
+                            idLabel: widget.idLabel,
+                            entry: periods[i],
+                            kind: widget.kind,
+                            title: widget.title,
+                          ),
+                        ),
             ),
           ],
         ));

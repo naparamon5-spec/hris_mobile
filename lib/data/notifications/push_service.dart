@@ -179,6 +179,9 @@ class PushService {
     final screen = screenForNotification(
       kind: '${data['type'] ?? data['kind'] ?? ''}',
       requestType: '${data['request_type'] ?? ''}',
+      requestId: '${data['id'] ?? data['request_id'] ?? ''}',
+      title: '${data['title'] ?? ''}',
+      body: '${data['body'] ?? ''}',
     );
     if (screen == null) return;
     nav.push(MaterialPageRoute(builder: (_) => screen));

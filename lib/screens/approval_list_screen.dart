@@ -110,6 +110,8 @@ class ApprovalListScreen extends StatefulWidget {
     required this.type,
     this.showWitnessedBy = false,
     this.showHours = false,
+    this.initialRecordId,
+    this.initialRecordNo,
   });
 
   final String title;
@@ -130,6 +132,9 @@ class ApprovalListScreen extends StatefulWidget {
   /// (Overtime).
   final bool showHours;
 
+  final String? initialRecordId;
+  final String? initialRecordNo;
+
   @override
   State<ApprovalListScreen> createState() => _ApprovalListScreenState();
 }
@@ -141,6 +146,7 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
   String _searchQuery = '';
   bool _isSearching = false;
   bool _sortAscending = false;
+  bool _hasHandledInitial = false;
 
   final _searchController = TextEditingController();
 
@@ -176,6 +182,10 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
         _all = rows.map(ApprovalRecord.fromRequest).toList();
         _loading = false;
       });
+      if (!_hasHandledInitial) {
+        _hasHandledInitial = true;
+        _checkInitialRecord();
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -184,6 +194,76 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
       });
     } finally {
       if (mounted) hideLoadingOverlay(context);
+    }
+  }
+
+  void _openRecordActions(ApprovalRecord rec) {
+    showPremiumBottomSheet(
+      context,
+      isScrollControlled: true,
+      builder: (ctx) => _ApprovalActionSheet(
+        record: rec,
+        type: widget.type,
+        title: widget.title,
+        txnDateLabel: widget.txnDateLabel,
+        onRefresh: _load,
+      ),
+    );
+  }
+
+  Future<void> _checkInitialRecord() async {
+    final targetId = widget.initialRecordId?.trim();
+    final targetNo = widget.initialRecordNo?.trim();
+    if ((targetId == null || targetId.isEmpty) &&
+        (targetNo == null || targetNo.isEmpty)) {
+      return;
+    }
+
+    ApprovalRecord? match;
+    for (final r in _all) {
+      if ((targetId != null && targetId.isNotEmpty && r.id.toString() == targetId) ||
+          (targetNo != null &&
+              targetNo.isNotEmpty &&
+              (r.no.toLowerCase() == targetNo.toLowerCase() ||
+                  targetNo.contains(r.no)))) {
+        match = r;
+        break;
+      }
+    }
+
+    if (match != null) {
+      if (match.hasDate) {
+        final rDate = match.sortDate;
+        if (rDate.isBefore(_dateRange.start) ||
+            rDate.isAfter(_dateRange.end.add(const Duration(days: 1)))) {
+          setState(() {
+            _dateRange = DateTimeRange(
+              start: DateTime(rDate.year, 1, 1),
+              end: DateTime(rDate.year, 12, 31),
+            );
+            _dateLabel = 'Year ${rDate.year}';
+            _selectedStatus = 'All';
+          });
+        }
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _openRecordActions(match!);
+        }
+      });
+      return;
+    }
+
+    final numericId = int.tryParse(targetId ?? '');
+    if (numericId != null && numericId > 0) {
+      try {
+        final single =
+            await HrisApi.instance.getRequest(widget.type, numericId);
+        final record = ApprovalRecord.fromRequest(single);
+        if (mounted) {
+          _openRecordActions(record);
+        }
+      } catch (_) {}
     }
   }
 
@@ -381,6 +461,11 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
             icon: Icon(_isSearching ? Icons.close_rounded : Icons.search_rounded),
           ),
           IconButton(
+            tooltip: 'Refresh',
+            onPressed: _load,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          IconButton(
             tooltip: 'Sort order',
             onPressed: () {
               setState(() => _sortAscending = !_sortAscending);
@@ -489,83 +574,105 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
               child: _loading
                   ? const SizedBox.shrink()
                   : _error != null
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.cloud_off_rounded,
-                              size: 48, color: AppColors.inkFaint),
-                          const SizedBox(height: 12),
-                          Text(_error!,
-                              style: const TextStyle(color: AppColors.inkSoft)),
-                          const SizedBox(height: 12),
-                          OutlinedButton(
-                              onPressed: _load,
-                              child: const Text('Retry')),
-                        ],
-                      ),
-                    )
-                  : records.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: const BoxDecoration(
-                              color: AppColors.fieldFill,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(widget.icon,
-                                size: 30, color: AppColors.inkFaint),
-                          ),
-                          const SizedBox(height: 14),
-                          const Text(
-                            'No records found',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink,
+                  ? RefreshIndicator(
+                      color: AppColors.brandRed,
+                      onRefresh: _load,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: SizedBox(
+                          height: 400,
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.cloud_off_rounded,
+                                    size: 48, color: AppColors.inkFaint),
+                                const SizedBox(height: 12),
+                                Text(_error!,
+                                    style: const TextStyle(color: AppColors.inkSoft)),
+                                const SizedBox(height: 12),
+                                OutlinedButton(
+                                    onPressed: _load,
+                                    child: const Text('Retry')),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Try adjusting your date range or filters.',
-                            style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
-                          ),
-                          const SizedBox(height: 14),
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _dateRange = DateTimeRange(
-                                  start: DateTime(2026, 1, 1),
-                                  end: DateTime(2026, 12, 31),
-                                );
-                                _dateLabel = 'All 2026';
-                                _selectedStatus = 'All';
-                                _searchQuery = '';
-                              });
-                            },
-                            child: const Text('Reset Date Range & Filters'),
-                          ),
-                        ],
+                        ),
                       ),
                     )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
-                      itemCount: records.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, i) => _ApprovalCard(
-                        record: records[i],
-                        icon: widget.icon,
-                        txnDateLabel: widget.txnDateLabel,
-                        showWitnessedBy: widget.showWitnessedBy,
-                        showHours: widget.showHours,
-                        type: widget.type,
-                        title: widget.title,
-                        onRefresh: _load,
-                      ),
+                  : RefreshIndicator(
+                      color: AppColors.brandRed,
+                      onRefresh: _load,
+                      child: records.isEmpty
+                          ? SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: SizedBox(
+                                height: 400,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 60,
+                                        height: 60,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.fieldFill,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(widget.icon,
+                                            size: 30, color: AppColors.inkFaint),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      const Text(
+                                        'No records found',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.ink,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Try adjusting your date range or filters.',
+                                        style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      TextButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            final now = DateTime.now();
+                                            _dateRange = DateTimeRange(
+                                              start: DateTime(now.year, 1, 1),
+                                              end: DateTime(now.year, 12, 31),
+                                            );
+                                            _dateLabel = 'All ${now.year}';
+                                            _selectedStatus = 'All';
+                                            _searchQuery = '';
+                                          });
+                                        },
+                                        child: const Text('Reset Date Range & Filters'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
+                              itemCount: records.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: 12),
+                              itemBuilder: (context, i) => _ApprovalCard(
+                                record: records[i],
+                                icon: widget.icon,
+                                txnDateLabel: widget.txnDateLabel,
+                                showWitnessedBy: widget.showWitnessedBy,
+                                showHours: widget.showHours,
+                                type: widget.type,
+                                title: widget.title,
+                                onRefresh: _load,
+                              ),
+                            ),
                     ),
             ),
           ],

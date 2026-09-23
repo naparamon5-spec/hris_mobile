@@ -10,7 +10,14 @@ import 'create_other_request_screen.dart';
 /// (Request #, Date Applied, Request Type, Approved By, Status), with a search
 /// box and status filter side by side, plus a Create button.
 class OtherRequestsScreen extends StatefulWidget {
-  const OtherRequestsScreen({super.key});
+  const OtherRequestsScreen({
+    super.key,
+    this.initialRecordId,
+    this.initialRecordNo,
+  });
+
+  final String? initialRecordId;
+  final String? initialRecordNo;
 
   @override
   State<OtherRequestsScreen> createState() => _OtherRequestsScreenState();
@@ -24,6 +31,7 @@ class _OtherRequestsScreenState extends State<OtherRequestsScreen> {
   List<_Other> _all = [];
   bool _loading = true;
   String? _error;
+  bool _hasHandledInitial = false;
 
   @override
   void initState() {
@@ -45,6 +53,10 @@ class _OtherRequestsScreenState extends State<OtherRequestsScreen> {
         _all = rows.map(_Other.fromRequest).toList();
         _loading = false;
       });
+      if (!_hasHandledInitial) {
+        _hasHandledInitial = true;
+        _checkInitialRecord();
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -53,6 +65,49 @@ class _OtherRequestsScreenState extends State<OtherRequestsScreen> {
       });
     } finally {
       if (mounted) hideLoadingOverlay(context);
+    }
+  }
+
+  void _openDetailSheet(_Other record) {
+    showPremiumBottomSheet(
+      context,
+      isScrollControlled: true,
+      builder: (ctx) => _OtherRequestDetailSheet(
+        record: record,
+        onRefresh: _load,
+      ),
+    );
+  }
+
+  void _checkInitialRecord() {
+    final targetId = widget.initialRecordId?.trim();
+    final targetNo = widget.initialRecordNo?.trim();
+    if ((targetId == null || targetId.isEmpty) &&
+        (targetNo == null || targetNo.isEmpty)) {
+      return;
+    }
+
+    _Other? match;
+    for (final r in _all) {
+      if ((targetNo != null &&
+              targetNo.isNotEmpty &&
+              (r.no.toLowerCase() == targetNo.toLowerCase() ||
+                  targetNo.contains(r.no))) ||
+          (targetId != null &&
+              targetId.isNotEmpty &&
+              (r.no.toLowerCase() == targetId.toLowerCase() ||
+                  targetId.contains(r.no)))) {
+        match = r;
+        break;
+      }
+    }
+
+    if (match != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _openDetailSheet(match!);
+        }
+      });
     }
   }
 
@@ -102,7 +157,16 @@ class _OtherRequestsScreenState extends State<OtherRequestsScreen> {
     final records = _filtered;
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Other Requests')),
+      appBar: AppBar(
+        title: const Text('Other Requests'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _load,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreate,
         backgroundColor: AppColors.success,
@@ -202,21 +266,51 @@ class _OtherRequestsScreenState extends State<OtherRequestsScreen> {
   Widget _buildList(List<_Other> records) {
     if (_loading) return const SizedBox.shrink();
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Text(_error!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.inkSoft)),
+      return RefreshIndicator(
+        color: AppColors.brandRed,
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const SizedBox(height: 60),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_rounded,
+                      size: 48, color: AppColors.inkFaint),
+                  const SizedBox(height: 12),
+                  Text(_error!, style: const TextStyle(color: AppColors.inkSoft)),
+                  const SizedBox(height: 12),
+                  OutlinedButton(onPressed: _load, child: const Text('Retry')),
+                ],
+              ),
+            ),
+          ],
         ),
       );
     }
-    if (records.isEmpty) return const _EmptyOtherRequests();
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-      itemCount: records.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, i) => _OtherRequestCard(record: records[i]),
+    return RefreshIndicator(
+      color: AppColors.brandRed,
+      onRefresh: _load,
+      child: records.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(height: 40),
+                _EmptyOtherRequests(),
+              ],
+            )
+          : ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+              itemCount: records.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (_, i) => _OtherRequestCard(
+                record: records[i],
+                onTap: () => _openDetailSheet(records[i]),
+              ),
+            ),
     );
   }
 }
@@ -264,58 +358,66 @@ class _Other {
 }
 
 class _OtherRequestCard extends StatelessWidget {
-  const _OtherRequestCard({required this.record});
+  const _OtherRequestCard({required this.record, this.onTap});
   final _Other record;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('#${record.no}',
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink)),
-              const SizedBox(width: 8),
-              if (record.requestType.isNotEmpty)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.fieldFill,
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: Text(record.requestType,
+              Row(
+                children: [
+                  Text('#${record.no}',
                       style: const TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.inkSoft)),
-                ),
-              const Spacer(),
-              _StatusBadge(status: record.status),
+                          color: AppColors.ink)),
+                  const SizedBox(width: 8),
+                  if (record.requestType.isNotEmpty)
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.fieldFill,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(record.requestType,
+                          style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.inkSoft)),
+                    ),
+                  const Spacer(),
+                  _StatusBadge(status: record.status),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _row('Date Applied', record.dateApplied),
+              if (record.approvedBy.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                _row('Approved By', record.approvedBy),
+              ],
+              if (record.approvedDate.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                _row('Approved Date', record.approvedDate),
+              ],
             ],
           ),
-          const SizedBox(height: 10),
-          _row('Date Applied', record.dateApplied),
-          if (record.approvedBy.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            _row('Approved By', record.approvedBy),
-          ],
-          if (record.approvedDate.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            _row('Approved Date', record.approvedDate),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -340,6 +442,88 @@ class _OtherRequestCard extends StatelessWidget {
           ),
         ],
       );
+}
+
+class _OtherRequestDetailSheet extends StatelessWidget {
+  const _OtherRequestDetailSheet(
+      {required this.record, required this.onRefresh});
+  final _Other record;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: AppColors.line,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Text('#${record.no}',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.ink)),
+              const Spacer(),
+              _StatusBadge(status: record.status),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _detailRow('Request Type',
+              record.requestType.isEmpty ? '—' : record.requestType),
+          const SizedBox(height: 12),
+          _detailRow('Date Applied',
+              record.dateApplied.isEmpty ? '—' : record.dateApplied),
+          if (record.approvedBy.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _detailRow('Approved By', record.approvedBy),
+          ],
+          if (record.approvedDate.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _detailRow('Approved Date', record.approvedDate),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            color: AppColors.inkFaint,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.ink,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _StatusBadge extends StatelessWidget {

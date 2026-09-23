@@ -15,6 +15,8 @@ class ApprovalsCenterScreen extends StatefulWidget {
     super.key,
     this.module = 'records',
     this.scope = 'pending',
+    this.initialTaskId,
+    this.initialRecordId,
   });
 
   /// 'records' = Records Approval (LOA/CA/MAD/OT); 'requests' = Request Approval
@@ -24,6 +26,9 @@ class ApprovalsCenterScreen extends StatefulWidget {
   /// 'pending' = Filings awaiting a decision; 'history' = Decided filings.
   final String scope;
 
+  final String? initialTaskId;
+  final String? initialRecordId;
+
   @override
   State<ApprovalsCenterScreen> createState() => _ApprovalsCenterScreenState();
 }
@@ -32,6 +37,7 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
   List<ApprovalTask> _tasks = [];
   bool _loading = true;
   String? _error;
+  bool _hasHandledInitial = false;
 
   bool _isSearching = false;
   String _searchQuery = '';
@@ -93,11 +99,45 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
         _selected.removeWhere((k) => !rows.any((t) => t.key == k));
         _loading = false;
       });
+      if (!_hasHandledInitial) {
+        _hasHandledInitial = true;
+        _checkInitialTask();
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e.message;
         _loading = false;
+      });
+    }
+  }
+
+  void _checkInitialTask() {
+    final targetId = widget.initialRecordId?.trim();
+    final targetKey = widget.initialTaskId?.trim();
+    if ((targetId == null || targetId.isEmpty) &&
+        (targetKey == null || targetKey.isEmpty)) {
+      return;
+    }
+
+    ApprovalTask? match;
+    for (final t in _tasks) {
+      if ((targetKey != null && targetKey.isNotEmpty && t.key == targetKey) ||
+          (targetId != null &&
+              targetId.isNotEmpty &&
+              (t.id == targetId ||
+                  t.no.toLowerCase() == targetId.toLowerCase() ||
+                  targetId.contains(t.no)))) {
+        match = t;
+        break;
+      }
+    }
+
+    if (match != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _openDetail(match!);
+        }
       });
     }
   }
@@ -414,6 +454,11 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
             },
             icon: Icon(_isSearching ? Icons.close_rounded : Icons.search_rounded),
           ),
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _load,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
         ],
       ),
       body: SafeArea(
@@ -485,18 +530,20 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
             ),
           ),
         Expanded(
-          child: rows.isEmpty
-              ? _emptyState(
-                  icon: _isPending ? Icons.inbox_rounded : Icons.history_rounded,
-                  title: _isPending ? 'All caught up' : 'Nothing here',
-                  subtitle: _isPending
-                      ? 'No filings are waiting for your approval.'
-                      : 'Decided filings will appear here.',
-                )
-              : RefreshIndicator(
-                  color: Theme.of(context).colorScheme.primary,
-                  onRefresh: _load,
-                  child: ListView.separated(
+          child: RefreshIndicator(
+            color: Theme.of(context).colorScheme.primary,
+            onRefresh: _load,
+            child: rows.isEmpty
+                ? _emptyState(
+                    icon: _isPending
+                        ? Icons.inbox_rounded
+                        : Icons.history_rounded,
+                    title: _isPending ? 'All caught up' : 'Nothing here',
+                    subtitle: _isPending
+                        ? 'No filings are waiting for your approval.'
+                        : 'Decided filings will appear here.',
+                  )
+                : ListView.separated(
                     padding: EdgeInsets.fromLTRB(
                         16, 4, 16, _selected.isEmpty ? 24 : 96),
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -516,7 +563,7 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
                       );
                     },
                   ),
-                ),
+          ),
         ),
         if (_isPending && _selected.isNotEmpty) _batchBar(),
       ],
@@ -740,15 +787,25 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
   }
 
   Widget _errorState(String msg, Future<void> Function() retry) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return RefreshIndicator(
+      color: Theme.of(context).colorScheme.primary,
+      onRefresh: retry,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.inkFaint),
-          const SizedBox(height: 12),
-          Text(msg, style: const TextStyle(color: AppColors.inkSoft)),
-          const SizedBox(height: 12),
-          OutlinedButton(onPressed: retry, child: const Text('Retry')),
+          const SizedBox(height: 80),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.inkFaint),
+                const SizedBox(height: 12),
+                Text(msg, style: const TextStyle(color: AppColors.inkSoft)),
+                const SizedBox(height: 12),
+                OutlinedButton(onPressed: retry, child: const Text('Retry')),
+              ],
+            ),
+          ),
         ],
       ),
     );
