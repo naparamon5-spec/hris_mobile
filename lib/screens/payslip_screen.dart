@@ -34,13 +34,6 @@ class _PayslipScreenState extends State<PayslipScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         title: const Text('Payslip'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () => _controller.reload(),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
       ),
       body: AsyncView<List<PayPeriod>>(
         controller: _controller,

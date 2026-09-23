@@ -33,13 +33,6 @@ class _TimesheetScreenState extends State<TimesheetScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         title: const Text('Timesheet'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () => _controller.reload(),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
       ),
       body: AsyncView<List<PayPeriod>>(
         controller: _controller,
