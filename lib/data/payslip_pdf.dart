@@ -6,12 +6,19 @@ import 'package:pdf/widgets.dart' as pw;
 import 'app_session.dart';
 import 'mock_data.dart';
 
-/// Builds a payslip PDF laid out like the HRIS web payslip:
-/// header (pay period, net pay, date generated), employee block, an Earnings
-/// table with its total, a Deductions table with its total, and the net pay.
-Future<Uint8List> buildPayslipPdf(Payslip slip) async {
-  final doc = pw.Document();
+/// Builds a single-payslip PDF laid out like the HRIS web payslip.
+Future<Uint8List> buildPayslipPdf(Payslip slip) => buildPayslipsPdf([slip]);
 
+/// Builds a PDF with one payslip per page (used by bulk download).
+Future<Uint8List> buildPayslipsPdf(List<Payslip> slips) async {
+  final doc = pw.Document();
+  for (final slip in slips) {
+    doc.addPage(_payslipPage(slip));
+  }
+  return doc.save();
+}
+
+pw.Page _payslipPage(Payslip slip) {
   const red = PdfColor.fromInt(0xFFE43834);
   const ink = PdfColor.fromInt(0xFF1A1A1A);
   const soft = PdfColor.fromInt(0xFF6B7280);
@@ -74,8 +81,7 @@ Future<Uint8List> buildPayslipPdf(Payslip slip) async {
                 fontSize: 11, fontWeight: pw.FontWeight.bold, color: red)),
       );
 
-  doc.addPage(
-    pw.Page(
+  return pw.Page(
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(32),
       build: (_) => pw.Column(
@@ -177,10 +183,7 @@ Future<Uint8List> buildPayslipPdf(Payslip slip) async {
           ),
         ],
       ),
-    ),
-  );
-
-  return doc.save();
+    );
 }
 
 String _fmtNow() {
