@@ -54,6 +54,8 @@ dependencies:
   flutter_dotenv: ^5.2.1
   # Payslip export as PDF.
   pdf: ^3.11.1
+  # App icon badge count (sync with unread notifications).
+  app_badge_plus: ^1.2.2
 
 dev_dependencies:
   flutter_test:

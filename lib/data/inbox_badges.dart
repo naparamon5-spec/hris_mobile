@@ -1,3 +1,4 @@
+import 'package:app_badge_plus/app_badge_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import 'hris_api.dart';
@@ -28,9 +29,19 @@ class InboxBadges extends ChangeNotifier {
       _unreadItems = res.items.where((n) => n.unread).toList();
       payslipNew = _unreadItems.any((n) => payslipKinds.contains(n.kind));
       timesheetNew = _unreadItems.any((n) => timesheetKinds.contains(n.kind));
+      _syncAppBadge(unread);
       notifyListeners();
     } catch (_) {
       // Leave the last known counts; a later refresh will catch up.
+    }
+  }
+
+  /// Keep the OS app-icon badge in sync with the in-app unread count.
+  void _syncAppBadge(int count) {
+    try {
+      AppBadgePlus.updateBadge(count < 0 ? 0 : count);
+    } catch (_) {
+      // Badging unsupported on this device — ignore.
     }
   }
 
@@ -53,6 +64,7 @@ class InboxBadges extends ChangeNotifier {
     payslipNew = false;
     timesheetNew = false;
     _unreadItems = const [];
+    _syncAppBadge(0);
     notifyListeners();
   }
 }

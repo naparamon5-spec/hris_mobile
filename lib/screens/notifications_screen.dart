@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
 import '../data/hris_api.dart';
+import '../data/inbox_badges.dart';
 import '../data/mock_data.dart';
 import '../data/notifications/notification_routes.dart';
 import '../theme/app_colors.dart';
@@ -55,6 +56,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
     try {
       await HrisApi.instance.markAllNotificationsRead();
+      InboxBadges.instance.refresh(); // sync bell + app-icon badge
       if (mounted) showToast(context, 'All notifications have been marked as read.', isSuccess: true, title: 'Updated');
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -69,6 +71,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     setState(() => _notifications[index] = n.copyWith(unread: false));
     try {
       await HrisApi.instance.markNotificationRead(n.id!);
+      InboxBadges.instance.refresh(); // sync bell + app-icon badge
     } on ApiException {
       // Silent — the list still reads fine; a refresh corrects it.
     }
