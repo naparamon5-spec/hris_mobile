@@ -49,11 +49,19 @@ class _CreateLeaveOfAbsenceScreenState
   /// Which field is currently active, so its border shows red.
   String? _active;
 
+  /// True when the "To" date is before "From" — used to flag the fields in red
+  /// immediately (not only on submit).
+  bool get _invalidRange => _to.isBefore(_from);
+
   bool get _isEditing => widget.initialId != null;
 
   static const _leaveTypes = <String>[
     'Approved Leave',
     'Approved UT (AM/PM)',
+    'Vacation Leave',
+    'Sick Leave',
+    'Additional VL',
+    'Accumulated Leave',
   ];
 
   static DateTime? parseDateTime(dynamic val, {bool isFrom = true}) {
@@ -122,7 +130,20 @@ class _CreateLeaveOfAbsenceScreenState
 
   static String _normalizeLeaveType(String? t) {
     if (t == null || t.isEmpty) return 'Approved Leave';
-    if (t.toLowerCase().contains('ut')) return 'Approved UT (AM/PM)';
+    // Match an existing option case-insensitively so a value coming back from
+    // the server keeps the user's real leave type instead of collapsing to
+    // "Approved Leave".
+    final lower = t.toLowerCase().trim();
+    for (final option in _leaveTypes) {
+      if (option.toLowerCase() == lower) return option;
+    }
+    if (lower.contains('accumulated')) return 'Accumulated Leave';
+    if (lower.contains('additional') && lower.contains('vl')) {
+      return 'Additional VL';
+    }
+    if (lower == 'vl' || lower.contains('vacation')) return 'Vacation Leave';
+    if (lower == 'sl' || lower.contains('sick')) return 'Sick Leave';
+    if (lower.contains('ut')) return 'Approved UT (AM/PM)';
     return 'Approved Leave';
   }
 
@@ -352,6 +373,7 @@ class _CreateLeaveOfAbsenceScreenState
                 child: _DateField(
                   value: _fmt(_from),
                   active: _active == 'from',
+                  error: _invalidRange,
                   onTap: () => _pick(true),
                 ),
               ),
@@ -361,9 +383,27 @@ class _CreateLeaveOfAbsenceScreenState
                 child: _DateField(
                   value: _fmt(_to),
                   active: _active == 'to',
+                  error: _invalidRange,
                   onTap: () => _pick(false),
                 ),
               ),
+              if (_invalidRange) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        size: 15, color: AppColors.brandRed),
+                    const SizedBox(width: 6),
+                    Text(
+                      '"To" must be the same as or after "From".',
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.brandRed,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,11 +526,15 @@ class _DateField extends StatelessWidget {
     required this.value,
     required this.active,
     required this.onTap,
+    this.error = false,
   });
 
   final String value;
   final bool active;
   final VoidCallback onTap;
+
+  /// When true the field is outlined in red to flag an invalid date range.
+  final bool error;
 
   @override
   Widget build(BuildContext context) {
@@ -500,11 +544,13 @@ class _DateField extends StatelessWidget {
         height: 54,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: AppColors.fieldFill,
+          color: error ? AppColors.dangerSoft : AppColors.fieldFill,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: active ? AppColors.brandRed : _kFieldBorder,
-            width: _kBorderWidth,
+            color: error
+                ? AppColors.brandRed
+                : (active ? AppColors.brandRed : _kFieldBorder),
+            width: error ? 1.6 : _kBorderWidth,
           ),
         ),
         child: Row(

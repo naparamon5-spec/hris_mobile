@@ -790,11 +790,14 @@ class _LoaActionSheet extends StatelessWidget {
   List<_LoaAction> _actionsFor(String status) {
     switch (status) {
       case 'Posted':
+        // Final state — no actions at all.
+        return [];
       case 'Approved':
+      case 'Cancelled':
+        // Only reversible states. Reversing sends the record back to Active.
         return [
           _LoaAction('Reverse Record', Icons.undo_rounded,
               color: Color(0xFF6B7280), destructive: true),
-          _LoaAction('Resend', Icons.send_rounded, color: AppColors.warning),
         ];
       case 'Rejected':
       case 'Disapproved':
@@ -802,30 +805,20 @@ class _LoaActionSheet extends StatelessWidget {
           _LoaAction('Edit Record', Icons.edit_outlined, color: AppColors.info),
           _LoaAction('Send for Approval', Icons.verified_outlined,
               color: AppColors.warning),
-          _LoaAction('Resend', Icons.send_rounded, color: AppColors.warning),
-          _LoaAction('Reverse Record', Icons.undo_rounded,
-              color: Color(0xFF6B7280), destructive: true),
           _LoaAction('Cancel Record', Icons.cancel_outlined,
               color: AppColors.brandRed, destructive: true),
         ];
       case 'For Approval':
       case 'Pending':
-        // This is the filer's own record — only owner-side actions here.
-        // Approve/Disapprove belongs on the Approvals inbox (department head).
+        // Already submitted — can't edit/cancel/re-submit; only re-notify.
         return [
-          _LoaAction('Edit Record', Icons.edit_outlined, color: AppColors.info),
           _LoaAction('Resend', Icons.send_rounded, color: AppColors.warning),
-          _LoaAction('Cancel Record', Icons.cancel_outlined,
-              color: AppColors.brandRed, destructive: true),
         ];
       default: // Active / draft — created but not yet sent for approval
         return [
           _LoaAction('Send for Approval', Icons.verified_outlined,
               color: AppColors.warning),
           _LoaAction('Edit Record', Icons.edit_outlined, color: AppColors.info),
-          _LoaAction('Resend', Icons.send_rounded, color: AppColors.warning),
-          _LoaAction('Reverse Record', Icons.undo_rounded,
-              color: Color(0xFF6B7280), destructive: true),
           _LoaAction('Cancel Record', Icons.cancel_outlined,
               color: AppColors.brandRed, destructive: true),
         ];
@@ -1073,6 +1066,14 @@ class _LoaActionSheet extends StatelessWidget {
           Text(record.loaDate,
               style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
           const SizedBox(height: 16),
+          if (actions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'No actions available for a posted record.',
+                style: TextStyle(fontSize: 13.5, color: AppColors.inkSoft),
+              ),
+            ),
           for (final a in actions) ...[
             _tile(context, a),
             const SizedBox(height: 10),

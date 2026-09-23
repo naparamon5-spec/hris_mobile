@@ -959,38 +959,31 @@ class _ApprovalActionSheet extends StatelessWidget {
   List<_ApprovalActionItem> _actionsFor(String status) {
     switch (status) {
       case 'Posted':
-        return [
-          _ApprovalActionItem('Reverse Record', Icons.undo_rounded,
-              color: Color(0xFF6B7280), destructive: true),
-          _ApprovalActionItem('Resend', Icons.send_rounded, color: AppColors.warning),
-        ];
+        // Final state — no actions at all.
+        return [];
       case 'Approved':
+      case 'Cancelled':
+        // Only reversible states. Reversing sends the record back to Active.
         return [
           _ApprovalActionItem('Reverse Record', Icons.undo_rounded,
               color: Color(0xFF6B7280), destructive: true),
-          _ApprovalActionItem('Resend', Icons.send_rounded, color: AppColors.warning),
+        ];
+      case 'For Approval':
+      case 'For Witness Approval':
+      case 'Pending':
+        // Already submitted for approval — can't edit/cancel/re-submit; the
+        // owner can only re-notify the approver.
+        return [
+          _ApprovalActionItem('Resend', Icons.send_rounded,
+              color: AppColors.warning),
         ];
       case 'Rejected':
+        // Rejected back to the owner — fix and re-file.
         return [
           _ApprovalActionItem('Edit Record', Icons.edit_outlined,
               color: AppColors.info),
           _ApprovalActionItem('Send for Approval', Icons.verified_outlined,
               color: AppColors.warning),
-          _ApprovalActionItem('Resend', Icons.send_rounded, color: AppColors.warning),
-          _ApprovalActionItem('Reverse Record', Icons.undo_rounded,
-              color: Color(0xFF6B7280), destructive: true),
-          _ApprovalActionItem('Cancel Record', Icons.cancel_outlined,
-              color: AppColors.brandRed, destructive: true),
-        ];
-      case 'For Approval':
-      case 'For Witness Approval':
-      case 'Pending':
-        // This is the filer's own record — only owner-side actions here.
-        // Approve/Disapprove belongs on the Approvals inbox (department head).
-        return [
-          _ApprovalActionItem('Edit Record', Icons.edit_outlined,
-              color: AppColors.info),
-          _ApprovalActionItem('Resend', Icons.send_rounded, color: AppColors.warning),
           _ApprovalActionItem('Cancel Record', Icons.cancel_outlined,
               color: AppColors.brandRed, destructive: true),
         ];
@@ -1000,9 +993,6 @@ class _ApprovalActionSheet extends StatelessWidget {
               color: AppColors.warning),
           _ApprovalActionItem('Edit Record', Icons.edit_outlined,
               color: AppColors.info),
-          _ApprovalActionItem('Reverse Record', Icons.undo_rounded,
-              color: Color(0xFF6B7280), destructive: true),
-          _ApprovalActionItem('Resend', Icons.send_rounded, color: AppColors.warning),
           _ApprovalActionItem('Cancel Record', Icons.cancel_outlined,
               color: AppColors.brandRed, destructive: true),
         ];
@@ -1262,6 +1252,14 @@ class _ApprovalActionSheet extends StatelessWidget {
           Text('$title • ${record.txnDate}',
               style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
           const SizedBox(height: 16),
+          if (actions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'No actions available for a posted record.',
+                style: TextStyle(fontSize: 13.5, color: AppColors.inkSoft),
+              ),
+            ),
           for (final a in actions) ...[
             _tile(context, a),
             const SizedBox(height: 10),
