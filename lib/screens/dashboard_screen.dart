@@ -797,7 +797,7 @@ Color _recentStatusColor(String status) {
       return AppColors.inkSoft;
     case 'Cancelled':
     case 'Void':
-      return AppColors.inkFaint;
+      return AppColors.brandRed; // Red — cancelled/voided
     case 'Rejected':
     case 'Disapproved':
     default:
