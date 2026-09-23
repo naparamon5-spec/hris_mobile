@@ -363,11 +363,14 @@ class _CreateLeaveOfAbsenceScreenState
       body: _loadingServer
           ? Center(child: CircularProgressIndicator(color: AppColors.brandRed))
           : SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               _Labeled(
                 label: 'From',
                 child: _DateField(
@@ -460,9 +463,13 @@ class _CreateLeaveOfAbsenceScreenState
                   focusedBorder: _border(AppColors.brandRed, 1.8),
                 ),
               ),
-              const Spacer(),
-              const SizedBox(height: 14),
-              Row(
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
@@ -480,8 +487,8 @@ class _CreateLeaveOfAbsenceScreenState
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

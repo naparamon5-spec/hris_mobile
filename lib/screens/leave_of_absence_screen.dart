@@ -869,29 +869,13 @@ class _LoaActionSheet extends StatelessWidget {
     }
 
     if (a.label == 'Reverse Record') {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Reverse Record',
-              style: TextStyle(fontWeight: FontWeight.w800)),
-          content: Text(
-              'Are you sure you want to reverse record ${record.no}?'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('No')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.brandRed),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Yes, Reverse'),
-            ),
-          ],
-        ),
+      final ok = await showConfirmDialog(
+        context,
+        title: 'Reverse Record',
+        message: 'Are you sure you want to reverse record ${record.no}?',
+        confirmLabel: 'Yes, Reverse',
       );
-      if (ok != true) return;
+      if (!ok) return;
 
       if (context.mounted) showLoadingOverlay(context);
       try {
@@ -931,29 +915,13 @@ class _LoaActionSheet extends StatelessWidget {
     }
 
     if (a.label == 'Cancel Record') {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Cancel Record',
-              style: TextStyle(fontWeight: FontWeight.w800)),
-          content:
-              Text('Are you sure you want to cancel record ${record.no}?'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('No')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.brandRed),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Yes, Cancel'),
-            ),
-          ],
-        ),
+      final ok = await showConfirmDialog(
+        context,
+        title: 'Cancel Record',
+        message: 'Are you sure you want to cancel record ${record.no}?',
+        confirmLabel: 'Yes, Cancel',
       );
-      if (ok != true) return;
+      if (!ok) return;
 
       if (context.mounted) showLoadingOverlay(context);
       try {
@@ -975,30 +943,14 @@ class _LoaActionSheet extends StatelessWidget {
 
     if (a.label == 'Approve' || a.label == 'Disapprove') {
       final approve = a.label == 'Approve';
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('${a.label} Record',
-              style: const TextStyle(fontWeight: FontWeight.w800)),
-          content: Text(
-              'Are you sure you want to ${a.label.toLowerCase()} record ${record.no}?'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('No')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      approve ? AppColors.success : AppColors.brandRed),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text('Yes, ${a.label}'),
-            ),
-          ],
-        ),
+      final ok = await showConfirmDialog(
+        context,
+        title: '${a.label} Record',
+        message:
+            'Are you sure you want to ${a.label.toLowerCase()} record ${record.no}?',
+        confirmLabel: 'Yes, ${a.label}',
       );
-      if (ok != true) return;
+      if (!ok) return;
 
       if (context.mounted) showLoadingOverlay(context);
       try {

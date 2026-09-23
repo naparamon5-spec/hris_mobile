@@ -1292,3 +1292,67 @@ class _LoadingOverlayState extends State<LoadingOverlay> {
     );
   }
 }
+
+/// A confirmation dialog whose two buttons always sit on ONE horizontal line
+/// (Cancel + Confirm, equal width). Returns true only when confirmed.
+Future<bool> showConfirmDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String confirmLabel = 'Confirm',
+  String cancelLabel = 'No',
+  bool destructive = false,
+}) async {
+  final accent = destructive ? AppColors.brandRed : AppColors.brandRed;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(title,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+      content: Text(message,
+          style: const TextStyle(fontSize: 14, color: AppColors.inkSoft)),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      actions: [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  side: const BorderSide(color: AppColors.line),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(cancelLabel,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.inkSoft)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  backgroundColor: accent,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(confirmLabel,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+  return ok == true;
+}
