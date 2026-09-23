@@ -149,11 +149,20 @@ class _CreateLeaveOfAbsenceScreenState
 
   bool _loadingServer = false;
 
+  /// Leave types offered in the picker. Approved Leave / Approved UT are always
+  /// available; VL, SL, Additional VL and Accumulated Leave are added only when
+  /// the employee actually has that balance (loaded from the leave balance).
+  List<String> _availableTypes = const [
+    'Approved Leave',
+    'Approved UT (AM/PM)',
+  ];
+
   @override
   void initState() {
     super.initState();
     _leaveType = _normalizeLeaveType(widget.initialLeaveType);
     _reason.text = widget.initialReason ?? '';
+    _loadLeaveTypes();
 
     final now = DateTime.now();
     _from = parseAppDateTime(widget.initialDateFrom, isFrom: true) ??
@@ -166,6 +175,35 @@ class _CreateLeaveOfAbsenceScreenState
 
     if (widget.initialId != null && widget.initialId! > 0) {
       _loadServerRecord();
+    }
+  }
+
+  /// Builds the picker list from the employee's leave balance: the two default
+  /// types plus any of VL / SL / Additional VL / Accumulated Leave they hold.
+  Future<void> _loadLeaveTypes() async {
+    try {
+      final bal = await HrisApi.instance.leaveBalance();
+      bool bucket(String needle) => bal.buckets.any((b) =>
+          b.type.toLowerCase().contains(needle) && b.remaining > 0);
+      final hasVL = bucket('vacation') || bucket('vl ') || bucket(' vl') ||
+          (bal.vlPaidHours ?? 0) > 0;
+      final hasSL = bucket('sick') || bucket('sl ') || bucket(' sl') ||
+          (bal.slPaidHours ?? 0) > 0;
+      final hasAdditionalVL =
+          bucket('additional') || (bal.additionalVl != null);
+      final hasAccumulated = bucket('accumulated');
+
+      final types = <String>[
+        'Approved Leave',
+        'Approved UT (AM/PM)',
+        if (hasVL) 'Vacation Leave',
+        if (hasSL) 'Sick Leave',
+        if (hasAdditionalVL) 'Additional VL',
+        if (hasAccumulated) 'Accumulated Leave',
+      ];
+      if (mounted) setState(() => _availableTypes = types);
+    } catch (_) {
+      // Keep the two defaults if the balance can't be loaded.
     }
   }
 
@@ -250,7 +288,8 @@ class _CreateLeaveOfAbsenceScreenState
     setState(() => _active = 'type');
     final picked = await showPremiumBottomSheet<String>(
       context,
-      builder: (ctx) => _LeaveTypeSheet(current: _leaveType, types: _leaveTypes),
+      builder: (ctx) =>
+          _LeaveTypeSheet(current: _leaveType, types: _availableTypes),
     );
     if (picked != null && mounted) _leaveType = picked;
     if (mounted) setState(() => _active = null);
