@@ -94,8 +94,13 @@ pw.Widget _field(String label, String value) => pw.Column(
       ],
     );
 
+// The bundled PDF fonts can't draw the peso sign (₱, U+20B1) — the web payslip
+// uses a plain "P" too, so normalize to that.
+String _money(String s) => s.replaceAll('₱', 'P');
+
 // One "label ........ amount" line. Negative amounts render in red (like web).
-pw.Widget _amountRow(String label, String amount, {bool bold = false}) {
+pw.Widget _amountRow(String label, String rawAmount, {bool bold = false}) {
+  final amount = _money(rawAmount);
   final negative = amount.contains('-');
   final color = negative ? _red : _ink;
   final weight = bold ? pw.FontWeight.bold : pw.FontWeight.normal;
@@ -186,7 +191,7 @@ pw.Page _payslipPage(Payslip slip, _Emp emp) {
                   style: pw.TextStyle(
                       fontSize: 12, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 2),
-              pw.Text(slip.net,
+              pw.Text(_money(slip.net),
                   style: pw.TextStyle(
                       fontSize: 14,
                       fontWeight: pw.FontWeight.bold,

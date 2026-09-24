@@ -7,6 +7,8 @@ import 'data/security_state.dart';
 import 'data/notifications/push_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
+import 'screens/company_select_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/splash_screen.dart';
 import 'widgets/ui.dart';
 
@@ -30,6 +32,24 @@ void main() async {
   // config never blocks app startup.
   PushService.setNavigatorKey(hrisNavigatorKey);
   await PushService.instance.initialize();
+
+  // When the session expires while the app is in use (refresh token rejected),
+  // force the user back to the login screen instead of leaving them "signed in".
+  AppSession.instance.onSessionExpired = () {
+    final ctx = hrisNavigatorKey.currentContext;
+    if (ctx == null) return;
+    final t = AppSession.instance.tenant;
+    Navigator.of(ctx).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) =>
+            t != null ? LoginScreen(company: t) : const CompanySelectScreen(),
+      ),
+      (route) => false,
+    );
+    showToast(ctx, 'Your session has expired. Please sign in again.',
+        isSuccess: false, title: 'Signed out');
+  };
+
   runApp(const HrisApp());
 }
 

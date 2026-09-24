@@ -229,6 +229,7 @@ class AppSession extends ChangeNotifier {
       // No active session, but we may still have a remembered company/biometric
       // enrollment above — let the UI route accordingly.
       if (tenant != null || _biometricCredsSaved) notifyListeners();
+      _restoreComplete = true;
       return false;
     }
 
@@ -244,13 +245,19 @@ class AppSession extends ChangeNotifier {
       unawaited(_registerPush());
       notifyListeners();
     }
+    // From here on, a failed refresh means the session expired mid-use → the
+    // onSessionExpired hook logs the user out.
+    _restoreComplete = true;
     return ok;
   }
 
   /// Uses the refresh token to obtain a fresh access token. Returns false (and
   /// clears the session) if the refresh token is missing or rejected.
   Future<bool> _refreshAccessToken() async {
-    if (_refreshToken == null || _refreshToken!.isEmpty) return false;
+    if (_refreshToken == null || _refreshToken!.isEmpty) {
+      _onExpiredMidSession();
+      return false;
+    }
     try {
       final data = await api.post('/public/refresh', body: {
         'refreshToken': _refreshToken,
@@ -263,14 +270,34 @@ class AppSession extends ChangeNotifier {
         await _store.saveAccessToken(api.accessToken);
         return true;
       }
+      _onExpiredMidSession();
       return false;
     } catch (_) {
       // Refresh token invalid/expired — drop the stored session.
       api.accessToken = null;
       _refreshToken = null;
       await _store.clearSession();
+      _onExpiredMidSession();
       return false;
     }
+  }
+
+  /// Called by the UI (main.dart) to route to the login screen when the session
+  /// expires while the app is in use. Not fired during the initial restore
+  /// (the splash screen already routes based on restore()'s result).
+  void Function()? onSessionExpired;
+  bool _restoreComplete = false;
+
+  void _onExpiredMidSession() {
+    if (!_restoreComplete) return; // startup restore is handled by the splash
+    // Fully clear the session so nothing keeps them "signed in".
+    api.accessToken = null;
+    _refreshToken = null;
+    _userId = null;
+    _userName = null;
+    _role = UserRole.employee;
+    notifyListeners();
+    onSessionExpired?.call();
   }
 
   /// Enables biometric sign-in by capturing the current session's refresh token
