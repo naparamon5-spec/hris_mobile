@@ -4,31 +4,60 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'app_session.dart';
+import 'hris_api.dart';
 import 'mock_data.dart';
+
+/// Employee details shown on the payslip header (from the profile).
+class _Emp {
+  _Emp({this.company = '', this.id = '', this.name = '', this.department = '', this.sss = '', this.tin = ''});
+  final String company, id, name, department, sss, tin;
+}
+
+/// Loads the employee details once (best-effort) so the PDF header matches the
+/// web payslip (Employee ID / Employee / Department / SSS No. / Tin No.).
+Future<_Emp> _loadEmp() async {
+  final s = AppSession.instance;
+  final base = _Emp(
+    company: s.company ?? s.tenant?.name ?? '',
+    id: s.userId ?? '',
+    name: s.userName ?? '',
+    department: s.position ?? '',
+  );
+  try {
+    final p = await HrisApi.instance.getProfile();
+    return _Emp(
+      company: base.company,
+      id: p.employeeId.isNotEmpty ? p.employeeId : base.id,
+      name: p.name.isNotEmpty ? p.name : base.name,
+      department: p.department.isNotEmpty ? p.department : base.department,
+      sss: p.background.sss ?? '',
+      tin: p.background.tin ?? '',
+    );
+  } catch (_) {
+    return base;
+  }
+}
 
 /// Builds a single-payslip PDF laid out like the HRIS web payslip.
 Future<Uint8List> buildPayslipPdf(Payslip slip) => buildPayslipsPdf([slip]);
 
 /// Builds a PDF with one payslip per page (used by bulk download).
 Future<Uint8List> buildPayslipsPdf(List<Payslip> slips) async {
+  final emp = await _loadEmp();
   final doc = pw.Document();
   for (final slip in slips) {
-    doc.addPage(_payslipPage(slip));
+    doc.addPage(_payslipPage(slip, emp));
   }
   return doc.save();
 }
 
-pw.Page _payslipPage(Payslip slip) {
+pw.Page _payslipPage(Payslip slip, _Emp emp) {
   const red = PdfColor.fromInt(0xFFE43834);
   const ink = PdfColor.fromInt(0xFF1A1A1A);
   const soft = PdfColor.fromInt(0xFF6B7280);
   const line = PdfColor.fromInt(0xFFE5E7EB);
 
-  final session = AppSession.instance;
-  final company = session.company ?? session.tenant?.name ?? '';
-  final employeeId = session.userId ?? '';
-  final employeeName = session.userName ?? '';
-  final department = session.position ?? '';
+  final company = emp.company;
   final generated = _fmtNow();
 
   pw.Widget infoRow(String label, String value) => pw.Padding(
@@ -135,10 +164,12 @@ pw.Page _payslipPage(Payslip slip) {
           pw.Divider(color: line, height: 1),
           pw.SizedBox(height: 10),
 
-          // ---- Employee block ----
-          infoRow('Employee ID:', employeeId),
-          infoRow('Employee:', employeeName),
-          if (department.isNotEmpty) infoRow('Department:', department),
+          // ---- Employee block (matches the web payslip) ----
+          infoRow('Employee ID:', emp.id),
+          infoRow('Employee:', emp.name),
+          if (emp.department.isNotEmpty) infoRow('Department:', emp.department),
+          if (emp.sss.isNotEmpty) infoRow('SSS No.:', emp.sss),
+          if (emp.tin.isNotEmpty) infoRow('Tin No.:', emp.tin),
           pw.SizedBox(height: 10),
           pw.Divider(color: line, height: 1),
 

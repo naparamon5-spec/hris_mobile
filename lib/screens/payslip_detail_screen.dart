@@ -39,16 +39,10 @@ class _PayslipDetailScreenState extends State<PayslipDetailScreen> {
       // Data-driven PDF laid out like the HRIS web payslip.
       final bytes = await buildPayslipPdf(slip);
       if (mounted) {
-        await sharePdfBytes(context, bytes, 'Payslip_${widget.id}',
-            shareText: 'Payslip ${widget.id}');
+        await sharePdfBytes(context, bytes, 'Payslip_${widget.id}');
       }
     } else {
-      await captureAndShare(
-        context,
-        _boundaryKey,
-        'Payslip_${widget.id}',
-        shareText: 'Payslip ${widget.id}',
-      );
+      await captureAndShare(context, _boundaryKey, 'Payslip_${widget.id}');
     }
     if (mounted) setState(() => _downloading = false);
   }
