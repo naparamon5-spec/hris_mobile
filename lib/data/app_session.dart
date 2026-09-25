@@ -117,6 +117,15 @@ class AppSession extends ChangeNotifier {
   /// and requests and see the extra request types.
   bool get canApprove => _role != UserRole.employee;
 
+  /// Locks the app (auto-lock on cold start / background timeout): drops the
+  /// in-memory access token so no authenticated call succeeds until the user
+  /// re-authenticates, while KEEPING the stored session + biometric enrollment
+  /// so they can unlock with Face ID / password. The caller routes to login.
+  void lock() {
+    api.accessToken = null;
+    notifyListeners();
+  }
+
   /// Signs in against `POST /public/login`. On success stores the tokens and
   /// user, and updates the role. Throws [ApiException] on failure so the UI can
   /// show the message.

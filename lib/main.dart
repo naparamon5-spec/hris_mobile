@@ -53,8 +53,62 @@ void main() async {
   runApp(const HrisApp());
 }
 
-class HrisApp extends StatelessWidget {
+class HrisApp extends StatefulWidget {
   const HrisApp({super.key});
+
+  @override
+  State<HrisApp> createState() => _HrisAppState();
+}
+
+class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
+  // Auto-lock: how long the app may sit in the background before we require the
+  // user to re-authenticate when they come back. Sits inside the 3–5 min range.
+  static const Duration _bgLockAfter = Duration(minutes: 3);
+  DateTime? _pausedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      // Remember when the app left the foreground.
+      _pausedAt ??= DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      final since = _pausedAt;
+      _pausedAt = null;
+      if (since == null) return;
+      final away = DateTime.now().difference(since);
+      if (away >= _bgLockAfter && AppSession.instance.isSignedIn) {
+        _lockToLogin();
+      }
+    }
+  }
+
+  // Drop the in-memory session and route back to the login (biometric) screen.
+  void _lockToLogin() {
+    AppSession.instance.lock();
+    final ctx = hrisNavigatorKey.currentContext;
+    if (ctx == null) return;
+    final t = AppSession.instance.tenant;
+    Navigator.of(ctx).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) =>
+            t != null ? LoginScreen(company: t) : const CompanySelectScreen(),
+      ),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

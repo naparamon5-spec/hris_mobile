@@ -6,7 +6,6 @@ import '../theme/app_colors.dart';
 import '../widgets/brand.dart';
 import 'app_update_screen.dart';
 import 'company_select_screen.dart';
-import 'home_shell.dart';
 import 'login_screen.dart';
 
 /// Branded launch screen. Draws the shield-and-check mark on, then hands off
@@ -65,15 +64,18 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    final Widget next;
-    if (restored) {
-      next = const HomeShell();
-    } else {
-      final tenant = AppSession.instance.tenant;
-      next = tenant != null
-          ? LoginScreen(company: tenant)
-          : const CompanySelectScreen();
-    }
+    // Auto-lock on cold start: being removed from the multitask switcher and
+    // relaunched must land on the login screen, never straight into Home — even
+    // when a session was restored. We drop the in-memory access token (keeping
+    // the stored session + biometric enrollment) so the user re-authenticates
+    // with Face ID / PIN / password before anything authenticated runs.
+    // If a session was restored, lock it so the user must re-authenticate on
+    // this cold start rather than dropping straight into Home.
+    if (restored) AppSession.instance.lock();
+    final tenant = AppSession.instance.tenant;
+    final Widget next = tenant != null
+        ? LoginScreen(company: tenant)
+        : const CompanySelectScreen();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
