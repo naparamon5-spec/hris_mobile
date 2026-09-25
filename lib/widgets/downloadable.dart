@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -111,6 +112,32 @@ Future<bool> captureAndShare(
         text: shareText,
         sharePositionOrigin: origin,
       );
+      return true;
+    }
+
+    // On Android the native share sheet doesn't reliably save an image to the
+    // gallery, so write it straight to Photos via the MediaStore. iOS keeps the
+    // share sheet, which already offers "Save Image" / "Save to Files".
+    if (Platform.isAndroid) {
+      final file = File('${dir.path}/$safeName.png');
+      await file.writeAsBytes(pngBytes, flush: true);
+      final hasAccess = await Gal.hasAccess() || await Gal.requestAccess();
+      if (!hasAccess) {
+        if (context.mounted) {
+          await showToast(
+              context,
+              'Allow photo access in Settings to save the image, '
+              'or use the share button to send it instead.',
+              isSuccess: false,
+              title: 'Permission Needed');
+        }
+        return false;
+      }
+      await Gal.putImage(file.path, album: 'ANI HRIS');
+      if (context.mounted) {
+        await showToast(context, 'Saved to your Photos.',
+            isSuccess: true, title: 'Image Saved');
+      }
       return true;
     }
 
