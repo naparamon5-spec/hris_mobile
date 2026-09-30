@@ -302,6 +302,10 @@ class _QA extends StatelessWidget {
 
 /// Slim "today" banner: date, shift window and an attendance status pill.
 /// Informational only — no clock in/out controls.
+/// Header card that shows today's date and the tenant's *real* next payday —
+/// sourced from fm_pay_calendar via /auth/pay-calendar/next, so semi-monthly
+/// (Ardent), monthly, weekly, weekend-shifted, or holiday-shifted paydays all
+/// display accurately with no hardcoded 15th/30th assumption.
 class _TodayCard extends StatelessWidget {
   static const _months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -312,25 +316,28 @@ class _TodayCard extends StatelessWidget {
     'Saturday', 'Sunday',
   ];
 
-  /// Today's real calendar date (time-of-day stripped so day math is exact).
-  DateTime get _today {
-    final n = DateTime.now();
-    return DateTime(n.year, n.month, n.day);
-  }
-
-  /// Semi-monthly payday: the 15th, or the last day of the month. Returns the
-  /// next one on/after today (so payday itself shows "0 days").
-  DateTime get _payday {
-    final t = _today;
-    if (t.day <= 15) return DateTime(t.year, t.month, 15);
-    return DateTime(t.year, t.month + 1, 0); // last day of this month
-  }
-
-  int get _daysToPayday => _payday.difference(_today).inDays;
-
   @override
   Widget build(BuildContext context) {
-    final t = _today;
+    return FutureBuilder<PayCalendarNext?>(
+      future: HrisApi.instance.nextPayCalendar(),
+      builder: (context, snap) => _build(snap.data),
+    );
+  }
+
+  Widget _build(PayCalendarNext? cal) {
+    final n = DateTime.now();
+    final today = DateTime(n.year, n.month, n.day);
+    final wd = _wd[today.weekday - 1];
+    final todayLabel = '$wd, ${_months[today.month - 1]} ${today.day}';
+
+    final next = cal?.next;
+    final payLabel = next == null
+        ? 'Pay calendar not configured'
+        : (next.daysToPayday == 0
+            ? 'Payday • ${_months[next.payDate.month - 1]} ${next.payDate.day}'
+            : 'Next payday • ${_months[next.payDate.month - 1]} ${next.payDate.day}');
+    final days = next?.daysToPayday ?? -1;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -355,7 +362,7 @@ class _TodayCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${_wd[t.weekday - 1]}, ${_months[t.month - 1]} ${t.day}',
+                  todayLabel,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 15,
@@ -364,9 +371,7 @@ class _TodayCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _daysToPayday == 0
-                      ? 'Payday • ${_months[_payday.month - 1]} ${_payday.day}'
-                      : 'Next payday • ${_months[_payday.month - 1]} ${_payday.day}',
+                  payLabel,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 12.5,
@@ -376,47 +381,49 @@ class _TodayCard extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: _daysToPayday == 0
-                  ? [
-                      Text(
-                        'Payday',
-                        style: TextStyle(
-                          color: AppColors.brandRed,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          height: 1,
+          if (next != null)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: days == 0
+                    ? [
+                        Text(
+                          'Payday',
+                          style: TextStyle(
+                            color: AppColors.brandRed,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            height: 1,
+                          ),
                         ),
-                      ),
-                    ]
-                  : [
-                Text(
-                  '$_daysToPayday',
-                  style: TextStyle(
-                    color: AppColors.brandRed,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                    height: 1,
-                  ),
-                ),
-                Text(
-                  _daysToPayday == 1 ? 'day' : 'days',
-                  style: const TextStyle(
-                    color: AppColors.inkSoft,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
+                      ]
+                    : [
+                        Text(
+                          '$days',
+                          style: TextStyle(
+                            color: AppColors.brandRed,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            height: 1,
+                          ),
+                        ),
+                        Text(
+                          days == 1 ? 'day' : 'days',
+                          style: const TextStyle(
+                            color: AppColors.inkSoft,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+              ),
             ),
-          ),
         ],
       ),
     );

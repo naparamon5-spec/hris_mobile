@@ -332,6 +332,53 @@ class PayPeriod {
       );
 }
 
+/// Real next payday + current cutoff for the signed-in tenant, sourced from
+/// `fm_pay_calendar`. Powers the dashboard's "Next payday" tile — no hard-
+/// coded 15th/30th assumption.
+class PayCalendarNext {
+  PayCalendarNext({required this.next, this.current});
+
+  final PayCalendarPeriod next;
+  final PayCalendarPeriod? current;
+
+  factory PayCalendarNext.fromJson(Map<String, dynamic> j) => PayCalendarNext(
+        next: PayCalendarPeriod.fromJson(
+            (j['next'] as Map).cast<String, dynamic>()),
+        current: j['current'] is Map
+            ? PayCalendarPeriod.fromJson(
+                (j['current'] as Map).cast<String, dynamic>())
+            : null,
+      );
+}
+
+class PayCalendarPeriod {
+  PayCalendarPeriod({
+    required this.payYear,
+    required this.payPeriod,
+    required this.payDate,
+    required this.cutoffFrom,
+    required this.cutoffTo,
+    this.daysToPayday,
+  });
+
+  final String payYear;
+  final String payPeriod;
+  final DateTime payDate;
+  final DateTime cutoffFrom;
+  final DateTime cutoffTo;
+  final int? daysToPayday;
+
+  factory PayCalendarPeriod.fromJson(Map<String, dynamic> j) =>
+      PayCalendarPeriod(
+        payYear: (j['pay_year'] ?? '').toString(),
+        payPeriod: (j['pay_period'] ?? '').toString(),
+        payDate: DateTime.parse(j['pay_date'] as String),
+        cutoffFrom: DateTime.parse(j['cutoff_from'] as String),
+        cutoffTo: DateTime.parse(j['cutoff_to'] as String),
+        daysToPayday: (j['days_to_payday'] as num?)?.toInt(),
+      );
+}
+
 class AttendanceToday {
   AttendanceToday({
     required this.status,
@@ -1038,6 +1085,19 @@ class HrisApi {
               '/auth/pay-periods${type != null ? '?type=$type' : ''}'))
           .map(PayPeriod.fromJson)
           .toList();
+
+  /// The tenant's real next payday and current cutoff, straight from
+  /// fm_pay_calendar. Returns null when HR hasn't configured a calendar for
+  /// the tenant (the dashboard hides the tile in that case).
+  Future<PayCalendarNext?> nextPayCalendar() async {
+    try {
+      final m = _asMap(await _api.get('/auth/pay-calendar/next'));
+      if (m['configured'] != true || m['next'] is! Map) return null;
+      return PayCalendarNext.fromJson(m);
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<TimesheetDetail> timesheet(String id) async =>
       TimesheetDetail.fromJson(_asMap(await _api.get('/auth/timesheets/$id')));
