@@ -192,9 +192,14 @@ class AppSession extends ChangeNotifier {
       await _store.clearRememberedUserId();
     }
 
-    // If biometrics is already enrolled, refresh the stored token to the latest
-    // one so it never goes stale mid-enrollment.
-    if (_biometricCredsSaved && _refreshToken != null) {
+    // Biometric enrollment is per-user. If the saved enrollment is for THIS
+    // same user, refresh its token so it never goes stale. If it's for a
+    // DIFFERENT user (someone else signed in on this device), clear the
+    // enrollment so the new user doesn't inherit it — they must opt in to
+    // biometrics explicitly from Settings.
+    if (_biometricCredsSaved && _bioUserId != null && _bioUserId != _userId) {
+      await clearBiometricCredentials();
+    } else if (_biometricCredsSaved && _refreshToken != null) {
       _bioUserId = _userId;
       _bioRefreshToken = _refreshToken;
       _bioTenantId = tenant?.id;
