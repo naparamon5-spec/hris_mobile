@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../data/hris_api.dart';
 import '../data/tenants.dart';
@@ -18,7 +19,21 @@ class CompanySelectScreen extends StatefulWidget {
 
 class _CompanySelectScreenState extends State<CompanySelectScreen> {
   String _query = '';
+  String _appVersion = '';
   late final Future<List<Tenant>> _tenantsFuture = _loadTenants();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = info.version);
+    } catch (_) {/* leave blank */}
+  }
 
   /// Loads companies from `/public/tenants`, falling back to the bundled list
   /// if the backend is unreachable (this is the pre-login entry screen).
@@ -128,10 +143,12 @@ class _CompanySelectScreenState extends State<CompanySelectScreen> {
                   },
                 ),
               ),
-              const Center(
+              Center(
                 child: Text(
-                  'Protected by ANI SSO • v1.0.0',
-                  style: TextStyle(
+                  _appVersion.isEmpty
+                      ? 'Developed By MIS'
+                      : 'Developed By MIS • v$_appVersion',
+                  style: const TextStyle(
                     color: AppColors.inkFaint,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
