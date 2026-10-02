@@ -320,15 +320,29 @@ class LeaveBalance {
 }
 
 class PayPeriod {
-  PayPeriod({required this.code, required this.range, this.year});
+  PayPeriod({
+    required this.code,
+    required this.range,
+    this.year,
+    this.dateFrom,
+    this.dateTo,
+  });
   final String code;
   final String range;
   final String? year;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
 
   factory PayPeriod.fromJson(Map<String, dynamic> j) => PayPeriod(
         code: (j['code'] ?? '') as String,
         range: (j['range'] ?? '') as String,
         year: j['year']?.toString(),
+        dateFrom: j['date_from'] is String
+            ? DateTime.tryParse(j['date_from'] as String)
+            : null,
+        dateTo: j['date_to'] is String
+            ? DateTime.tryParse(j['date_to'] as String)
+            : null,
       );
 }
 
@@ -1089,11 +1103,76 @@ class HrisApi {
   /// The tenant's real next payday and current cutoff, straight from
   /// fm_pay_calendar. Returns null when HR hasn't configured a calendar for
   /// the tenant (the dashboard hides the tile in that case).
+  /// Real next payday for the signed-in tenant. We derive it from
+  /// `/auth/pay-periods` (which already streams `fm_pay_calendar` rows) using
+  /// the same semi-monthly rule the server uses: cutoff ends on/before the
+  /// 15th → pay 15th same month; otherwise pay the last day of that month.
+  /// Falls back to the server-computed `/auth/pay-calendar/next` endpoint if
+  /// it is deployed (newer backends) so the mobile stays accurate even when
+  /// HR changes the rule.
   Future<PayCalendarNext?> nextPayCalendar() async {
+    // Preferred path: dedicated endpoint when the backend has it.
     try {
       final m = _asMap(await _api.get('/auth/pay-calendar/next'));
-      if (m['configured'] != true || m['next'] is! Map) return null;
-      return PayCalendarNext.fromJson(m);
+      if (m['configured'] == true && m['next'] is Map) {
+        return PayCalendarNext.fromJson(m);
+      }
+    } catch (_) {/* fall through to pay-periods */}
+
+    // Fallback: compute from the pay-periods list (always deployed).
+    try {
+      final periods = await payPeriods();
+      final now = DateTime.now();
+      final today = DateTime.utc(now.year, now.month, now.day);
+
+      DateTime paydayFromCutoff(DateTime cutoffEnd) {
+        final d = cutoffEnd.toUtc();
+        if (d.day <= 15) return DateTime.utc(d.year, d.month, 15);
+        return DateTime.utc(d.year, d.month + 1, 0); // last day of this month
+      }
+
+      final enriched = <({DateTime from, DateTime to, DateTime pay, String yr, String pd})>[];
+      for (final p in periods) {
+        if (p.dateFrom == null || p.dateTo == null) continue;
+        enriched.add((
+          from: p.dateFrom!.toUtc(),
+          to: p.dateTo!.toUtc(),
+          pay: paydayFromCutoff(p.dateTo!),
+          yr: p.year ?? '',
+          pd: p.code,
+        ));
+      }
+      if (enriched.isEmpty) return null;
+      enriched.sort((a, b) => a.to.compareTo(b.to));
+
+      final next = enriched.firstWhere(
+        (e) => !e.pay.isBefore(today),
+        orElse: () => enriched.last,
+      );
+      final current = enriched.firstWhere(
+        (e) => !e.from.isAfter(today) && !e.to.isBefore(today),
+        orElse: () => enriched.lastWhere(
+          (e) => e.to.isBefore(today),
+          orElse: () => enriched.first,
+        ),
+      );
+      final days = next.pay.difference(today).inDays;
+
+      PayCalendarPeriod toModel(({DateTime from, DateTime to, DateTime pay, String yr, String pd}) e,
+          {int? daysTo}) =>
+          PayCalendarPeriod(
+            payYear: e.yr,
+            payPeriod: e.pd,
+            payDate: e.pay,
+            cutoffFrom: e.from,
+            cutoffTo: e.to,
+            daysToPayday: daysTo,
+          );
+
+      return PayCalendarNext(
+        next: toModel(next, daysTo: days < 0 ? 0 : days),
+        current: toModel(current),
+      );
     } catch (_) {
       return null;
     }

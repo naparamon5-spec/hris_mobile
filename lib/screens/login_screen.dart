@@ -56,6 +56,18 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     _probeBiometrics();
     _loadAppVersion();
+    _restoreRememberedId();
+  }
+
+  /// Prefill the Employee ID + tick the "Remember me" box when the user asked
+  /// to be remembered on a previous login. The password is never stored.
+  Future<void> _restoreRememberedId() async {
+    final id = await AppSession.instance.readRememberedUserId();
+    if (!mounted || id == null || id.isEmpty) return;
+    setState(() {
+      _employeeId.text = id;
+      _remember = true;
+    });
   }
 
   Future<void> _loadAppVersion() async {

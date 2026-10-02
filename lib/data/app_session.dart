@@ -103,6 +103,11 @@ class AppSession extends ChangeNotifier {
 
   /// Stored so a future token-refresh flow can call `POST /auth/refresh`.
   String? get refreshToken => _refreshToken;
+
+  /// The last-remembered Employee ID (prefills the login form). Never
+  /// contains a password. Null when "Remember me" was never used or when the
+  /// user has unchecked it on a subsequent sign-in.
+  Future<String?> readRememberedUserId() => _store.readRememberedUserId();
   bool get isSignedIn => api.accessToken != null;
 
   /// True when biometric sign-in has persisted credentials to reuse (set when
@@ -177,6 +182,15 @@ class AppSession extends ChangeNotifier {
       user: userMap,
       tenantId: tenant?.id,
     );
+
+    // "Remember me" — only the Employee ID is persisted (never the password),
+    // so the login form prefills it after relaunch/logout. When unchecked, we
+    // actively clear any previously-remembered ID.
+    if (remember) {
+      await _store.saveRememberedUserId(userId);
+    } else {
+      await _store.clearRememberedUserId();
+    }
 
     // If biometrics is already enrolled, refresh the stored token to the latest
     // one so it never goes stale mid-enrollment.

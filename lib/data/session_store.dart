@@ -26,6 +26,9 @@ class SessionStore {
   static const _kBioTenant = 'bio_tenant_id';
   // Legacy key from the password-based biometric login; cleaned up on migration.
   static const _kBioPassLegacy = 'bio_password';
+  // "Remember me" prefill — persists the Employee ID (NEVER the password) so
+  // the login form can prefill it after a relaunch or logout.
+  static const _kRememberId = 'remember_user_id';
 
   Future<void> saveSession({
     required String? accessToken,
@@ -67,6 +70,14 @@ class SessionStore {
       user: user,
       tenantId: await _read(_kTenant),
     );
+  }
+
+  // ---- Remember me (Employee ID prefill only — never the password) ----
+  Future<void> saveRememberedUserId(String? userId) =>
+      _write(_kRememberId, userId == null || userId.isEmpty ? null : userId);
+  Future<String?> readRememberedUserId() => _read(_kRememberId);
+  Future<void> clearRememberedUserId() async {
+    await _storage.delete(key: _kRememberId);
   }
 
   // ---- Biometric enrollment (kept across restarts so biometric works) ----
