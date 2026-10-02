@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'api_client.dart';
+import 'inbox_badges.dart';
 import 'notifications/push_service.dart';
 import 'security_state.dart';
 import 'session_store.dart';
@@ -433,6 +434,9 @@ class AppSession extends ChangeNotifier {
     // Clear the persisted session (biometric enrollment is kept so the user
     // can sign back in with biometrics).
     await _store.clearSession();
+    // Clear in-app unread counts AND the OS app-icon badge so the signed-out
+    // launcher doesn't still show the previous user's "1".
+    InboxBadges.instance.clear();
     notifyListeners();
   }
 
