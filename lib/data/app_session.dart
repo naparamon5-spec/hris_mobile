@@ -417,6 +417,8 @@ class AppSession extends ChangeNotifier {
   /// Clears the session. Best-effort call to the backend logout; local state is
   /// cleared regardless.
   Future<void> logout() async {
+    // Stop surfacing foreground notifications immediately.
+    PushService.signedIn = false;
     // Drop this device's push token while the auth header is still valid.
     await _unregisterPush();
     try {
@@ -455,6 +457,8 @@ class AppSession extends ChangeNotifier {
 
   Future<void> _registerPush() async {
     final platform = Platform.isIOS ? 'ios' : 'android';
+    // Let the foreground notification handler know a user is signed in.
+    PushService.signedIn = true;
 
     // Bind the refresh listener FIRST (once), so a token that only becomes
     // available later — iOS APNs is often not ready at login time — is still
@@ -483,11 +487,24 @@ class AppSession extends ChangeNotifier {
   }
 
   Future<void> _unregisterPush() async {
-    final t = _fcmToken;
-    if (t == null) return;
-    try {
-      await api.post('/auth/fcm-token/remove', body: {'fcm_token': t});
-    } catch (_) {}
+    // Fall back to the live device token if we didn't register one THIS session
+    // (e.g. the app was reopened from a saved session, so `_fcmToken` is null).
+    // Without this, the backend keeps the token and keeps pushing after logout.
+    String? t = _fcmToken;
+    if (t == null || t.isEmpty) {
+      try {
+        t = await PushService.instance.getToken();
+      } catch (_) {}
+    }
+    if (t != null && t.isNotEmpty) {
+      try {
+        await api.post('/auth/fcm-token/remove', body: {'fcm_token': t});
+      } catch (_) {}
+    }
+    // Invalidate the token on the device itself so a signed-out phone stops
+    // receiving pushes even if the backend removal above didn't land. The
+    // onTokenRefresh listener ignores the new token while signed out.
+    await PushService.instance.deleteToken();
     _fcmToken = null;
   }
 }

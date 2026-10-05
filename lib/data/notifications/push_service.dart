@@ -59,6 +59,13 @@ class PushService {
   static void setNavigatorKey(GlobalKey<NavigatorState> key) =>
       navigatorKey = key;
 
+  /// Whether a user is currently signed in. Maintained by AppSession on
+  /// login/logout. Used only to suppress FOREGROUND notifications while signed
+  /// out (the main isolate). The background isolate must NOT rely on this — it
+  /// always starts false — so terminated-app pushes are gated by token validity
+  /// instead (we delete the device token on logout).
+  static bool signedIn = false;
+
   bool _ready = false;
 
   /// Initialize FCM. Safe to call once at startup; no-op / logs on failure so a
@@ -145,6 +152,8 @@ class PushService {
   }
 
   static Future<void> _onForegroundMessage(RemoteMessage message) async {
+    // Don't surface anything to a signed-out user (badge or banner).
+    if (!signedIn) return;
     // Android must show it manually; iOS handled by presentation options.
     await showLocalNotification(message);
   }
@@ -219,6 +228,19 @@ class PushService {
   void onTokenRefresh(void Function(String token) handler) {
     try {
       FirebaseMessaging.instance.onTokenRefresh.listen(handler);
+    } catch (_) {}
+  }
+
+  /// Invalidate this device's FCM token so the backend can no longer target it
+  /// (used on logout). Firebase issues a fresh token automatically on the next
+  /// sign-in. Also clears any notifications we've shown and the OS app badge so
+  /// a signed-out phone is left clean.
+  Future<void> deleteToken() async {
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (_) {}
+    try {
+      await _local.cancelAll();
     } catch (_) {}
   }
 }
