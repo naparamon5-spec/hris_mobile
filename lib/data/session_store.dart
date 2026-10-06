@@ -29,6 +29,14 @@ class SessionStore {
   // "Remember me" prefill — persists the Employee ID (NEVER the password) so
   // the login form can prefill it after a relaunch or logout.
   static const _kRememberId = 'remember_user_id';
+  // The app version recorded on the previous launch. Used to force a sign-out
+  // when a user updates to a new version so stale tokens/claims don't carry
+  // over into a build that may have changed the auth contract.
+  static const _kLastLaunchedVersion = 'last_launched_version';
+
+  Future<String?> readLastLaunchedVersion() => _read(_kLastLaunchedVersion);
+  Future<void> saveLastLaunchedVersion(String version) =>
+      _write(_kLastLaunchedVersion, version);
 
   Future<void> saveSession({
     required String? accessToken,

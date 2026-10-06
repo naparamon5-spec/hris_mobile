@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import 'package:package_info_plus/package_info_plus.dart';
+
 import 'api_client.dart';
 import 'inbox_badges.dart';
 import 'notifications/push_service.dart';
@@ -224,6 +226,21 @@ class AppSession extends ChangeNotifier {
   /// Restores a persisted session on app launch. Returns true if the user is
   /// signed in afterwards. Renews the access token via the refresh token.
   Future<bool> restore() async {
+    // Post-update sign-out. If the installed app version differs from the one
+    // recorded on the last launch, wipe the stored session so the user has to
+    // sign in again — new builds may change the auth contract (claims, token
+    // format, scopes), and stale credentials shouldn't carry across upgrades.
+    // On a fresh install there's no stored version, so nothing happens.
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final current = info.version.trim();
+      final last = await _store.readLastLaunchedVersion();
+      if (last != null && last.isNotEmpty && last != current) {
+        await _store.clearSession();
+      }
+      if (current.isNotEmpty) await _store.saveLastLaunchedVersion(current);
+    } catch (_) {/* best-effort — never block launch on this */}
+
     // Always restore the last chosen company + biometric enrollment first —
     // even with no active session — so that after sign-out + restart the app
     // returns to that company's login screen (biometric panel) instead of the
