@@ -257,6 +257,10 @@ class AppSession extends ChangeNotifier {
     if (stored == null) {
       // No active session, but we may still have a remembered company/biometric
       // enrollment above — let the UI route accordingly.
+      // Also zero the app-icon badge: a push that arrived while the app was
+      // closed may have set it, and a signed-out launcher should never show
+      // the previous user's unread count.
+      InboxBadges.instance.clear();
       if (tenant != null || _biometricCredsSaved) notifyListeners();
       _restoreComplete = true;
       return false;
