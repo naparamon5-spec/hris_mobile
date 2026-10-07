@@ -41,7 +41,25 @@ class AppVersionGate {
   /// The platform string the backend understands.
   static String get _platform => Platform.isAndroid ? 'android' : 'ios';
 
+  /// When the last check completed. The resume re-check uses it to throttle
+  /// quick app switches (e.g. copying an OTP) to one request per minute.
+  DateTime? lastCheckAt;
+
+  /// The soft prompt shows at most once per launch.
+  bool softShownThisLaunch = false;
+
+  /// The forced wall is on screen — don't push a second one.
+  bool forcedWallShown = false;
+
+  /// True when a resume should ask the backend again.
+  bool get shouldRecheckOnResume {
+    final last = lastCheckAt;
+    if (last == null || forcedWallShown) return false;
+    return DateTime.now().difference(last) >= const Duration(minutes: 1);
+  }
+
   Future<UpdateDecision> check({String? tenantId}) async {
+    lastCheckAt = DateTime.now();
     try {
       final info = await PackageInfo.fromPlatform();
       final current = info.version; // e.g. "1.1.0"

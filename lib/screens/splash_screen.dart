@@ -56,6 +56,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     if (decision.action == UpdateAction.forced) {
+      AppVersionGate.instance.forcedWallShown = true;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => ForceUpdateScreen(storeUrl: decision.storeUrl),
@@ -88,6 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Soft prompt: after the destination is on screen, offer the update.
     if (decision.action == UpdateAction.soft) {
+      AppVersionGate.instance.softShownThisLaunch = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final ctx = context;
         if (ctx.mounted) {

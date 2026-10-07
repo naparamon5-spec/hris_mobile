@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'data/app_session.dart';
+import 'data/app_version_gate.dart';
 import 'data/security_state.dart';
 import 'data/notifications/push_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
+import 'screens/app_update_screen.dart';
 import 'screens/company_select_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/splash_screen.dart';
@@ -102,10 +104,41 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       final since = _pausedAt;
       _pausedAt = null;
+      _recheckVersionOnResume();
       if (since == null) return;
       final away = DateTime.now().difference(since);
       if (away >= _bgLockAfter && AppSession.instance.isSignedIn) {
         _lockToLogin();
+      }
+    }
+  }
+
+  // Resume re-check: a version released while the app sat in memory must still
+  // prompt without the user killing the app from multitask. Throttled to once a
+  // minute inside [AppVersionGate.shouldRecheckOnResume]; skipped before the
+  // splash's launch check has run.
+  Future<void> _recheckVersionOnResume() async {
+    final gate = AppVersionGate.instance;
+    if (!gate.shouldRecheckOnResume) return;
+    final decision = await gate.check(tenantId: AppVersionGate.currentTenantId);
+    if (!mounted || gate.forcedWallShown) return;
+    final ctx = hrisNavigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+
+    if (decision.action == UpdateAction.forced) {
+      gate.forcedWallShown = true;
+      Navigator.of(ctx).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => ForceUpdateScreen(storeUrl: decision.storeUrl),
+        ),
+        (route) => false,
+      );
+    } else if (decision.action == UpdateAction.soft &&
+        !gate.softShownThisLaunch) {
+      gate.softShownThisLaunch = true;
+      final overlayCtx = hrisNavigatorKey.currentState?.overlay?.context;
+      if (overlayCtx != null) {
+        showSoftUpdateDialog(overlayCtx, storeUrl: decision.storeUrl);
       }
     }
   }
