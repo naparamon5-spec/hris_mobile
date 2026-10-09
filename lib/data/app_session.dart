@@ -294,6 +294,11 @@ class AppSession extends ChangeNotifier {
       // dead ones are pruned server-side), not only on a fresh login.
       unawaited(_registerPush());
       notifyListeners();
+    } else {
+      // Stored session was rejected → user lands on login; drop the stale
+      // app-icon badge from the previous session.
+      PushService.signedIn = false;
+      InboxBadges.instance.clear();
     }
     // From here on, a failed refresh means the session expired mid-use → the
     // onSessionExpired hook logs the user out.
@@ -346,6 +351,8 @@ class AppSession extends ChangeNotifier {
     _userId = null;
     _userName = null;
     _role = UserRole.employee;
+    PushService.signedIn = false;
+    InboxBadges.instance.clear();
     notifyListeners();
     onSessionExpired?.call();
   }

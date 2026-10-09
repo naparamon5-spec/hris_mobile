@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'data/app_session.dart';
 import 'data/app_version_gate.dart';
+import 'data/inbox_badges.dart';
 import 'data/security_state.dart';
 import 'data/notifications/push_service.dart';
 import 'theme/app_colors.dart';
@@ -12,7 +13,6 @@ import 'screens/app_update_screen.dart';
 import 'screens/company_select_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/splash_screen.dart';
-import 'widgets/brand.dart';
 import 'widgets/ui.dart';
 
 final GlobalKey<NavigatorState> hrisNavigatorKey = GlobalKey<NavigatorState>();
@@ -68,10 +68,6 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   // user to re-authenticate when they come back. Sits inside the 3–5 min range.
   static const Duration _bgLockAfter = Duration(minutes: 3);
   DateTime? _pausedAt;
-  // Privacy cover (Maya-style): while the app is in the multitask switcher or
-  // otherwise not foregrounded, paint the splash over the UI so no sensitive
-  // content shows in the app-switcher snapshot. Removed the moment it resumes.
-  bool _obscured = false;
 
   @override
   void initState() {
@@ -91,20 +87,13 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
         state == AppLifecycleState.hidden) {
       // Remember when the app left the foreground.
       _pausedAt ??= DateTime.now();
-    }
-
-    // Show the splash cover as soon as the app is no longer foreground
-    // (inactive fires when the app-switcher snapshot is taken), and remove it
-    // only once fully resumed — same feel as the Maya app.
-    final obscure = state != AppLifecycleState.resumed;
-    if (obscure != _obscured) {
-      setState(() => _obscured = obscure);
-    }
-
-    if (state == AppLifecycleState.resumed) {
+    } else if (state == AppLifecycleState.resumed) {
       final since = _pausedAt;
       _pausedAt = null;
       _recheckVersionOnResume();
+      // A push received while signed out can still set the OS badge; never
+      // leave it showing on a signed-out app.
+      if (!AppSession.instance.isSignedIn) InboxBadges.instance.clear();
       if (since == null) return;
       final away = DateTime.now().difference(since);
       if (away >= _bgLockAfter && AppSession.instance.isSignedIn) {
@@ -176,60 +165,13 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
           theme: AppTheme.light(accent: accent),
           // Mount the loading overlay above the Navigator so showLoadingOverlay()
           // blurs and covers ANY screen in the app, not just the home shell.
-          builder: (context, child) => Stack(
-            children: [
-              LoadingOverlay(
-                key: loadingOverlayKey,
-                child: child ?? const SizedBox.shrink(),
-              ),
-              // Privacy cover for the app-switcher snapshot.
-              if (_obscured) const Positioned.fill(child: _PrivacyCover()),
-            ],
+          builder: (context, child) => LoadingOverlay(
+            key: loadingOverlayKey,
+            child: child ?? const SizedBox.shrink(),
           ),
           home: const SplashScreen(),
         );
       },
-    );
-  }
-}
-
-/// The splash-style cover painted over the app while it is backgrounded, so the
-/// multitask switcher shows the brand screen instead of the user's data.
-class _PrivacyCover extends StatelessWidget {
-  const _PrivacyCover();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Material(
-      color: Colors.white,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AniHrisIcon(size: 88),
-            SizedBox(height: 20),
-            Text(
-              'ANI HRIS',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-                color: AppColors.ink,
-              ),
-            ),
-            SizedBox(height: 6),
-            Text(
-              'Human Resource Information System',
-              style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 0.8,
-                fontWeight: FontWeight.w600,
-                color: AppColors.inkSoft,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

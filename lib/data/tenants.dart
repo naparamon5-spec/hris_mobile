@@ -66,7 +66,7 @@ const List<Tenant> kTenants = [
   ),
   Tenant(
     id: 'versatech',
-    name: 'Versatech International',
+    name: 'Versatech International Inc.',
     subtitle: 'AV and ICT Distribution',
     color: Color(0xFF6DCFF6),
   ),

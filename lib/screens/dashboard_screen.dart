@@ -101,9 +101,9 @@ class _TopBar extends StatelessWidget {
     final position = (s.position?.isNotEmpty ?? false)
         ? s.position!
         : s.role.name.toUpperCase();
-    final company =
-        (s.company?.isNotEmpty ?? false) ? _shortCompany(s.company!) : 'ANI';
-    return '$position • $company';
+    final name = (s.company?.isNotEmpty ?? false) ? s.company! : s.tenant?.name;
+    if (name == null || name.isEmpty) return position;
+    return '$position • ${_shortCompany(name).toUpperCase()}';
   }
 
   @override
