@@ -1,7 +1,3 @@
-// ANI HRIS — Human Resource Information System (mobile)
-// Developed by Ramon Jr Argonza Napa.
-// Author credit kept in source only; not displayed in the app.
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
