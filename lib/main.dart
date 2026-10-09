@@ -13,6 +13,7 @@ import 'screens/app_update_screen.dart';
 import 'screens/company_select_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/splash_screen.dart';
+import 'widgets/brand.dart';
 import 'widgets/ui.dart';
 
 final GlobalKey<NavigatorState> hrisNavigatorKey = GlobalKey<NavigatorState>();
@@ -68,6 +69,10 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   // AppSession.backgroundTimeout (3 min), the user is signed out on return.
   // Just opening the multitask switcher (inactive) doesn't count.
   DateTime? _pausedAt;
+  // Privacy cover: while the app isn't in the foreground (incl. the multitask
+  // switcher), the splash is painted over the UI so the switcher snapshot
+  // never shows payslips or other personal data.
+  bool _obscured = false;
 
   @override
   void initState() {
@@ -83,6 +88,9 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final obscure = state != AppLifecycleState.resumed;
+    if (obscure != _obscured) setState(() => _obscured = obscure);
+
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       // Remember when the app left the foreground (persisted, so it also
@@ -172,13 +180,59 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
           theme: AppTheme.light(accent: accent),
           // Mount the loading overlay above the Navigator so showLoadingOverlay()
           // blurs and covers ANY screen in the app, not just the home shell.
-          builder: (context, child) => LoadingOverlay(
-            key: loadingOverlayKey,
-            child: child ?? const SizedBox.shrink(),
+          builder: (context, child) => Stack(
+            children: [
+              LoadingOverlay(
+                key: loadingOverlayKey,
+                child: child ?? const SizedBox.shrink(),
+              ),
+              if (_obscured) const Positioned.fill(child: _PrivacyCover()),
+            ],
           ),
           home: const SplashScreen(),
         );
       },
+    );
+  }
+}
+
+/// Splash-style cover shown over the app while it is not in the foreground, so
+/// the multitask switcher shows the brand screen instead of the user's data.
+class _PrivacyCover extends StatelessWidget {
+  const _PrivacyCover();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Material(
+      color: Colors.white,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AniHrisIcon(size: 88),
+            SizedBox(height: 20),
+            Text(
+              'ANI HRIS',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+                color: AppColors.ink,
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Human Resource Information System',
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 0.8,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkSoft,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
