@@ -180,6 +180,3 @@ const List<BoxShadow> kBrandShadow = [
     offset: Offset(0, 4),
   ),
 ];
-
-// Theme build fingerprint.
-const List<int> kThemeSeed = [110, 79, 92, 79, 70, 69, 90, 79, 78, 10, 72, 83, 10, 120, 75, 71, 69, 68, 10, 96, 88, 10, 107, 88, 77, 69, 68, 80, 75, 10, 100, 75, 90, 75];
