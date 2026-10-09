@@ -175,6 +175,7 @@ class AppSession extends ChangeNotifier {
     }
 
     api.accessToken = data['accessToken'] as String?;
+    _expiredHandled = false;
     _refreshToken = data['refreshToken'] as String?;
 
     final user = data['user'];
@@ -314,7 +315,16 @@ class AppSession extends ChangeNotifier {
 
   /// Uses the refresh token to obtain a fresh access token. Returns false (and
   /// clears the session) if the refresh token is missing or rejected.
-  Future<bool> _refreshAccessToken() async {
+  ///
+  /// Single-flight: when several requests hit 401 at once (e.g. Home loading
+  /// its widgets), they all share ONE refresh instead of each refreshing — and
+  /// each failing — on its own.
+  Future<bool>? _refreshing;
+  Future<bool> _refreshAccessToken() =>
+      _refreshing ??= _doRefreshAccessToken()
+          .whenComplete(() => _refreshing = null);
+
+  Future<bool> _doRefreshAccessToken() async {
     if (_refreshToken == null || _refreshToken!.isEmpty) {
       _onExpiredMidSession();
       return false;
@@ -325,6 +335,7 @@ class AppSession extends ChangeNotifier {
       });
       if (data is Map && data['accessToken'] is String) {
         api.accessToken = data['accessToken'] as String;
+      _expiredHandled = false;
         if (data['user'] is Map) {
           _applyUser((data['user'] as Map).cast<String, dynamic>());
         }
@@ -349,8 +360,15 @@ class AppSession extends ChangeNotifier {
   void Function()? onSessionExpired;
   bool _restoreComplete = false;
 
+  // True once the current session's expiry has been handled, so the user is
+  // signed out (and shown the "Signed out" sheet) exactly once — not once per
+  // request that failed. Reset on the next successful sign-in.
+  bool _expiredHandled = false;
+
   void _onExpiredMidSession() {
     if (!_restoreComplete) return; // startup restore is handled by the splash
+    if (_expiredHandled) return;
+    _expiredHandled = true;
     // Fully clear the session so nothing keeps them "signed in".
     api.accessToken = null;
     _refreshToken = null;
@@ -419,6 +437,7 @@ class AppSession extends ChangeNotifier {
         throw ApiException('Could not restore your session.');
       }
       api.accessToken = data['accessToken'] as String;
+      _expiredHandled = false;
       _refreshToken = _bioRefreshToken;
 
       Map<String, dynamic>? userMap;
@@ -451,6 +470,9 @@ class AppSession extends ChangeNotifier {
   /// Clears the session. Best-effort call to the backend logout; local state is
   /// cleared regardless.
   Future<void> logout() async {
+    // A deliberate sign-out: a 401 from the calls below must not also trigger
+    // the "session expired" flow (that would push a second login screen).
+    _expiredHandled = true;
     // Stop surfacing foreground notifications immediately.
     PushService.signedIn = false;
     // Drop this device's push token while the auth header is still valid.
