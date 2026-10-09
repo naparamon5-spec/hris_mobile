@@ -38,6 +38,19 @@ class SessionStore {
   Future<void> saveLastLaunchedVersion(String version) =>
       _write(_kLastLaunchedVersion, version);
 
+  // When the app last went to the background (epoch ms). Lets the 3-minute
+  // background sign-out still apply if the app was killed while backgrounded.
+  static const _kBackgroundedAt = 'backgrounded_at';
+
+  Future<DateTime?> readBackgroundedAt() async {
+    final v = int.tryParse(await _read(_kBackgroundedAt) ?? '');
+    return v == null ? null : DateTime.fromMillisecondsSinceEpoch(v);
+  }
+
+  Future<void> saveBackgroundedAt(DateTime? at) => at == null
+      ? _storage.delete(key: _kBackgroundedAt)
+      : _write(_kBackgroundedAt, at.millisecondsSinceEpoch.toString());
+
   Future<void> saveSession({
     required String? accessToken,
     required String? refreshToken,

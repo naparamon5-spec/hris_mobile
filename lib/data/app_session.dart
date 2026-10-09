@@ -125,13 +125,19 @@ class AppSession extends ChangeNotifier {
   /// and requests and see the extra request types.
   bool get canApprove => _role != UserRole.employee;
 
-  /// Locks the app (auto-lock on cold start / background timeout): drops the
-  /// in-memory access token so no authenticated call succeeds until the user
-  /// re-authenticates, while KEEPING the stored session + biometric enrollment
-  /// so they can unlock with Face ID / password. The caller routes to login.
-  void lock() {
-    api.accessToken = null;
-    notifyListeners();
+  /// How long the app may stay in the background before the user is signed
+  /// out. Removing the app from multitask alone never signs out.
+  static const Duration backgroundTimeout = Duration(minutes: 3);
+
+  /// Records (or clears, with null) when the app went to the background.
+  Future<void> markBackgrounded(DateTime? at) => _store.saveBackgroundedAt(at);
+
+  /// True when the app was backgrounded at least [backgroundTimeout] ago —
+  /// also across a kill + relaunch. Clears the stamp either way.
+  Future<bool> consumeBackgroundExpired() async {
+    final at = await _store.readBackgroundedAt();
+    await _store.saveBackgroundedAt(null);
+    return at != null && DateTime.now().difference(at) >= backgroundTimeout;
   }
 
   /// Signs in against `POST /public/login`. On success stores the tokens and

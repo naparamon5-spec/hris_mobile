@@ -64,9 +64,9 @@ class HrisApp extends StatefulWidget {
 }
 
 class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
-  // Auto-lock: how long the app may sit in the background before we require the
-  // user to re-authenticate when they come back. Sits inside the 3–5 min range.
-  static const Duration _bgLockAfter = Duration(minutes: 3);
+  // Background sign-out: if the app sits in the background for
+  // AppSession.backgroundTimeout (3 min), the user is signed out on return.
+  // Just opening the multitask switcher (inactive) doesn't count.
   DateTime? _pausedAt;
 
   @override
@@ -85,19 +85,25 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
-      // Remember when the app left the foreground.
-      _pausedAt ??= DateTime.now();
+      // Remember when the app left the foreground (persisted, so it also
+      // applies if the app is killed while in the background).
+      if (_pausedAt == null) {
+        _pausedAt = DateTime.now();
+        AppSession.instance.markBackgrounded(_pausedAt);
+      }
     } else if (state == AppLifecycleState.resumed) {
       final since = _pausedAt;
       _pausedAt = null;
+      AppSession.instance.markBackgrounded(null);
       _recheckVersionOnResume();
       // A push received while signed out can still set the OS badge; never
       // leave it showing on a signed-out app.
       if (!AppSession.instance.isSignedIn) InboxBadges.instance.clear();
       if (since == null) return;
       final away = DateTime.now().difference(since);
-      if (away >= _bgLockAfter && AppSession.instance.isSignedIn) {
-        _lockToLogin();
+      if (away >= AppSession.backgroundTimeout &&
+          AppSession.instance.isSignedIn) {
+        _signOutToLogin();
       }
     }
   }
@@ -132,11 +138,12 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
     }
   }
 
-  // Drop the in-memory session and route back to the login (biometric) screen.
-  void _lockToLogin() {
-    AppSession.instance.lock();
+  // Full sign-out (clears the session, push token and app-icon badge; keeps
+  // biometric enrollment) and route back to the login screen.
+  Future<void> _signOutToLogin() async {
+    await AppSession.instance.logout();
     final ctx = hrisNavigatorKey.currentContext;
-    if (ctx == null) return;
+    if (ctx == null || !ctx.mounted) return;
     final t = AppSession.instance.tenant;
     Navigator.of(ctx).pushAndRemoveUntil(
       MaterialPageRoute(
