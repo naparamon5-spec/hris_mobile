@@ -7,15 +7,15 @@ import '../widgets/ui.dart';
 
 /// Leave Hours — the "Remaining Leave Hours" summary from the HRIS web app:
 /// Approved Leave and Approved UT (AM/PM) always (dash when no balance), plus
-/// VL / SL / Additional VL / Accumulated Leave only when they have a value.
+/// VL / SL / Additional VL / Accumulated Leave once they are assigned.
 class LeaveHoursScreen extends StatelessWidget {
   const LeaveHoursScreen({super.key});
 
   String _fmt(String? v) => (v == null || v.isEmpty) ? '— —' : v;
 
-  /// A value worth showing: present and not "00:00".
-  static bool _has(String? v) =>
-      v != null && v.isNotEmpty && v.replaceAll(RegExp(r'[0:]'), '').isNotEmpty;
+  /// The leave type is assigned to the employee (the server sends null when
+  /// it isn't; "00:00" means assigned but used up — still shown).
+  static bool _has(String? v) => v != null && v.isNotEmpty;
 
   List<Widget> _balanceCards(LeaveBalance b) => [
         if (_has(b.vlPaid))
@@ -75,8 +75,8 @@ class LeaveHoursScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              // VL / SL / Additional VL / Accumulated Leave only when the
-              // employee actually has a balance for them.
+              // VL / SL / Additional VL / Accumulated Leave once the employee
+              // has those credits (shown even when used up).
               for (final pair in _pairs(_balanceCards(b))) ...[
                 const SizedBox(height: 14),
                 Row(

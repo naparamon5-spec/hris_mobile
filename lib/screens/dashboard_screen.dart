@@ -965,7 +965,8 @@ class _RecentCard extends StatelessWidget {
   }
 }
 
-/// Leave balance with VL and SL as prominent hero tiles, loaded from the API.
+/// Leave balance hero tiles: VL / SL once the employee has those credits,
+/// else Approved Leave and Approved UT (AM/PM), loaded from the API.
 class _LeaveBalance extends StatelessWidget {
   // Remaining paid leave as HH:MM (matches the web / Leave Hours screen).
   String _hhmm(String? v) => (v == null || v.isEmpty) ? '— —' : v;
@@ -975,37 +976,54 @@ class _LeaveBalance extends StatelessWidget {
     return AsyncView<LeaveBalance>(
       load: () => HrisApi.instance.leaveHours(),
       useGlobalLoader: true,
-      builder: (context, b) => Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _bigCredit(
-                  context,
-                  label: 'Vacation Leave',
-                  short: 'VL',
-                  val: _hhmm(b.vlPaid),
-                  unit: '',
-                  icon: Icons.beach_access_outlined,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _bigCredit(
-                  context,
-                  label: 'Sick Leave',
-                  short: 'SL',
-                  val: _hhmm(b.slPaid),
-                  unit: '',
-                  icon: Icons.healing_outlined,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+      builder: (context, b) {
+        // New employees with no VL / SL credits yet see Approved Leave and
+        // Approved UT (AM/PM); once VL or SL is assigned, always VL and SL
+        // (even when used up, 00:00).
+        final hasCredits = _has(b.vlPaid) || _has(b.slPaid);
+        final tiles = hasCredits
+            ? [
+                _bigCredit(context,
+                    label: 'Vacation Leave',
+                    short: 'VL',
+                    val: _hhmm(b.vlPaid),
+                    unit: '',
+                    icon: Icons.beach_access_outlined),
+                _bigCredit(context,
+                    label: 'Sick Leave',
+                    short: 'SL',
+                    val: _hhmm(b.slPaid),
+                    unit: '',
+                    icon: Icons.healing_outlined),
+              ]
+            : [
+                _bigCredit(context,
+                    label: 'Approved Leave',
+                    short: 'AL',
+                    val: _hhmm(b.approvedLeave),
+                    unit: '',
+                    icon: Icons.event_note_outlined),
+                _bigCredit(context,
+                    label: 'Approved UT (AM/PM)',
+                    short: 'UT',
+                    val: _hhmm(b.approvedUt),
+                    unit: '',
+                    icon: Icons.timelapse_outlined),
+              ];
+        return Row(
+          children: [
+            Expanded(child: tiles[0]),
+            const SizedBox(width: 12),
+            Expanded(child: tiles[1]),
+          ],
+        );
+      },
     );
   }
+
+  /// The leave type is assigned to the employee (the server sends null when
+  /// it isn't; "00:00" means assigned but used up).
+  static bool _has(String? v) => v != null && v.isNotEmpty;
 
   Widget _bigCredit(
     BuildContext context, {
