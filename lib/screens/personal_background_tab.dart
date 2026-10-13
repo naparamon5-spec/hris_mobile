@@ -9,8 +9,13 @@ import '../widgets/ui.dart';
 // MODELS (local / in-memory demo data)
 // -----------------------------------------------------------------------------
 class FamilyMember {
-  FamilyMember(this.firstName, this.middleName, this.lastName, this.relationship,
-      this.birthdate);
+  FamilyMember(
+    this.firstName,
+    this.middleName,
+    this.lastName,
+    this.relationship,
+    this.birthdate,
+  );
   final String firstName, middleName, lastName, relationship, birthdate;
   String get fullName =>
       [firstName, middleName, lastName].where((s) => s.isNotEmpty).join(' ');
@@ -22,9 +27,22 @@ class Education {
 }
 
 class PrevEmployment {
-  PrevEmployment(this.company, this.address1, this.address2, this.address3,
-      this.position, this.dateFrom, this.dateTo);
-  final String company, address1, address2, address3, position, dateFrom, dateTo;
+  PrevEmployment(
+    this.company,
+    this.address1,
+    this.address2,
+    this.address3,
+    this.position,
+    this.dateFrom,
+    this.dateTo,
+  );
+  final String company,
+      address1,
+      address2,
+      address3,
+      position,
+      dateFrom,
+      dateTo;
 }
 
 // -----------------------------------------------------------------------------
@@ -65,23 +83,33 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
         _info = bg.personalInfo;
         _family
           ..clear()
-          ..addAll(bg.family.map((f) => FamilyMember(
+          ..addAll(
+            bg.family.map(
+              (f) => FamilyMember(
                 f['first_name'] ?? '',
                 f['middle_name'] ?? '',
                 f['last_name'] ?? '',
                 f['relationship'] ?? '',
                 f['birthdate'] ?? '',
-              )));
+              ),
+            ),
+          );
         _education
           ..clear()
-          ..addAll(bg.education.map((e) => Education(
+          ..addAll(
+            bg.education.map(
+              (e) => Education(
                 e['school'] ?? '',
                 e['attainment'] ?? '',
                 e['year_graduated'] ?? '',
-              )));
+              ),
+            ),
+          );
         _employment
           ..clear()
-          ..addAll(bg.previousEmployment.map((p) => PrevEmployment(
+          ..addAll(
+            bg.previousEmployment.map(
+              (p) => PrevEmployment(
                 p['company'] ?? '',
                 p['address1'] ?? '',
                 p['address2'] ?? '',
@@ -89,7 +117,9 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
                 p['position'] ?? '',
                 p['date_from'] ?? '',
                 p['date_to'] ?? '',
-              )));
+              ),
+            ),
+          );
         _loading = false;
       });
     } on ApiException catch (e) {
@@ -105,15 +135,19 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Center(
-          child: CircularProgressIndicator(color: AppColors.brandRed));
+        child: CircularProgressIndicator(color: AppColors.brandRed),
+      );
     }
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded,
-                size: 48, color: AppColors.inkFaint),
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 48,
+              color: AppColors.inkFaint,
+            ),
             const SizedBox(height: 12),
             Text(_error!, style: const TextStyle(color: AppColors.inkSoft)),
             const SizedBox(height: 12),
@@ -149,8 +183,10 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
                     icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text('Edit',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    label: const Text(
+                      'Edit',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ],
               ),
@@ -321,7 +357,12 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
         ),
         child: Row(
           children: [
-            IconBadge(icon: icon, color: AppColors.brandRed, size: 40, iconSize: 20),
+            IconBadge(
+              icon: icon,
+              color: AppColors.brandRed,
+              size: 40,
+              iconSize: 20,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -348,8 +389,11 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
             ),
             IconButton(
               onPressed: onDelete,
-              icon: const Icon(Icons.close_rounded,
-                  color: AppColors.inkFaint, size: 18),
+              icon: const Icon(
+                Icons.close_rounded,
+                color: AppColors.inkFaint,
+                size: 18,
+              ),
               splashRadius: 18,
             ),
           ],
@@ -400,8 +444,10 @@ class _SectionWithAdd extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
+                label: const Text(
+                  'Add',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
             ],
           ),
@@ -461,7 +507,9 @@ class _SheetScaffold extends StatelessWidget {
                     child: Text(
                       title,
                       style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w800),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -497,10 +545,12 @@ class _LabeledField extends StatelessWidget {
     this.keyboardType,
     this.enabled = true,
     this.error = false,
+    this.optional = false,
   });
 
   final String label;
   final TextEditingController controller;
+  final bool optional;
   final bool required;
   final TextInputType? keyboardType;
   final bool enabled;
@@ -515,7 +565,7 @@ class _LabeledField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label(label, required),
+          _label(label, required, optional: optional),
           const SizedBox(height: 6),
           TextField(
             controller: controller,
@@ -525,8 +575,10 @@ class _LabeledField extends StatelessWidget {
               isDense: true,
               filled: true,
               fillColor: AppColors.fieldFill,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -547,17 +599,21 @@ class _LabeledField extends StatelessWidget {
               ),
               suffixIcon: enabled
                   ? null
-                  : const Icon(Icons.lock_outline_rounded,
-                      size: 16, color: AppColors.inkFaint),
+                  : const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 16,
+                      color: AppColors.inkFaint,
+                    ),
             ),
           ),
+          if (error) _errorText(label),
         ],
       ),
     );
   }
 }
 
-Widget _label(String text, bool required) {
+Widget _label(String text, bool required, {bool optional = false}) {
   return RichText(
     text: TextSpan(
       text: text,
@@ -566,12 +622,45 @@ Widget _label(String text, bool required) {
         fontSize: 13.5,
         fontWeight: FontWeight.w700,
       ),
-      children: required
-          ? [
-              TextSpan(
-                  text: ' *', style: TextStyle(color: AppColors.brandRed))
-            ]
-          : null,
+      children: [
+        if (required)
+          TextSpan(
+            text: ' *',
+            style: TextStyle(color: AppColors.brandRed),
+          ),
+        if (optional)
+          const TextSpan(
+            text: '  (optional)',
+            style: TextStyle(
+              color: AppColors.inkFaint,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+/// Red helper text under a required field left empty.
+Widget _errorText(String label) {
+  return Padding(
+    padding: const EdgeInsets.only(top: 6, left: 2),
+    child: Row(
+      children: [
+        Icon(Icons.error_outline_rounded, size: 14, color: AppColors.brandRed),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            '$label is required',
+            style: TextStyle(
+              color: AppColors.brandRed,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }
@@ -612,18 +701,23 @@ class _DropdownField extends StatelessWidget {
               enabledBorder: error
                   ? OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          BorderSide(color: AppColors.brandRed, width: 1.6),
+                      borderSide: BorderSide(
+                        color: AppColors.brandRed,
+                        width: 1.6,
+                      ),
                     )
                   : null,
             ),
-            hint: Text(hint,
-                style: const TextStyle(color: AppColors.inkFaint, fontSize: 14)),
+            hint: Text(
+              hint,
+              style: const TextStyle(color: AppColors.inkFaint, fontSize: 14),
+            ),
             items: items
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
             onChanged: onChanged,
           ),
+          if (error) _errorText(label),
         ],
       ),
     );
@@ -673,17 +767,22 @@ class _DateField extends StatelessWidget {
                       value.isEmpty ? 'mm/dd/yyyy' : value,
                       style: TextStyle(
                         fontSize: 14,
-                        color:
-                            value.isEmpty ? AppColors.inkFaint : AppColors.ink,
+                        color: value.isEmpty
+                            ? AppColors.inkFaint
+                            : AppColors.ink,
                       ),
                     ),
                   ),
-                  const Icon(Icons.calendar_today_rounded,
-                      size: 17, color: AppColors.inkSoft),
+                  const Icon(
+                    Icons.calendar_today_rounded,
+                    size: 17,
+                    color: AppColors.inkSoft,
+                  ),
                 ],
               ),
             ),
           ),
+          if (error) _errorText(label),
         ],
       ),
     );
@@ -711,8 +810,10 @@ class _AddRowFooter extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Add Row',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
+              label: const Text(
+                'Add Row',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -733,8 +834,18 @@ class _AddRowFooter extends StatelessWidget {
 
 String _fmtDate(DateTime d) {
   const m = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return '${m[d.month - 1]} ${d.day}, ${d.year}';
 }
@@ -774,7 +885,6 @@ class _FamilyFormState extends State<_FamilyForm> {
   String? _relationship;
   String _birthdate = '';
 
-
   /// Set on "Add Row" with missing fields: empty required fields turn red
   /// (and clear as soon as they're filled).
   bool _showErrors = false;
@@ -791,7 +901,13 @@ class _FamilyFormState extends State<_FamilyForm> {
   }
 
   static const _relationships = [
-    'Father', 'Mother', 'Spouse', 'Child', 'Sibling', 'Guardian', 'Other',
+    'Father',
+    'Mother',
+    'Spouse',
+    'Child',
+    'Sibling',
+    'Guardian',
+    'Other',
   ];
 
   @override
@@ -803,14 +919,22 @@ class _FamilyFormState extends State<_FamilyForm> {
   }
 
   void _submit() {
-    if (_empty(_first) || _empty(_last) || _relationship == null) {
+    if (_empty(_first) ||
+        _empty(_last) ||
+        _relationship == null ||
+        _birthdate.isEmpty) {
       setState(() => _showErrors = true);
       return;
     }
     Navigator.pop(
       context,
-      FamilyMember(_first.text.trim(), _middle.text.trim(), _last.text.trim(),
-          _relationship!, _birthdate),
+      FamilyMember(
+        _first.text.trim(),
+        _middle.text.trim(),
+        _last.text.trim(),
+        _relationship!,
+        _birthdate,
+      ),
     );
   }
 
@@ -819,16 +943,18 @@ class _FamilyFormState extends State<_FamilyForm> {
     return Column(
       children: [
         _LabeledField(
-            label: 'Firstname',
-            controller: _first,
-            required: true,
-            error: _showErrors && _empty(_first)),
-        _LabeledField(label: 'Middlename', controller: _middle),
+          label: 'Firstname',
+          controller: _first,
+          required: true,
+          error: _showErrors && _empty(_first),
+        ),
+        _LabeledField(label: 'Middlename', controller: _middle, optional: true),
         _LabeledField(
-            label: 'Lastname',
-            controller: _last,
-            required: true,
-            error: _showErrors && _empty(_last)),
+          label: 'Lastname',
+          controller: _last,
+          required: true,
+          error: _showErrors && _empty(_last),
+        ),
         _DropdownField(
           label: 'Relationship',
           required: true,
@@ -840,6 +966,8 @@ class _FamilyFormState extends State<_FamilyForm> {
         ),
         _DateField(
           label: 'Birthdate',
+          required: true,
+          error: _showErrors && _birthdate.isEmpty,
           value: _birthdate,
           onTap: () async {
             final d = await _pickDate(context);
@@ -864,7 +992,6 @@ class _EducationFormState extends State<_EducationForm> {
   final _school = TextEditingController();
   final _year = TextEditingController();
   String? _attainment;
-
 
   /// Set on "Add Row" with missing fields: empty required fields turn red
   /// (and clear as soon as they're filled).
@@ -913,10 +1040,11 @@ class _EducationFormState extends State<_EducationForm> {
     return Column(
       children: [
         _LabeledField(
-            label: 'School',
-            controller: _school,
-            required: true,
-            error: _showErrors && _empty(_school)),
+          label: 'School',
+          controller: _school,
+          required: true,
+          error: _showErrors && _empty(_school),
+        ),
         _DropdownField(
           label: 'Attainment',
           required: true,
@@ -1009,22 +1137,27 @@ class _EmploymentFormState extends State<_EmploymentForm> {
     return Column(
       children: [
         _LabeledField(
-            label: 'Company',
-            controller: _company,
-            required: true,
-            error: _showErrors && _empty(_company)),
+          label: 'Company',
+          controller: _company,
+          required: true,
+          error: _showErrors && _empty(_company),
+        ),
         _LabeledField(
-            label: 'Address 1',
-            controller: _addr1,
-            required: true,
-            error: _showErrors && _empty(_addr1)),
-        _LabeledField(label: 'Address 2', controller: _addr2),
-        _LabeledField(label: 'Address 3', controller: _addr3),
+          label: 'Address 1',
+          controller: _addr1,
+          required: true,
+          error: _showErrors && _empty(_addr1),
+        ),
         _LabeledField(
-            label: 'Position',
-            controller: _position,
-            required: true,
-            error: _showErrors && _empty(_position)),
+            label: 'Address 2', controller: _addr2, optional: true),
+        _LabeledField(
+            label: 'Address 3', controller: _addr3, optional: true),
+        _LabeledField(
+          label: 'Position',
+          controller: _position,
+          required: true,
+          error: _showErrors && _empty(_position),
+        ),
         _DateField(
           label: 'Date From',
           required: true,
@@ -1067,7 +1200,8 @@ class _PersonalInfoEditSheetState extends State<_PersonalInfoEditSheet> {
   static const _readOnlyKeys = {'Full Name', 'Telephone'};
 
   late final Map<String, TextEditingController> _controllers = {
-    for (final e in widget.initial.entries) e.key: TextEditingController(text: e.value),
+    for (final e in widget.initial.entries)
+      e.key: TextEditingController(text: e.value),
   };
 
   @override
@@ -1079,10 +1213,9 @@ class _PersonalInfoEditSheetState extends State<_PersonalInfoEditSheet> {
   }
 
   void _save() {
-    Navigator.pop(
-      context,
-      {for (final e in _controllers.entries) e.key: e.value.text.trim()},
-    );
+    Navigator.pop(context, {
+      for (final e in _controllers.entries) e.key: e.value.text.trim(),
+    });
   }
 
   @override
@@ -1111,8 +1244,10 @@ class _PersonalInfoEditSheetState extends State<_PersonalInfoEditSheet> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 icon: const Icon(Icons.check_rounded, size: 18),
-                label: const Text('Save Changes',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
+                label: const Text(
+                  'Save Changes',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
             ),
           ),
