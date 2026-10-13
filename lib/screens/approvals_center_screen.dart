@@ -20,7 +20,8 @@ class ApprovalsCenterScreen extends StatefulWidget {
   });
 
   /// 'records' = Records Approval (LOA/CA/MAD/OT); 'requests' = Request Approval
-  /// (Other Requests — COE/EPP/ITR/COL/BUP/ID from th_request_head).
+  /// (Other Requests — COE/EPP/ITR/COL/BUP/ID from th_request_head);
+  /// 'witness' = MADs awaiting the MAD witness (fm_mad_approver).
   final String module;
 
   /// 'pending' = Filings awaiting a decision; 'history' = Decided filings.
@@ -58,6 +59,7 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
   bool get _isPending => widget.scope == 'pending';
 
   String get _screenTitle {
+    if (widget.module == 'witness') return 'Witness Approval';
     if (_isRequests) {
       return _isPending ? 'Request Approval' : 'Approved Requests';
     } else {
@@ -1020,6 +1022,70 @@ class _ApprovalDetailSheet extends StatefulWidget {
 
 class _ApprovalDetailSheetState extends State<_ApprovalDetailSheet> {
   bool _busy = false;
+  late String _approvedOt = widget.task.approvedOtHours;
+
+  // Pending overtime: the approver may lower the approved hours (legacy web).
+  bool get _canSetOt =>
+      widget.task.type == 'overtime' && widget.task.status == 'For Approval';
+
+  Future<void> _editApprovedOt() async {
+    final parts = _approvedOt.split(':');
+    final h = TextEditingController(text: parts.first);
+    final m = TextEditingController(text: parts.length > 1 ? parts[1] : '00');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Approved OT hours'),
+        content: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: h,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Hours'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: m,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Minutes'),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final saved = await HrisApi.instance.setApprovedOtHours(
+        widget.task.id,
+        int.tryParse(h.text.trim()) ?? 0,
+        int.tryParse(m.text.trim()) ?? 0,
+      );
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        if (saved.isNotEmpty) _approvedOt = saved;
+      });
+      showToast(context, 'Approved OT hours updated.',
+          isSuccess: true, title: 'Saved');
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showToast(context, e.message, isSuccess: false, title: 'Error');
+    }
+  }
 
   Future<void> _decide(bool approve) async {
     if (_busy) return;
@@ -1105,7 +1171,16 @@ class _ApprovalDetailSheetState extends State<_ApprovalDetailSheet> {
             _kv('Date sent', t.dateSent),
             if (t.txnDate.isNotEmpty) _kv('Record date', t.txnDate),
             _kv('Applied hours', t.appliedHours),
-            _kv('Approved OT hours', t.approvedOtHours),
+            _kv('Approved OT hours', _approvedOt),
+            if (_canSetOt)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _busy ? null : _editApprovedOt,
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit approved OT hours'),
+                ),
+              ),
             // Reason (LOA / MAD / OT) or Purpose (CA) — from the head table.
             _kv(t.app == 'CA' ? 'Purpose' : 'Reason', t.reason),
           ],

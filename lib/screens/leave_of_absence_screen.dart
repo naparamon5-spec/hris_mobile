@@ -894,22 +894,25 @@ class _LoaActionSheet extends StatelessWidget {
       case 'Posted':
         // Final state — no actions at all.
         return [];
+      // Same buttons as the legacy web (Loa_model::loadData): Approved can be
+      // cancelled or reversed; Cancelled / Disapproved can only be reversed.
       case 'Approved':
+        return [
+          _LoaAction('Cancel Record', Icons.cancel_outlined,
+              color: AppColors.brandRed, destructive: true),
+          _LoaAction('Reverse Record', Icons.undo_rounded,
+              color: Color(0xFF6B7280), destructive: true),
+        ];
       case 'Cancelled':
-        // Only reversible states. Reversing sends the record back to Active.
+      case 'Rejected':
+      case 'Disapproved':
         return [
           _LoaAction('Reverse Record', Icons.undo_rounded,
               color: Color(0xFF6B7280), destructive: true),
         ];
-      case 'Rejected':
-      case 'Disapproved':
-        return [
-          _LoaAction('Edit Record', Icons.edit_outlined, color: AppColors.info),
-          _LoaAction('Send for Approval', Icons.verified_outlined,
-              color: AppColors.warning),
-          _LoaAction('Cancel Record', Icons.cancel_outlined,
-              color: AppColors.brandRed, destructive: true),
-        ];
+      case 'Inactive':
+      case 'Witness Disapproved':
+        return [];
       case 'For Approval':
       case 'Pending':
         // Already submitted — can't edit/cancel/re-submit; only re-notify.
@@ -940,7 +943,7 @@ class _LoaActionSheet extends StatelessWidget {
       final saved = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (_) => CreateLeaveOfAbsenceScreen(
-            initialId: record.id > 0 ? record.id : null,
+            initialId: record.id != 0 ? record.id : null,
             initialNo: record.no,
             initialLeaveType: record.type,
             initialDateFrom: fromDt,

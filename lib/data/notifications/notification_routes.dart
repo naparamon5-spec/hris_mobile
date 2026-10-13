@@ -17,6 +17,7 @@ String inferKind(String? kind, String title, String body) {
   if (k.isNotEmpty) return k;
 
   final text = '$title $body'.toLowerCase();
+  if (text.contains('for your witness approval')) return 'pending_witness';
   if (text.contains('for your approval') ||
       text.contains('for approval') ||
       text.contains('pending approval')) {
@@ -110,6 +111,15 @@ Widget? screenForNotification({
   final resolvedType = inferRequestType(requestType, title, body);
   final resolvedNo = inferRequestNo(requestId, title, body);
   final targetId = (requestId ?? '').trim().isNotEmpty ? requestId!.trim() : resolvedNo;
+
+  if (resolvedKind == 'pending_witness') {
+    return ApprovalsCenterScreen(
+      module: 'witness',
+      scope: 'pending',
+      initialTaskId: targetId,
+      initialRecordId: targetId,
+    );
+  }
 
   if (resolvedKind == 'pending_approval' || resolvedKind == 'for_approval') {
     return ApprovalsCenterScreen(

@@ -583,11 +583,15 @@ class _ApproverPendingSection extends StatelessWidget {
       builder: (context, snap) {
         final acc = snap.data;
         if (acc == null ||
-            !acc.isApprover ||
-            (acc.pending == 0 && acc.pendingRequests == 0)) {
+            (acc.pending == 0 &&
+                acc.pendingRequests == 0 &&
+                acc.pendingWitness == 0)) {
           return const SizedBox.shrink();
         }
-        final total = acc.pending + acc.pendingRequests;
+        final total = acc.pending + acc.pendingRequests + acc.pendingWitness;
+        // Only witness work waiting -> open the witness list directly.
+        final witnessOnly =
+            acc.pending == 0 && acc.pendingRequests == 0 && acc.pendingWitness > 0;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -598,8 +602,8 @@ class _ApproverPendingSection extends StatelessWidget {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const ApprovalsCenterScreen(
-                      module: 'records',
+                    builder: (_) => ApprovalsCenterScreen(
+                      module: witnessOnly ? 'witness' : 'records',
                       scope: 'pending',
                     ),
                   ),
@@ -629,9 +633,13 @@ class _ApproverPendingSection extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          acc.pendingRequests > 0
-                              ? '${acc.pending} records, ${acc.pendingRequests} requests'
-                              : 'Tap to review and decide on filings',
+                          [
+                            if (acc.pending > 0) '${acc.pending} records',
+                            if (acc.pendingRequests > 0)
+                              '${acc.pendingRequests} requests',
+                            if (acc.pendingWitness > 0)
+                              '${acc.pendingWitness} witness',
+                          ].join(', '),
                           style: const TextStyle(
                             fontSize: 12.5,
                             color: AppColors.inkSoft,

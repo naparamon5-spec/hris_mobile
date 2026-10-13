@@ -517,8 +517,16 @@ class ApprovalAccess {
     required this.isApprover,
     required this.pending,
     this.pendingRequests = 0,
+    this.isWitness = false,
+    this.pendingWitness = 0,
   });
   final bool isApprover;
+
+  /// The user is an active MAD witness (fm_mad_approver).
+  final bool isWitness;
+
+  /// MADs awaiting the witness (status FWA).
+  final int pendingWitness;
 
   /// Records Approval (LOA / CA / MAD / OT) awaiting a decision.
   final int pending;
@@ -1352,6 +1360,8 @@ class HrisApi {
         isApprover: m['isApprover'] == true,
         pending: (m['pending'] as num?)?.toInt() ?? 0,
         pendingRequests: (m['pendingRequests'] as num?)?.toInt() ?? 0,
+        isWitness: m['isWitness'] == true,
+        pendingWitness: (m['pendingWitness'] as num?)?.toInt() ?? 0,
       );
     } catch (_) {
       return const ApprovalAccess(isApprover: false, pending: 0);
@@ -1359,8 +1369,9 @@ class HrisApi {
   }
 
   /// The approver's inbox. [scope] is 'pending' (awaiting decision) or
-  /// 'history' (already decided). [module] is 'records' (LOA/CA/MAD/OT) or
-  /// 'requests' (Other Requests — th_request_head).
+  /// 'history' (already decided). [module] is 'records' (LOA/CA/MAD/OT),
+  /// 'requests' (Other Requests — th_request_head) or 'witness' (MADs awaiting
+  /// the MAD witness).
   Future<List<ApprovalTask>> approvalTasks(
     String scope, {
     String module = 'records',
@@ -1368,6 +1379,14 @@ class HrisApi {
       _dataList(await _api.get('/auth/approvals?scope=$scope&module=$module'))
           .map(ApprovalTask.fromJson)
           .toList();
+
+  /// Approver sets the approved OT hours of a pending overtime (legacy
+  /// update_approved_ot_hrs). Returns the stored value as "H:MM".
+  Future<String> setApprovedOtHours(int id, int hours, int minutes) async {
+    final res = await _api.post('/auth/approvals/overtime/$id/approved-hours',
+        body: {'hours': hours, 'minutes': minutes});
+    return _asMap(_asMap(res)['data'])['approved_ot_hours']?.toString() ?? '';
+  }
 
   // ---- Push notifications (FCM device tokens) ----
 

@@ -1065,13 +1065,25 @@ class _ApprovalActionSheet extends StatelessWidget {
       case 'Posted':
         // Final state — no actions at all.
         return [];
+      // Same buttons as the legacy web (*_model::loadData): Approved can be
+      // cancelled or reversed; Cancelled / Disapproved can only be reversed.
       case 'Approved':
+        return [
+          _ApprovalActionItem('Cancel Record', Icons.cancel_outlined,
+              color: AppColors.brandRed, destructive: true),
+          _ApprovalActionItem('Reverse Record', Icons.undo_rounded,
+              color: Color(0xFF6B7280), destructive: true),
+        ];
       case 'Cancelled':
-        // Only reversible states. Reversing sends the record back to Active.
+      case 'Rejected':
+      case 'Disapproved':
         return [
           _ApprovalActionItem('Reverse Record', Icons.undo_rounded,
               color: Color(0xFF6B7280), destructive: true),
         ];
+      case 'Inactive':
+      case 'Witness Disapproved':
+        return [];
       case 'For Approval':
       case 'For Witness Approval':
       case 'Pending':
@@ -1080,16 +1092,6 @@ class _ApprovalActionSheet extends StatelessWidget {
         return [
           _ApprovalActionItem('Resend', Icons.send_rounded,
               color: AppColors.warning),
-        ];
-      case 'Rejected':
-        // Rejected back to the owner — fix and re-file.
-        return [
-          _ApprovalActionItem('Edit Record', Icons.edit_outlined,
-              color: AppColors.info),
-          _ApprovalActionItem('Send for Approval', Icons.verified_outlined,
-              color: AppColors.warning),
-          _ApprovalActionItem('Cancel Record', Icons.cancel_outlined,
-              color: AppColors.brandRed, destructive: true),
         ];
       default: // draft / Active — not yet sent for approval
         return [
