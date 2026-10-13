@@ -44,7 +44,7 @@ class _PayslipScreenState extends State<PayslipScreen> {
             title: 'Payslip',
             idLabel: 'PayslipID',
             kind: PeriodKind.payslip,
-            years: const ['2026', '2025', '2024'],
+            years: ['${DateTime.now().year}'],
             embedded: true,
             onRefresh: _handleRefresh,
             headerAction: _DownloadButton(

@@ -70,7 +70,8 @@ class ApprovalRecord {
   factory ApprovalRecord.fromRequest(RequestRecord r) {
     // Filter/sort by the transaction date (what the card shows), then the
     // filing date; keep records visible even when neither parses.
-    final d = parseAppDateTime(r.txnDate) ??
+    final d =
+        parseAppDateTime(r.txnDate) ??
         r.appliedDate ??
         parseAppDateTime(r.dateFrom);
     return ApprovalRecord(
@@ -174,7 +175,8 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
     });
     // Cover the whole screen with the blur loader while records load.
     WidgetsBinding.instance.addPostFrameCallback(
-        (_) => showLoadingOverlay(context, immediate: true));
+      (_) => showLoadingOverlay(context, immediate: true),
+    );
     try {
       final rows = await HrisApi.instance.requestRecords(widget.type);
       if (!mounted) return;
@@ -221,7 +223,9 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
 
     ApprovalRecord? match;
     for (final r in _all) {
-      if ((targetId != null && targetId.isNotEmpty && r.id.toString() == targetId) ||
+      if ((targetId != null &&
+              targetId.isNotEmpty &&
+              r.id.toString() == targetId) ||
           (targetNo != null &&
               targetNo.isNotEmpty &&
               (r.no.toLowerCase() == targetNo.toLowerCase() ||
@@ -234,8 +238,8 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
     if (match != null) {
       if (match.hasDate) {
         final rDate = match.sortDate;
-        if (rDate.isBefore(_dateRange.start) ||
-            rDate.isAfter(_dateRange.end.add(const Duration(days: 1)))) {
+        if (rDate.isBefore(_dayOf(_dateRange.start)) ||
+            rDate.isAfter(_dayOf(_dateRange.end))) {
           setState(() {
             _dateRange = DateTimeRange(
               start: DateTime(rDate.year, 1, 1),
@@ -257,8 +261,10 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
     final numericId = int.tryParse(targetId ?? '');
     if (numericId != null && numericId > 0) {
       try {
-        final single =
-            await HrisApi.instance.getRequest(widget.type, numericId);
+        final single = await HrisApi.instance.getRequest(
+          widget.type,
+          numericId,
+        );
         final record = ApprovalRecord.fromRequest(single);
         if (mounted) {
           _openRecordActions(record);
@@ -287,8 +293,9 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                 ? const TimeOfDay(hour: 0, minute: 0)
                 : const TimeOfDay(hour: 18, minute: 0),
           );
-    final created =
-        await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => dest));
+    final created = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => dest));
     if (created == true) _load();
   }
 
@@ -296,6 +303,17 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  static DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// Years that have records (newest first) for the "Year YYYY" presets.
+  List<int> get _recordYears {
+    final ys = {DateTime.now().year};
+    for (final r in _all) {
+      if (r.hasDate) ys.add(r.year);
+    }
+    return ys.toList()..sort((a, b) => b.compareTo(a));
   }
 
   void _pickPreset(String label, DateTime start, DateTime end) {
@@ -349,7 +367,7 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.year}';
   }
@@ -357,8 +375,10 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
   void _showDateFilterSheet() {
     showPremiumBottomSheet(
       context,
+      isScrollControlled: true,
       builder: (ctx) => _DateRangeSelectionSheet(
         currentLabel: _dateLabel,
+        years: _recordYears,
         onSelectPreset: (label, start, end) {
           Navigator.pop(ctx);
           _pickPreset(label, start, end);
@@ -389,8 +409,9 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
       // date couldn't be parsed always pass so they're never hidden.
       if (r.hasDate) {
         final rDate = r.sortDate;
-        final inRange = !rDate.isBefore(_dateRange.start) &&
-            !rDate.isAfter(_dateRange.end.add(const Duration(days: 1)));
+        final inRange =
+            !rDate.isBefore(_dayOf(_dateRange.start)) &&
+            !rDate.isAfter(_dayOf(_dateRange.end));
         if (!inRange) return false;
       }
 
@@ -398,10 +419,13 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
 
       if (_searchQuery.isNotEmpty) {
         final q = _searchQuery.toLowerCase();
-        final matches = r.no.toLowerCase().contains(q) ||
+        final matches =
+            r.no.toLowerCase().contains(q) ||
             r.approvedBy.toLowerCase().contains(q) ||
             r.status.toLowerCase().contains(q) ||
             r.txnDate.toLowerCase().contains(q) ||
+            r.dateApplied.toLowerCase().contains(q) ||
+            r.witnessedBy.toLowerCase().contains(q) ||
             (r.reason?.toLowerCase().contains(q) ?? false);
         if (!matches) return false;
       }
@@ -409,9 +433,14 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
       return true;
     }).toList();
 
-    list.sort((a, b) => _sortAscending
-        ? a.sortDate.compareTo(b.sortDate)
-        : b.sortDate.compareTo(a.sortDate));
+    // By record date, then by id (newer filings have higher numbers) so
+    // same-day records keep a stable order.
+    list.sort((a, b) {
+      final c = a.sortDate.compareTo(b.sortDate) != 0
+          ? a.sortDate.compareTo(b.sortDate)
+          : a.id.abs().compareTo(b.id.abs());
+      return _sortAscending ? c : -c;
+    });
 
     return list;
   }
@@ -428,9 +457,10 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                 controller: _searchController,
                 autofocus: true,
                 style: const TextStyle(
-                    color: AppColors.ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600),
+                  color: AppColors.ink,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
                 onChanged: (v) => setState(() => _searchQuery = v),
                 decoration: const InputDecoration(
                   hintText: 'Search by No., Status, Approver…',
@@ -458,7 +488,9 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                 }
               });
             },
-            icon: Icon(_isSearching ? Icons.close_rounded : Icons.search_rounded),
+            icon: Icon(
+              _isSearching ? Icons.close_rounded : Icons.search_rounded,
+            ),
           ),
           IconButton(
             tooltip: 'Sort order',
@@ -466,7 +498,9 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
               setState(() => _sortAscending = !_sortAscending);
               showToast(
                 context,
-                _sortAscending ? 'Sorted: Oldest first' : 'Sorted: Newest first',
+                _sortAscending
+                    ? 'Sorted: Oldest first'
+                    : 'Sorted: Newest first',
               );
             },
             icon: Icon(
@@ -495,7 +529,10 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
               child: Text(
                 widget.subtitle,
-                style: const TextStyle(color: AppColors.inkSoft, fontSize: 13.5),
+                style: const TextStyle(
+                  color: AppColors.inkSoft,
+                  fontSize: 13.5,
+                ),
               ),
             ),
             Padding(
@@ -515,8 +552,11 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today_rounded,
-                                size: 17, color: AppColors.inkSoft),
+                            const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 17,
+                              color: AppColors.inkSoft,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -529,8 +569,11 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const Icon(Icons.keyboard_arrow_down_rounded,
-                                size: 20, color: AppColors.inkSoft),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 20,
+                              color: AppColors.inkSoft,
+                            ),
                           ],
                         ),
                       ),
@@ -580,15 +623,23 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.cloud_off_rounded,
-                                    size: 48, color: AppColors.inkFaint),
+                                const Icon(
+                                  Icons.cloud_off_rounded,
+                                  size: 48,
+                                  color: AppColors.inkFaint,
+                                ),
                                 const SizedBox(height: 12),
-                                Text(_error!,
-                                    style: const TextStyle(color: AppColors.inkSoft)),
+                                Text(
+                                  _error!,
+                                  style: const TextStyle(
+                                    color: AppColors.inkSoft,
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
                                 OutlinedButton(
-                                    onPressed: _load,
-                                    child: const Text('Retry')),
+                                  onPressed: _load,
+                                  child: const Text('Retry'),
+                                ),
                               ],
                             ),
                           ),
@@ -614,8 +665,11 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                                           color: AppColors.fieldFill,
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Icon(widget.icon,
-                                            size: 30, color: AppColors.inkFaint),
+                                        child: Icon(
+                                          widget.icon,
+                                          size: 30,
+                                          color: AppColors.inkFaint,
+                                        ),
                                       ),
                                       const SizedBox(height: 14),
                                       const Text(
@@ -629,7 +683,10 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                                       const SizedBox(height: 4),
                                       const Text(
                                         'Try adjusting your date range or filters.',
-                                        style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.inkSoft,
+                                        ),
                                       ),
                                       const SizedBox(height: 14),
                                       TextButton(
@@ -640,12 +697,14 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                                               start: DateTime(now.year, 1, 1),
                                               end: DateTime(now.year, 12, 31),
                                             );
-                                            _dateLabel = 'All ${now.year}';
+                                            _dateLabel = 'Year ${now.year}';
                                             _selectedStatus = 'All';
                                             _searchQuery = '';
                                           });
                                         },
-                                        child: const Text('Reset Date Range & Filters'),
+                                        child: const Text(
+                                          'Reset Date Range & Filters',
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -656,7 +715,8 @@ class _ApprovalListScreenState extends State<ApprovalListScreen> {
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
                               itemCount: records.length,
-                              separatorBuilder: (_, _) => const SizedBox(height: 12),
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 12),
                               itemBuilder: (context, i) => _ApprovalCard(
                                 record: records[i],
                                 icon: widget.icon,
@@ -685,10 +745,13 @@ class _DateRangeSelectionSheet extends StatelessWidget {
     required this.currentLabel,
     required this.onSelectPreset,
     required this.onCustomRange,
+    this.years = const [],
   });
 
   final String currentLabel;
-  final void Function(String label, DateTime start, DateTime end) onSelectPreset;
+  final List<int> years;
+  final void Function(String label, DateTime start, DateTime end)
+  onSelectPreset;
   final VoidCallback onCustomRange;
 
   @override
@@ -696,7 +759,7 @@ class _DateRangeSelectionSheet extends StatelessWidget {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
     final monthEnd = DateTime(now.year, now.month + 1, 0);
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -720,13 +783,22 @@ class _DateRangeSelectionSheet extends StatelessWidget {
           const SizedBox(height: 14),
           _presetTile('This Month', monthStart, monthEnd),
           _presetTile(
-              'Last 3 Months', DateTime(now.year, now.month - 2, 1), monthEnd),
+            'Last 3 Months',
+            DateTime(now.year, now.month - 2, 1),
+            monthEnd,
+          ),
           _presetTile(
-              'Last 6 Months', DateTime(now.year, now.month - 5, 1), monthEnd),
-          _presetTile('Year to Date ${now.year}', DateTime(now.year, 1, 1),
-              monthEnd),
-          _presetTile('This Year ${now.year}', DateTime(now.year, 1, 1),
-              DateTime(now.year, 12, 31)),
+            'Last 6 Months',
+            DateTime(now.year, now.month - 5, 1),
+            monthEnd,
+          ),
+          _presetTile(
+            'Year to Date ${now.year}',
+            DateTime(now.year, 1, 1),
+            monthEnd,
+          ),
+          for (final y in (years.isEmpty ? [now.year] : years))
+            _presetTile('Year $y', DateTime(y, 1, 1), DateTime(y, 12, 31)),
           const Divider(height: 16),
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -737,15 +809,20 @@ class _DateRangeSelectionSheet extends StatelessWidget {
                 color: AppColors.dangerSoft,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.date_range_rounded,
-                  color: AppColors.brandRed, size: 20),
+              child: Icon(
+                Icons.date_range_rounded,
+                color: AppColors.brandRed,
+                size: 20,
+              ),
             ),
             title: const Text(
               'Custom Date Range…',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
             ),
-            trailing: const Icon(Icons.chevron_right_rounded,
-                color: AppColors.inkFaint),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.inkFaint,
+            ),
             onTap: onCustomRange,
           ),
         ],
@@ -836,29 +913,30 @@ class _FilterOptionsSheetState extends State<_FilterOptionsSheet> {
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            children: const [
-              'All',
-              'Active',
-              'For Approval',
-              'For Witness Approval',
-              'Approved',
-              'Posted',
-              'Cancelled',
-              'Disapproved'
-            ].map((s) {
-              final sel = _status == s;
-              return ChoiceChip(
-                label: Text(s),
-                selected: sel,
-                selectedColor: AppColors.dangerSoft,
-                labelStyle: TextStyle(
-                  color: sel ? AppColors.brandRed : AppColors.inkSoft,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
-                ),
-                onSelected: (_) => setState(() => _status = s),
-              );
-            }).toList(),
+            children:
+                const [
+                  'All',
+                  'Active',
+                  'For Approval',
+                  'For Witness Approval',
+                  'Approved',
+                  'Posted',
+                  'Cancelled',
+                  'Disapproved',
+                ].map((s) {
+                  final sel = _status == s;
+                  return ChoiceChip(
+                    label: Text(s),
+                    selected: sel,
+                    selectedColor: AppColors.dangerSoft,
+                    labelStyle: TextStyle(
+                      color: sel ? AppColors.brandRed : AppColors.inkSoft,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
+                    onSelected: (_) => setState(() => _status = s),
+                  );
+                }).toList(),
           ),
           const SizedBox(height: 22),
           ElevatedButton(
@@ -1005,8 +1083,10 @@ class _ApprovalCard extends StatelessWidget {
           // Show reason for MAD/OT and purpose for CA — from the DB.
           if ((record.reason ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: 14),
-            _kv(type == 'call-approval' ? 'Purpose' : 'Reason',
-                (record.reason ?? '').trim()),
+            _kv(
+              type == 'call-approval' ? 'Purpose' : 'Reason',
+              (record.reason ?? '').trim(),
+            ),
           ],
         ],
       ),
@@ -1069,17 +1149,29 @@ class _ApprovalActionSheet extends StatelessWidget {
       // cancelled or reversed; Cancelled / Disapproved can only be reversed.
       case 'Approved':
         return [
-          _ApprovalActionItem('Cancel Record', Icons.cancel_outlined,
-              color: AppColors.brandRed, destructive: true),
-          _ApprovalActionItem('Reverse Record', Icons.undo_rounded,
-              color: Color(0xFF6B7280), destructive: true),
+          _ApprovalActionItem(
+            'Cancel Record',
+            Icons.cancel_outlined,
+            color: AppColors.brandRed,
+            destructive: true,
+          ),
+          _ApprovalActionItem(
+            'Reverse Record',
+            Icons.undo_rounded,
+            color: Color(0xFF6B7280),
+            destructive: true,
+          ),
         ];
       case 'Cancelled':
       case 'Rejected':
       case 'Disapproved':
         return [
-          _ApprovalActionItem('Reverse Record', Icons.undo_rounded,
-              color: Color(0xFF6B7280), destructive: true),
+          _ApprovalActionItem(
+            'Reverse Record',
+            Icons.undo_rounded,
+            color: Color(0xFF6B7280),
+            destructive: true,
+          ),
         ];
       case 'Inactive':
       case 'Witness Disapproved':
@@ -1090,17 +1182,30 @@ class _ApprovalActionSheet extends StatelessWidget {
         // Already submitted for approval — can't edit/cancel/re-submit; the
         // owner can only re-notify the approver.
         return [
-          _ApprovalActionItem('Resend', Icons.send_rounded,
-              color: AppColors.warning),
+          _ApprovalActionItem(
+            'Resend',
+            Icons.send_rounded,
+            color: AppColors.warning,
+          ),
         ];
       default: // draft / Active — not yet sent for approval
         return [
-          _ApprovalActionItem('Send for Approval', Icons.verified_outlined,
-              color: AppColors.warning),
-          _ApprovalActionItem('Edit Record', Icons.edit_outlined,
-              color: AppColors.info),
-          _ApprovalActionItem('Cancel Record', Icons.cancel_outlined,
-              color: AppColors.brandRed, destructive: true),
+          _ApprovalActionItem(
+            'Send for Approval',
+            Icons.verified_outlined,
+            color: AppColors.warning,
+          ),
+          _ApprovalActionItem(
+            'Edit Record',
+            Icons.edit_outlined,
+            color: AppColors.info,
+          ),
+          _ApprovalActionItem(
+            'Cancel Record',
+            Icons.cancel_outlined,
+            color: AppColors.brandRed,
+            destructive: true,
+          ),
         ];
     }
   }
@@ -1114,8 +1219,8 @@ class _ApprovalActionSheet extends StatelessWidget {
     Navigator.pop(sheetContext);
 
     if (a.label == 'Edit Record') {
-      final initialDate = parseAppDateTime(record.dateFrom) ??
-          parseAppDateTime(record.txnDate);
+      final initialDate =
+          parseAppDateTime(record.dateFrom) ?? parseAppDateTime(record.txnDate);
 
       final isOvertime = type == 'overtime';
       final Widget dest = type == 'call-approval'
@@ -1135,15 +1240,17 @@ class _ApprovalActionSheet extends StatelessWidget {
               initialId: record.id > 0 ? record.id : null,
               initialNo: record.no,
               initialDate: initialDate,
-              initialFrom: _timeFrom(record.requestRecord?.timeFrom) ??
+              initialFrom:
+                  _timeFrom(record.requestRecord?.timeFrom) ??
                   _timeFrom(record.requestRecord?.dateFrom),
-              initialTo: _timeFrom(record.requestRecord?.timeTo) ??
+              initialTo:
+                  _timeFrom(record.requestRecord?.timeTo) ??
                   _timeFrom(record.requestRecord?.dateTo),
               initialReason: record.reason,
             );
-      final saved = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => dest),
-      );
+      final saved = await Navigator.of(
+        context,
+      ).push<bool>(MaterialPageRoute(builder: (_) => dest));
       if (saved == true) onRefresh();
       return;
     }
@@ -1154,8 +1261,12 @@ class _ApprovalActionSheet extends StatelessWidget {
         await HrisApi.instance.sendForApproval(type, record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context, '${record.no} submitted for approval.',
-              isSuccess: true, title: 'Sent for Approval');
+          showToast(
+            context,
+            '${record.no} submitted for approval.',
+            isSuccess: true,
+            title: 'Sent for Approval',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -1181,8 +1292,12 @@ class _ApprovalActionSheet extends StatelessWidget {
         await HrisApi.instance.reverseRecord(type, record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context, '${record.no} has been reversed.',
-              isSuccess: true, title: 'Record Reversed');
+          showToast(
+            context,
+            '${record.no} has been reversed.',
+            isSuccess: true,
+            title: 'Record Reversed',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -1200,8 +1315,12 @@ class _ApprovalActionSheet extends StatelessWidget {
         await HrisApi.instance.resendRecord(type, record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context, '${record.no} resent successfully.',
-              isSuccess: true, title: 'Resent');
+          showToast(
+            context,
+            '${record.no} resent successfully.',
+            isSuccess: true,
+            title: 'Resent',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -1227,8 +1346,12 @@ class _ApprovalActionSheet extends StatelessWidget {
         await HrisApi.instance.cancelRecord(type, record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context, '${record.no} cancelled.',
-              isSuccess: true, title: 'Record Cancelled');
+          showToast(
+            context,
+            '${record.no} cancelled.',
+            isSuccess: true,
+            title: 'Record Cancelled',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -1260,10 +1383,12 @@ class _ApprovalActionSheet extends StatelessWidget {
         }
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context,
-              '${record.no} ${approve ? 'approved' : 'disapproved'}.',
-              isSuccess: true,
-              title: approve ? 'Record Approved' : 'Record Disapproved');
+          showToast(
+            context,
+            '${record.no} ${approve ? 'approved' : 'disapproved'}.',
+            isSuccess: true,
+            title: approve ? 'Record Approved' : 'Record Disapproved',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -1275,8 +1400,12 @@ class _ApprovalActionSheet extends StatelessWidget {
       return;
     }
 
-    showToast(context, '${a.label} — ${record.no} done.',
-        isSuccess: true, title: a.label);
+    showToast(
+      context,
+      '${a.label} — ${record.no} done.',
+      isSuccess: true,
+      title: a.label,
+    );
     onRefresh();
   }
 
@@ -1302,9 +1431,13 @@ class _ApprovalActionSheet extends StatelessWidget {
           ),
           Row(
             children: [
-              Text(record.no,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w900)),
+              Text(
+                record.no,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const Spacer(),
               StatusPill(
                 label: record.status,
@@ -1314,8 +1447,10 @@ class _ApprovalActionSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Text('$title • ${record.txnDate}',
-              style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+          Text(
+            '$title • ${record.txnDate}',
+            style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
+          ),
           const SizedBox(height: 16),
           for (final a in actions) ...[
             _tile(context, a),
@@ -1327,10 +1462,8 @@ class _ApprovalActionSheet extends StatelessWidget {
   }
 
   Widget _tile(BuildContext context, _ApprovalActionItem a) {
-    final color = a.color ??
-        (a.destructive
-            ? AppColors.brandRed
-            : AppColors.ink);
+    final color =
+        a.color ?? (a.destructive ? AppColors.brandRed : AppColors.ink);
     return Material(
       color: AppColors.fieldFill,
       borderRadius: BorderRadius.circular(14),
@@ -1366,8 +1499,10 @@ class _ApprovalActionSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.inkFaint),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.inkFaint,
+              ),
             ],
           ),
         ),
@@ -1377,8 +1512,12 @@ class _ApprovalActionSheet extends StatelessWidget {
 }
 
 class _ApprovalActionItem {
-  const _ApprovalActionItem(this.label, this.icon,
-      {this.color, this.destructive = false});
+  const _ApprovalActionItem(
+    this.label,
+    this.icon, {
+    this.color,
+    this.destructive = false,
+  });
   final String label;
   final IconData icon;
   final Color? color;
@@ -1409,7 +1548,10 @@ List<Map<String, dynamic>>? _rowsFromRequest(RequestRecord? r) {
     ]) {
       final v = s[key];
       if (v is List && v.isNotEmpty) {
-        return v.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList();
+        return v
+            .whereType<Map>()
+            .map((m) => m.cast<String, dynamic>())
+            .toList();
       }
     }
   }

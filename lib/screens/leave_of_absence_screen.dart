@@ -84,7 +84,9 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
 
     _Loa? match;
     for (final r in _allRecords) {
-      if ((targetId != null && targetId.isNotEmpty && r.id.toString() == targetId) ||
+      if ((targetId != null &&
+              targetId.isNotEmpty &&
+              r.id.toString() == targetId) ||
           (targetNo != null &&
               targetNo.isNotEmpty &&
               (r.no.toLowerCase() == targetNo.toLowerCase() ||
@@ -97,8 +99,8 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
     if (match != null) {
       if (match.hasDate) {
         final rDate = match.sortDate;
-        if (rDate.isBefore(_dateRange.start) ||
-            rDate.isAfter(_dateRange.end.add(const Duration(days: 1)))) {
+        if (rDate.isBefore(_dayOf(_dateRange.start)) ||
+            rDate.isAfter(_dayOf(_dateRange.end))) {
           setState(() {
             _dateRange = DateTimeRange(
               start: DateTime(rDate.year, 1, 1),
@@ -123,7 +125,7 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
     }
 
     final numericId = int.tryParse(targetId ?? '');
-    if (numericId != null && numericId > 0) {
+    if (numericId != null && numericId != 0) {
       try {
         final single = await HrisApi.instance.getRequest('loa', numericId);
         final loaRecord = _Loa.fromRequest(single);
@@ -143,6 +145,17 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  static DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// Years that have records (newest first) for the "Year YYYY" presets.
+  List<int> get _recordYears {
+    final ys = {DateTime.now().year};
+    for (final r in _allRecords) {
+      if (r.hasDate) ys.add(r.year);
+    }
+    return ys.toList()..sort((a, b) => b.compareTo(a));
   }
 
   void _pickPreset(String label, DateTime start, DateTime end) {
@@ -196,7 +209,7 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.year}';
   }
@@ -204,8 +217,10 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
   void _showDateFilterSheet() {
     showPremiumBottomSheet(
       context,
+      isScrollControlled: true,
       builder: (ctx) => _DateRangeSelectionSheet(
         currentLabel: _dateLabel,
+        years: _recordYears,
         onSelectPreset: (label, start, end) {
           Navigator.pop(ctx);
           _pickPreset(label, start, end);
@@ -239,8 +254,9 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
       // Date filter — records with no parseable date always pass.
       if (r.hasDate) {
         final rDate = r.sortDate;
-        final inRange = !rDate.isBefore(_dateRange.start) &&
-            !rDate.isAfter(_dateRange.end.add(const Duration(days: 1)));
+        final inRange =
+            !rDate.isBefore(_dayOf(_dateRange.start)) &&
+            !rDate.isAfter(_dayOf(_dateRange.end));
         if (!inRange) return false;
       }
 
@@ -255,18 +271,28 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
       // Search query
       if (_searchQuery.isNotEmpty) {
         final q = _searchQuery.toLowerCase();
-        final matchNo = r.no.toLowerCase().contains(q);
-        final matchType = r.type.toLowerCase().contains(q);
-        final matchApprover = r.approvedBy.toLowerCase().contains(q);
-        if (!matchNo && !matchType && !matchApprover) return false;
+        final matches =
+            r.no.toLowerCase().contains(q) ||
+            r.type.toLowerCase().contains(q) ||
+            r.approvedBy.toLowerCase().contains(q) ||
+            r.status.toLowerCase().contains(q) ||
+            r.loaDate.toLowerCase().contains(q) ||
+            r.dateApplied.toLowerCase().contains(q) ||
+            (r.reason?.toLowerCase().contains(q) ?? false);
+        if (!matches) return false;
       }
 
       return true;
     }).toList();
 
-    list.sort((a, b) => _sortAscending
-        ? a.sortDate.compareTo(b.sortDate)
-        : b.sortDate.compareTo(a.sortDate));
+    // By record date, then by id (newer filings have higher numbers) so
+    // same-day records keep a stable order.
+    list.sort((a, b) {
+      final c = a.sortDate.compareTo(b.sortDate) != 0
+          ? a.sortDate.compareTo(b.sortDate)
+          : a.id.abs().compareTo(b.id.abs());
+      return _sortAscending ? c : -c;
+    });
 
     return list;
   }
@@ -283,9 +309,10 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                 controller: _searchController,
                 autofocus: true,
                 style: const TextStyle(
-                    color: AppColors.ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600),
+                  color: AppColors.ink,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
                 onChanged: (v) => setState(() => _searchQuery = v),
                 decoration: const InputDecoration(
                   hintText: 'Search by No., Type, Approver…',
@@ -313,7 +340,9 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                 }
               });
             },
-            icon: Icon(_isSearching ? Icons.close_rounded : Icons.search_rounded),
+            icon: Icon(
+              _isSearching ? Icons.close_rounded : Icons.search_rounded,
+            ),
           ),
           IconButton(
             tooltip: 'Sort order',
@@ -321,7 +350,9 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
               setState(() => _sortAscending = !_sortAscending);
               showToast(
                 context,
-                _sortAscending ? 'Sorted: Oldest first' : 'Sorted: Newest first',
+                _sortAscending
+                    ? 'Sorted: Oldest first'
+                    : 'Sorted: Newest first',
               );
             },
             icon: Icon(
@@ -371,8 +402,11 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today_rounded,
-                                size: 17, color: AppColors.inkSoft),
+                            const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 17,
+                              color: AppColors.inkSoft,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -385,8 +419,11 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const Icon(Icons.keyboard_arrow_down_rounded,
-                                size: 20, color: AppColors.inkSoft),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 20,
+                              color: AppColors.inkSoft,
+                            ),
                           ],
                         ),
                       ),
@@ -400,12 +437,15 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: (_selectedStatus != 'All' || _selectedType != 'All')
+                        color:
+                            (_selectedStatus != 'All' || _selectedType != 'All')
                             ? AppColors.dangerSoft
                             : AppColors.fieldFill,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: (_selectedStatus != 'All' || _selectedType != 'All')
+                          color:
+                              (_selectedStatus != 'All' ||
+                                  _selectedType != 'All')
                               ? AppColors.brandRed
                               : AppColors.line,
                         ),
@@ -413,7 +453,8 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                       child: Icon(
                         Icons.filter_list_rounded,
                         size: 20,
-                        color: (_selectedStatus != 'All' || _selectedType != 'All')
+                        color:
+                            (_selectedStatus != 'All' || _selectedType != 'All')
                             ? AppColors.brandRed
                             : AppColors.ink,
                       ),
@@ -426,7 +467,9 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
               child: _loading
                   ? Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.brandRed))
+                        color: AppColors.brandRed,
+                      ),
+                    )
                   : _error != null
                   ? RefreshIndicator(
                       color: AppColors.brandRed,
@@ -439,14 +482,23 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.cloud_off_rounded,
-                                    size: 48, color: AppColors.inkFaint),
+                                const Icon(
+                                  Icons.cloud_off_rounded,
+                                  size: 48,
+                                  color: AppColors.inkFaint,
+                                ),
                                 const SizedBox(height: 12),
-                                Text(_error!,
-                                    style: const TextStyle(color: AppColors.inkSoft)),
+                                Text(
+                                  _error!,
+                                  style: const TextStyle(
+                                    color: AppColors.inkSoft,
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
                                 OutlinedButton(
-                                    onPressed: _load, child: const Text('Retry')),
+                                  onPressed: _load,
+                                  child: const Text('Retry'),
+                                ),
                               ],
                             ),
                           ),
@@ -472,8 +524,11 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                                           color: AppColors.fieldFill,
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(Icons.event_busy_rounded,
-                                            size: 30, color: AppColors.inkFaint),
+                                        child: const Icon(
+                                          Icons.event_busy_rounded,
+                                          size: 30,
+                                          color: AppColors.inkFaint,
+                                        ),
                                       ),
                                       const SizedBox(height: 14),
                                       const Text(
@@ -488,7 +543,9 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                                       const Text(
                                         'Try adjusting your date range or filters.',
                                         style: TextStyle(
-                                            fontSize: 13, color: AppColors.inkSoft),
+                                          fontSize: 13,
+                                          color: AppColors.inkSoft,
+                                        ),
                                       ),
                                       const SizedBox(height: 14),
                                       TextButton(
@@ -499,13 +556,15 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                                               start: DateTime(now.year, 1, 1),
                                               end: DateTime(now.year, 12, 31),
                                             );
-                                            _dateLabel = 'All ${now.year}';
+                                            _dateLabel = 'Year ${now.year}';
                                             _selectedStatus = 'All';
                                             _selectedType = 'All';
                                             _searchQuery = '';
                                           });
                                         },
-                                        child: const Text('Reset Date Range & Filters'),
+                                        child: const Text(
+                                          'Reset Date Range & Filters',
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -516,9 +575,12 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
                               itemCount: records.length,
-                              separatorBuilder: (_, _) => const SizedBox(height: 12),
-                              itemBuilder: (context, i) =>
-                                  _LoaCard(record: records[i], onRefresh: _load),
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, i) => _LoaCard(
+                                record: records[i],
+                                onRefresh: _load,
+                              ),
                             ),
                     ),
             ),
@@ -537,10 +599,13 @@ class _DateRangeSelectionSheet extends StatelessWidget {
     required this.currentLabel,
     required this.onSelectPreset,
     required this.onCustomRange,
+    this.years = const [],
   });
 
   final String currentLabel;
-  final void Function(String label, DateTime start, DateTime end) onSelectPreset;
+  final List<int> years;
+  final void Function(String label, DateTime start, DateTime end)
+  onSelectPreset;
   final VoidCallback onCustomRange;
 
   @override
@@ -548,7 +613,7 @@ class _DateRangeSelectionSheet extends StatelessWidget {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
     final monthEnd = DateTime(now.year, now.month + 1, 0);
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -572,13 +637,22 @@ class _DateRangeSelectionSheet extends StatelessWidget {
           const SizedBox(height: 14),
           _presetTile('This Month', monthStart, monthEnd),
           _presetTile(
-              'Last 3 Months', DateTime(now.year, now.month - 2, 1), monthEnd),
+            'Last 3 Months',
+            DateTime(now.year, now.month - 2, 1),
+            monthEnd,
+          ),
           _presetTile(
-              'Last 6 Months', DateTime(now.year, now.month - 5, 1), monthEnd),
-          _presetTile('Year to Date ${now.year}', DateTime(now.year, 1, 1),
-              monthEnd),
-          _presetTile('This Year ${now.year}', DateTime(now.year, 1, 1),
-              DateTime(now.year, 12, 31)),
+            'Last 6 Months',
+            DateTime(now.year, now.month - 5, 1),
+            monthEnd,
+          ),
+          _presetTile(
+            'Year to Date ${now.year}',
+            DateTime(now.year, 1, 1),
+            monthEnd,
+          ),
+          for (final y in (years.isEmpty ? [now.year] : years))
+            _presetTile('Year $y', DateTime(y, 1, 1), DateTime(y, 12, 31)),
           const Divider(height: 16),
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -589,15 +663,20 @@ class _DateRangeSelectionSheet extends StatelessWidget {
                 color: AppColors.dangerSoft,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.date_range_rounded,
-                  color: AppColors.brandRed, size: 20),
+              child: Icon(
+                Icons.date_range_rounded,
+                color: AppColors.brandRed,
+                size: 20,
+              ),
             ),
             title: const Text(
               'Custom Date Range…',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
             ),
-            trailing: const Icon(Icons.chevron_right_rounded,
-                color: AppColors.inkFaint),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.inkFaint,
+            ),
             onTap: onCustomRange,
           ),
         ],
@@ -610,7 +689,9 @@ class _DateRangeSelectionSheet extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(
-        isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+        isSelected
+            ? Icons.radio_button_checked_rounded
+            : Icons.radio_button_off_rounded,
         color: isSelected ? AppColors.brandRed : AppColors.inkFaint,
         size: 20,
       ),
@@ -694,28 +775,29 @@ class _FilterOptionsSheetState extends State<_FilterOptionsSheet> {
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            children: const [
-              'All',
-              'Active',
-              'For Approval',
-              'Approved',
-              'Posted',
-              'Cancelled',
-              'Disapproved'
-            ].map((s) {
-              final sel = _status == s;
-              return ChoiceChip(
-                label: Text(s),
-                selected: sel,
-                selectedColor: AppColors.dangerSoft,
-                labelStyle: TextStyle(
-                  color: sel ? AppColors.brandRed : AppColors.inkSoft,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
-                ),
-                onSelected: (_) => setState(() => _status = s),
-              );
-            }).toList(),
+            children:
+                const [
+                  'All',
+                  'Active',
+                  'For Approval',
+                  'Approved',
+                  'Posted',
+                  'Cancelled',
+                  'Disapproved',
+                ].map((s) {
+                  final sel = _status == s;
+                  return ChoiceChip(
+                    label: Text(s),
+                    selected: sel,
+                    selectedColor: AppColors.dangerSoft,
+                    labelStyle: TextStyle(
+                      color: sel ? AppColors.brandRed : AppColors.inkSoft,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
+                    onSelected: (_) => setState(() => _status = s),
+                  );
+                }).toList(),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -898,17 +980,29 @@ class _LoaActionSheet extends StatelessWidget {
       // cancelled or reversed; Cancelled / Disapproved can only be reversed.
       case 'Approved':
         return [
-          _LoaAction('Cancel Record', Icons.cancel_outlined,
-              color: AppColors.brandRed, destructive: true),
-          _LoaAction('Reverse Record', Icons.undo_rounded,
-              color: Color(0xFF6B7280), destructive: true),
+          _LoaAction(
+            'Cancel Record',
+            Icons.cancel_outlined,
+            color: AppColors.brandRed,
+            destructive: true,
+          ),
+          _LoaAction(
+            'Reverse Record',
+            Icons.undo_rounded,
+            color: Color(0xFF6B7280),
+            destructive: true,
+          ),
         ];
       case 'Cancelled':
       case 'Rejected':
       case 'Disapproved':
         return [
-          _LoaAction('Reverse Record', Icons.undo_rounded,
-              color: Color(0xFF6B7280), destructive: true),
+          _LoaAction(
+            'Reverse Record',
+            Icons.undo_rounded,
+            color: Color(0xFF6B7280),
+            destructive: true,
+          ),
         ];
       case 'Inactive':
       case 'Witness Disapproved':
@@ -921,11 +1015,18 @@ class _LoaActionSheet extends StatelessWidget {
         ];
       default: // Active / draft — created but not yet sent for approval
         return [
-          _LoaAction('Send for Approval', Icons.verified_outlined,
-              color: AppColors.warning),
+          _LoaAction(
+            'Send for Approval',
+            Icons.verified_outlined,
+            color: AppColors.warning,
+          ),
           _LoaAction('Edit Record', Icons.edit_outlined, color: AppColors.info),
-          _LoaAction('Cancel Record', Icons.cancel_outlined,
-              color: AppColors.brandRed, destructive: true),
+          _LoaAction(
+            'Cancel Record',
+            Icons.cancel_outlined,
+            color: AppColors.brandRed,
+            destructive: true,
+          ),
         ];
     }
   }
@@ -963,8 +1064,12 @@ class _LoaActionSheet extends StatelessWidget {
         await HrisApi.instance.sendForApproval('loa', record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context, '${record.no} submitted for approval.',
-              isSuccess: true, title: 'Sent for Approval');
+          showToast(
+            context,
+            '${record.no} submitted for approval.',
+            isSuccess: true,
+            title: 'Sent for Approval',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -990,8 +1095,12 @@ class _LoaActionSheet extends StatelessWidget {
         await HrisApi.instance.reverseRecord('loa', record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context, '${record.no} has been reversed.',
-              isSuccess: true, title: 'Record Reversed');
+          showToast(
+            context,
+            '${record.no} has been reversed.',
+            isSuccess: true,
+            title: 'Record Reversed',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -1009,8 +1118,12 @@ class _LoaActionSheet extends StatelessWidget {
         await HrisApi.instance.resendRecord('loa', record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context, '${record.no} resent successfully.',
-              isSuccess: true, title: 'Resent');
+          showToast(
+            context,
+            '${record.no} resent successfully.',
+            isSuccess: true,
+            title: 'Resent',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -1036,8 +1149,12 @@ class _LoaActionSheet extends StatelessWidget {
         await HrisApi.instance.cancelRecord('loa', record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context, '${record.no} cancelled.',
-              isSuccess: true, title: 'Record Cancelled');
+          showToast(
+            context,
+            '${record.no} cancelled.',
+            isSuccess: true,
+            title: 'Record Cancelled',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -1069,10 +1186,12 @@ class _LoaActionSheet extends StatelessWidget {
         }
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(context,
-              '${record.no} ${approve ? 'approved' : 'disapproved'}.',
-              isSuccess: true,
-              title: approve ? 'Record Approved' : 'Record Disapproved');
+          showToast(
+            context,
+            '${record.no} ${approve ? 'approved' : 'disapproved'}.',
+            isSuccess: true,
+            title: approve ? 'Record Approved' : 'Record Disapproved',
+          );
           onRefresh();
         }
       } on ApiException catch (e) {
@@ -1084,8 +1203,12 @@ class _LoaActionSheet extends StatelessWidget {
       return;
     }
 
-    showToast(context, '${a.label} — ${record.no} done.',
-        isSuccess: true, title: a.label);
+    showToast(
+      context,
+      '${a.label} — ${record.no} done.',
+      isSuccess: true,
+      title: a.label,
+    );
     onRefresh();
   }
 
@@ -1111,9 +1234,13 @@ class _LoaActionSheet extends StatelessWidget {
           ),
           Row(
             children: [
-              Text(record.no,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w900)),
+              Text(
+                record.no,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const Spacer(),
               StatusPill(
                 label: record.status,
@@ -1123,8 +1250,10 @@ class _LoaActionSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Text(record.loaDate,
-              style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+          Text(
+            record.loaDate,
+            style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
+          ),
           const SizedBox(height: 16),
           for (final a in actions) ...[
             _tile(context, a),
@@ -1136,10 +1265,8 @@ class _LoaActionSheet extends StatelessWidget {
   }
 
   Widget _tile(BuildContext context, _LoaAction a) {
-    final color = a.color ??
-        (a.destructive
-            ? AppColors.brandRed
-            : AppColors.ink);
+    final color =
+        a.color ?? (a.destructive ? AppColors.brandRed : AppColors.ink);
     return Material(
       color: AppColors.fieldFill,
       borderRadius: BorderRadius.circular(14),
@@ -1175,8 +1302,10 @@ class _LoaActionSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.inkFaint),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.inkFaint,
+              ),
             ],
           ),
         ),
@@ -1186,8 +1315,12 @@ class _LoaActionSheet extends StatelessWidget {
 }
 
 class _LoaAction {
-  const _LoaAction(this.label, this.icon,
-      {this.color, this.destructive = false});
+  const _LoaAction(
+    this.label,
+    this.icon, {
+    this.color,
+    this.destructive = false,
+  });
   final String label;
   final IconData icon;
   final Color? color;
@@ -1240,7 +1373,8 @@ class _Loa {
   DateTime get sortDate => DateTime(year, month, day);
 
   factory _Loa.fromRequest(RequestRecord r) {
-    final d = parseAppDateTime(r.txnDate) ??
+    final d =
+        parseAppDateTime(r.txnDate) ??
         parseAppDateTime(r.dateFrom) ??
         r.appliedDate;
     final base = d ?? DateTime(2000);

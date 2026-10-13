@@ -69,14 +69,18 @@ class _PeriodGridScreenState extends State<PeriodGridScreen> {
         .whereType<String>()
         .toSet()
         .toList()
-      ..sort((a, b) => b.compareTo(a));
+      ..sort((a, b) =>
+          (int.tryParse(b) ?? 0).compareTo(int.tryParse(a) ?? 0));
     return fromData.isNotEmpty ? fromData : widget.years;
   }
 
-  /// Periods for the selected year (entries with no year always show).
+  /// Periods for the selected year (entries with no year always show),
+  /// newest period first (numeric — period codes are strings like "9", "10").
   List<PeriodEntry> get _filtered => widget.periods
       .where((p) => p.year == null || p.year == _year)
-      .toList();
+      .toList()
+    ..sort((a, b) =>
+        (int.tryParse(b.period) ?? 0).compareTo(int.tryParse(a.period) ?? 0));
 
   @override
   void initState() {

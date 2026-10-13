@@ -42,7 +42,7 @@ class _TimesheetScreenState extends State<TimesheetScreen> {
           title: 'Timesheet',
           idLabel: 'TimesheetID',
           kind: PeriodKind.timesheet,
-          years: const ['2026', '2025', '2024'],
+          years: ['${DateTime.now().year}'],
           embedded: true,
           onRefresh: _handleRefresh,
           periods: periods
