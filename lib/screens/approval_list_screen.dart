@@ -1454,6 +1454,11 @@ class _ApprovalActionSheet extends StatelessWidget {
           const SizedBox(height: 14),
           _SheetSummary(
             rows: [
+              (
+                Icons.date_range_rounded,
+                'From – To',
+                _fromTo(record.requestRecord),
+              ),
               (Icons.schedule_rounded, 'Applied hours', record.appliedHours),
               if (record.witnessedBy.isNotEmpty)
                 (Icons.visibility_outlined, 'Witness', record.witnessedBy),
@@ -1523,7 +1528,7 @@ class _ApprovalActionSheet extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: a.destructive ? AppColors.brandRed : AppColors.ink,
+                    color: AppColors.ink,
                   ),
                 ),
               ),
@@ -1690,4 +1695,14 @@ class _SheetIcon extends StatelessWidget {
       child: Icon(icon, size: 20, color: color),
     );
   }
+}
+
+/// The server's one-line From – To ("Oct 13, 2026 / 08:00 AM - 06:00 PM"),
+/// falling back to joining the two ends.
+String _fromTo(RequestRecord? r) {
+  if ((r?.fromToDisplay ?? '').isNotEmpty) return r!.fromToDisplay;
+  return [
+    r?.fromDisplay ?? '',
+    r?.toDisplay ?? '',
+  ].where((v) => v.isNotEmpty).join(' - ');
 }

@@ -71,17 +71,18 @@ class Profile {
   final PersonalBackground background;
 
   factory Profile.fromJson(Map<String, dynamic> j) => Profile(
-        userId: (j['user_id'] ?? '') as String,
-        name: (j['name'] ?? '') as String,
-        role: (j['role'] ?? '') as String,
-        department: (j['department'] ?? '') as String,
-        email: (j['email'] ?? '') as String,
-        employeeId: (j['employee_id'] ?? '') as String,
-        privilege: (j['privilege'] ?? 'employee') as String,
-        yearsOfService: (j['years_of_service'] ?? '').toString(),
-        background: PersonalBackground.fromJson(
-            (j['personal_background'] as Map?)?.cast<String, dynamic>() ?? {}),
-      );
+    userId: (j['user_id'] ?? '') as String,
+    name: (j['name'] ?? '') as String,
+    role: (j['role'] ?? '') as String,
+    department: (j['department'] ?? '') as String,
+    email: (j['email'] ?? '') as String,
+    employeeId: (j['employee_id'] ?? '') as String,
+    privilege: (j['privilege'] ?? 'employee') as String,
+    yearsOfService: (j['years_of_service'] ?? '').toString(),
+    background: PersonalBackground.fromJson(
+      (j['personal_background'] as Map?)?.cast<String, dynamic>() ?? {},
+    ),
+  );
 }
 
 // ---- Profile extras (Personal Background, MDR, Linked Accounts) ----
@@ -106,8 +107,7 @@ class ProfileBackground {
 
   static List<Map<String, String>> _rows(dynamic list) =>
       ((list as List?) ?? [])
-          .map((e) => (e as Map)
-              .map((k, v) => MapEntry(k.toString(), _s(v))))
+          .map((e) => (e as Map).map((k, v) => MapEntry(k.toString(), _s(v))))
           .toList();
 
   factory ProfileBackground.fromJson(Map<String, dynamic> j) {
@@ -138,10 +138,7 @@ class ProfileBackground {
 }
 
 class Mdr {
-  Mdr({
-    required this.status,
-    required this.items,
-  });
+  Mdr({required this.status, required this.items});
 
   final String status;
 
@@ -183,11 +180,11 @@ class TwoFactorSetup {
   final String issuer;
 
   factory TwoFactorSetup.fromJson(Map<String, dynamic> j) => TwoFactorSetup(
-        secret: (j['secret'] ?? '') as String,
-        otpauthUrl: (j['otpauth_url'] ?? '') as String,
-        account: (j['account'] ?? '') as String,
-        issuer: (j['issuer'] ?? '') as String,
-      );
+    secret: (j['secret'] ?? '') as String,
+    otpauthUrl: (j['otpauth_url'] ?? '') as String,
+    account: (j['account'] ?? '') as String,
+    issuer: (j['issuer'] ?? '') as String,
+  );
 }
 
 /// One certification the employee may hold (Versatech).
@@ -207,12 +204,12 @@ class Cert {
   final String dateUploaded;
 
   factory Cert.fromJson(Map<String, dynamic> j) => Cert(
-        certNo: (j['cert_no'] as num?)?.toInt() ?? 0,
-        name: (j['name'] ?? '') as String,
-        active: (j['active'] ?? false) as bool,
-        fileName: (j['file_name'] ?? '') as String,
-        dateUploaded: (j['date_uploaded'] ?? '') as String,
-      );
+    certNo: (j['cert_no'] as num?)?.toInt() ?? 0,
+    name: (j['name'] ?? '') as String,
+    active: (j['active'] ?? false) as bool,
+    fileName: (j['file_name'] ?? '') as String,
+    dateUploaded: (j['date_uploaded'] ?? '') as String,
+  );
 }
 
 /// A certification level with its certificates.
@@ -222,11 +219,11 @@ class CertLevel {
   final List<Cert> items;
 
   factory CertLevel.fromJson(Map<String, dynamic> j) => CertLevel(
-        level: (j['level'] as num?)?.toInt() ?? 1,
-        items: ((j['items'] as List?) ?? [])
-            .map((e) => Cert.fromJson((e as Map).cast<String, dynamic>()))
-            .toList(),
-      );
+    level: (j['level'] as num?)?.toInt() ?? 1,
+    items: ((j['items'] as List?) ?? [])
+        .map((e) => Cert.fromJson((e as Map).cast<String, dynamic>()))
+        .toList(),
+  );
 }
 
 class LinkedAccount {
@@ -243,11 +240,11 @@ class LinkedAccount {
   final bool connected;
 
   factory LinkedAccount.fromJson(Map<String, dynamic> j) => LinkedAccount(
-        provider: (j['provider'] ?? '') as String,
-        title: (j['title'] ?? '') as String,
-        subtitle: (j['subtitle'] ?? '') as String,
-        connected: (j['connected'] ?? false) as bool,
-      );
+    provider: (j['provider'] ?? '') as String,
+    title: (j['title'] ?? '') as String,
+    subtitle: (j['subtitle'] ?? '') as String,
+    connected: (j['connected'] ?? false) as bool,
+  );
 }
 
 class LeaveBucket {
@@ -256,9 +253,9 @@ class LeaveBucket {
   final double remaining;
 
   factory LeaveBucket.fromJson(Map<String, dynamic> j) => LeaveBucket(
-        type: (j['type'] ?? '') as String,
-        remaining: (j['remaining'] as num?)?.toDouble() ?? 0,
-      );
+    type: (j['type'] ?? '') as String,
+    remaining: (j['remaining'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 class LeaveBalance {
@@ -337,16 +334,16 @@ class PayPeriod {
   final DateTime? dateTo;
 
   factory PayPeriod.fromJson(Map<String, dynamic> j) => PayPeriod(
-        code: (j['code'] ?? '') as String,
-        range: (j['range'] ?? '') as String,
-        year: j['year']?.toString(),
-        dateFrom: j['date_from'] is String
-            ? DateTime.tryParse(j['date_from'] as String)
-            : null,
-        dateTo: j['date_to'] is String
-            ? DateTime.tryParse(j['date_to'] as String)
-            : null,
-      );
+    code: (j['code'] ?? '') as String,
+    range: (j['range'] ?? '') as String,
+    year: j['year']?.toString(),
+    dateFrom: j['date_from'] is String
+        ? DateTime.tryParse(j['date_from'] as String)
+        : null,
+    dateTo: j['date_to'] is String
+        ? DateTime.tryParse(j['date_to'] as String)
+        : null,
+  );
 }
 
 /// Real next payday + current cutoff for the signed-in tenant, sourced from
@@ -359,13 +356,15 @@ class PayCalendarNext {
   final PayCalendarPeriod? current;
 
   factory PayCalendarNext.fromJson(Map<String, dynamic> j) => PayCalendarNext(
-        next: PayCalendarPeriod.fromJson(
-            (j['next'] as Map).cast<String, dynamic>()),
-        current: j['current'] is Map
-            ? PayCalendarPeriod.fromJson(
-                (j['current'] as Map).cast<String, dynamic>())
-            : null,
-      );
+    next: PayCalendarPeriod.fromJson(
+      (j['next'] as Map).cast<String, dynamic>(),
+    ),
+    current: j['current'] is Map
+        ? PayCalendarPeriod.fromJson(
+            (j['current'] as Map).cast<String, dynamic>(),
+          )
+        : null,
+  );
 }
 
 class PayCalendarPeriod {
@@ -420,15 +419,15 @@ class AttendanceToday {
   bool get isClockedIn => status == 'CLOCKED_IN';
 
   factory AttendanceToday.fromJson(Map<String, dynamic> j) => AttendanceToday(
-        status: (j['status'] ?? 'CLOCKED_OUT') as String,
-        shift: (j['shift'] ?? '') as String,
-        timeIn: j['time_in'] as String?,
-        timeOut: j['time_out'] as String?,
-        breakMinutes: (j['break_minutes'] as num?)?.toInt() ?? 0,
-        overtime: (j['overtime'] ?? '') as String,
-        totalHoursToday: (j['total_hours_today'] ?? '') as String,
-        date: (j['date'] ?? '') as String,
-      );
+    status: (j['status'] ?? 'CLOCKED_OUT') as String,
+    shift: (j['shift'] ?? '') as String,
+    timeIn: j['time_in'] as String?,
+    timeOut: j['time_out'] as String?,
+    breakMinutes: (j['break_minutes'] as num?)?.toInt() ?? 0,
+    overtime: (j['overtime'] ?? '') as String,
+    totalHoursToday: (j['total_hours_today'] ?? '') as String,
+    date: (j['date'] ?? '') as String,
+  );
 }
 
 class AttendanceDay {
@@ -438,15 +437,18 @@ class AttendanceDay {
   final bool today;
 
   factory AttendanceDay.fromJson(Map<String, dynamic> j) => AttendanceDay(
-        day: (j['day'] ?? '') as String,
-        hours: (j['hours'] as num?)?.toDouble() ?? 0,
-        today: (j['today'] ?? false) as bool,
-      );
+    day: (j['day'] ?? '') as String,
+    hours: (j['hours'] as num?)?.toDouble() ?? 0,
+    today: (j['today'] ?? false) as bool,
+  );
 }
 
 class AttendanceSummary {
-  AttendanceSummary(
-      {required this.present, required this.late, required this.leave});
+  AttendanceSummary({
+    required this.present,
+    required this.late,
+    required this.leave,
+  });
   final int present;
   final int late;
   final int leave;
@@ -466,15 +468,16 @@ class Attendance {
   final AttendanceSummary summary;
 
   factory Attendance.fromJson(Map<String, dynamic> j) => Attendance(
-        today: AttendanceToday.fromJson(
-            (j['today'] as Map).cast<String, dynamic>()),
-        week: ((j['week'] as List?) ?? [])
-            .map((e) =>
-                AttendanceDay.fromJson((e as Map).cast<String, dynamic>()))
-            .toList(),
-        summary: AttendanceSummary.fromJson(
-            (j['summary'] as Map).cast<String, dynamic>()),
-      );
+    today: AttendanceToday.fromJson(
+      (j['today'] as Map).cast<String, dynamic>(),
+    ),
+    week: ((j['week'] as List?) ?? [])
+        .map((e) => AttendanceDay.fromJson((e as Map).cast<String, dynamic>()))
+        .toList(),
+    summary: AttendanceSummary.fromJson(
+      (j['summary'] as Map).cast<String, dynamic>(),
+    ),
+  );
 }
 
 class Approval {
@@ -497,14 +500,14 @@ class Approval {
   final String filed;
 
   factory Approval.fromJson(Map<String, dynamic> j) => Approval(
-        id: (j['id'] as num).toInt(),
-        employee: (j['employee'] ?? '') as String,
-        type: (j['type'] ?? '') as String,
-        detail: (j['detail'] ?? '') as String,
-        days: (j['days'] ?? '') as String,
-        status: (j['status'] ?? 'Pending') as String,
-        filed: (j['filed'] ?? '') as String,
-      );
+    id: (j['id'] as num).toInt(),
+    employee: (j['employee'] ?? '') as String,
+    type: (j['type'] ?? '') as String,
+    detail: (j['detail'] ?? '') as String,
+    days: (j['days'] ?? '') as String,
+    status: (j['status'] ?? 'Pending') as String,
+    filed: (j['filed'] ?? '') as String,
+  );
 }
 
 class NotificationsResult {
@@ -610,9 +613,12 @@ class ApprovalTask {
       employeeId: s(j['employee_id']),
       category: s(j['category']),
       detail: s(j['detail']),
-      appliedHours: s(j['applied_hours']).isEmpty ? '0:00' : s(j['applied_hours']),
-      approvedOtHours:
-          s(j['approved_ot_hours']).isEmpty ? '0:00' : s(j['approved_ot_hours']),
+      appliedHours: s(j['applied_hours']).isEmpty
+          ? '0:00'
+          : s(j['applied_hours']),
+      approvedOtHours: s(j['approved_ot_hours']).isEmpty
+          ? '0:00'
+          : s(j['approved_ot_hours']),
       dateApplied: s(j['date_applied']),
       dateSent: s(j['date_sent']),
       txnDate: s(j['txn_date']),
@@ -641,16 +647,35 @@ DateTime? parseAppDateTime(dynamic val, {bool isFrom = true}) {
   }
 
   const months = {
-    'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5,
-    'june': 6, 'july': 7, 'august': 8, 'september': 9, 'october': 10,
-    'november': 11, 'december': 12, 'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
-    'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+    'january': 1,
+    'february': 2,
+    'march': 3,
+    'april': 4,
+    'may': 5,
+    'june': 6,
+    'july': 7,
+    'august': 8,
+    'september': 9,
+    'october': 10,
+    'november': 11,
+    'december': 12,
+    'jan': 1,
+    'feb': 2,
+    'mar': 3,
+    'apr': 4,
+    'jun': 6,
+    'jul': 7,
+    'aug': 8,
+    'sep': 9,
+    'oct': 10,
+    'nov': 11,
+    'dec': 12,
   };
 
   final m1 = RegExp(
-          r'^(\d{1,2})/(\d{1,2})/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?:\s*(AM|PM))?)?',
-          caseSensitive: false)
-      .firstMatch(str);
+    r'^(\d{1,2})/(\d{1,2})/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?:\s*(AM|PM))?)?',
+    caseSensitive: false,
+  ).firstMatch(str);
   if (m1 != null) {
     final mon = int.parse(m1.group(1)!);
     final day = int.parse(m1.group(2)!);
@@ -667,9 +692,9 @@ DateTime? parseAppDateTime(dynamic val, {bool isFrom = true}) {
   }
 
   final m2 = RegExp(
-          r'^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?:\s*(AM|PM))?)?',
-          caseSensitive: false)
-      .firstMatch(str);
+    r'^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?:\s*(AM|PM))?)?',
+    caseSensitive: false,
+  ).firstMatch(str);
   if (m2 != null) {
     final mon = months[m2.group(1)!.toLowerCase()];
     if (mon != null) {
@@ -714,8 +739,19 @@ class RequestRecord {
     this.timeFrom,
     this.timeTo,
     this.noOfHours,
+    this.fromDisplay = '',
+    this.toDisplay = '',
+    this.fromToDisplay = '',
     this.rawJson,
   });
+
+  /// Ready-to-show start / end ("Oct 16, 2026 08:00 AM" for LOA, "08:00 AM"
+  /// for CA / MAD / OT) — empty when unknown.
+  final String fromDisplay;
+  final String toDisplay;
+
+  /// One line: "Oct 13, 2026 / 08:00 AM - 06:00 PM" (date once for one day).
+  final String fromToDisplay;
 
   final int id;
   final String no;
@@ -751,7 +787,8 @@ class RequestRecord {
 
     String sOr(dynamic v, String def) => s(v) ?? def;
 
-    final idVal = j['id'] ??
+    final idVal =
+        j['id'] ??
         j['loa_id'] ??
         j['leave_id'] ??
         j['request_id'] ??
@@ -763,114 +800,152 @@ class RequestRecord {
         ? idVal.toInt()
         : (int.tryParse(idVal?.toString() ?? '') ?? 0);
 
-    final dFrom = s(j['date_from'] ??
-        j['start_date'] ??
-        j['from_date'] ??
-        j['from'] ??
-        j['date_start'] ??
-        j['time_from'] ??
-        j['from_time'] ??
-        j['period_from'] ??
-        j['start_datetime'] ??
-        j['from_datetime'] ??
-        j['start_time']);
+    final dFrom = s(
+      j['date_from'] ??
+          j['start_date'] ??
+          j['from_date'] ??
+          j['from'] ??
+          j['date_start'] ??
+          j['time_from'] ??
+          j['from_time'] ??
+          j['period_from'] ??
+          j['start_datetime'] ??
+          j['from_datetime'] ??
+          j['start_time'],
+    );
 
-    final dTo = s(j['date_to'] ??
-        j['end_date'] ??
-        j['to_date'] ??
-        j['to'] ??
-        j['date_end'] ??
-        j['time_to'] ??
-        j['to_time'] ??
-        j['period_to'] ??
-        j['end_datetime'] ??
-        j['to_datetime'] ??
-        j['end_time']);
+    final dTo = s(
+      j['date_to'] ??
+          j['end_date'] ??
+          j['to_date'] ??
+          j['to'] ??
+          j['date_end'] ??
+          j['time_to'] ??
+          j['to_time'] ??
+          j['period_to'] ??
+          j['end_datetime'] ??
+          j['to_datetime'] ??
+          j['end_time'],
+    );
 
-    final rsn = s(j['reason'] ??
-        j['remarks'] ??
-        j['purpose'] ??
-        j['description'] ??
-        j['notes'] ??
-        j['details'] ??
-        j['justification'] ??
-        j['reason_for_leave'] ??
-        j['loa_reason'] ??
-        j['comment'] ??
-        j['comments']);
+    final rsn = s(
+      j['reason'] ??
+          j['remarks'] ??
+          j['purpose'] ??
+          j['description'] ??
+          j['notes'] ??
+          j['details'] ??
+          j['justification'] ??
+          j['reason_for_leave'] ??
+          j['loa_reason'] ??
+          j['comment'] ??
+          j['comments'],
+    );
 
-    final lType = s(j['leave_type'] ??
-        j['leave_type_name'] ??
-        j['type'] ??
-        j['type_name'] ??
-        j['leave_name'] ??
-        j['category'] ??
-        j['loa_type']);
+    final lType = s(
+      j['leave_type'] ??
+          j['leave_type_name'] ??
+          j['type'] ??
+          j['type_name'] ??
+          j['leave_name'] ??
+          j['category'] ??
+          j['loa_type'],
+    );
 
     final tDate = sOr(
-        j['txn_date'] ??
-            j['transaction_date'] ??
-            j['loa_date'] ??
-            j['leave_date'] ??
-            j['date'] ??
-            dFrom ??
-            j['created_at'],
-        '');
+      j['txn_date'] ??
+          j['transaction_date'] ??
+          j['loa_date'] ??
+          j['leave_date'] ??
+          j['date'] ??
+          dFrom ??
+          j['created_at'],
+      '',
+    );
 
     return RequestRecord(
       id: id,
       no: sOr(
-          j['no'] ??
-              j['reference_no'] ??
-              j['ref_no'] ??
-              j['doc_no'] ??
-              j['txn_no'] ??
-              j['control_no'] ??
-              j['code'] ??
-              (id > 0 ? 'LOA-$id' : ''),
-          ''),
+        j['no'] ??
+            j['reference_no'] ??
+            j['ref_no'] ??
+            j['doc_no'] ??
+            j['txn_no'] ??
+            j['control_no'] ??
+            j['code'] ??
+            (id > 0 ? 'LOA-$id' : ''),
+        '',
+      ),
       dateApplied: sOr(
-          j['date_applied'] ??
-              j['applied_date'] ??
-              j['created_at'] ??
-              j['date_created'] ??
-              j['filing_date'] ??
-              j['filed_date'],
-          ''),
+        j['date_applied'] ??
+            j['applied_date'] ??
+            j['created_at'] ??
+            j['date_created'] ??
+            j['filing_date'] ??
+            j['filed_date'],
+        '',
+      ),
       txnDate: tDate,
       status: sOr(j['status'] ?? j['request_status'] ?? j['state'], 'Pending'),
       leaveType: lType,
       requestType: s(j['request_type']),
-      filedBy: s(j['filed_by'] ??
-          j['employee_name'] ??
-          j['name'] ??
-          j['emp_name'] ??
-          j['employee']),
-      approvedBy: s(j['approved_by'] ??
-          j['approver'] ??
-          j['approver_name'] ??
-          j['approved_by_name']),
-      approvedDate: s(j['approved_date'] ??
-          j['approval_date'] ??
-          j['date_approved']),
-      witnessedBy: s(j['witnessed_by'] ??
-          j['witness'] ??
-          j['witness_name'] ??
-          j['witnessed_by_name']),
-      appliedHours: s(j['applied_hours'] ??
-          j['hours'] ??
-          j['applied_hrs'] ??
-          j['no_of_hours'] ??
-          j['duration']),
+      filedBy: s(
+        j['filed_by'] ??
+            j['employee_name'] ??
+            j['name'] ??
+            j['emp_name'] ??
+            j['employee'],
+      ),
+      approvedBy: s(
+        j['approved_by'] ??
+            j['approver'] ??
+            j['approver_name'] ??
+            j['approved_by_name'],
+      ),
+      approvedDate: s(
+        j['approved_date'] ?? j['approval_date'] ?? j['date_approved'],
+      ),
+      witnessedBy: s(
+        j['witnessed_by'] ??
+            j['witness'] ??
+            j['witness_name'] ??
+            j['witnessed_by_name'],
+      ),
+      appliedHours: s(
+        j['applied_hours'] ??
+            j['hours'] ??
+            j['applied_hrs'] ??
+            j['no_of_hours'] ??
+            j['duration'],
+      ),
       approvedHours: s(j['approved_hours'] ?? j['approved_hrs']),
       reason: rsn,
       dateFrom: dFrom,
       dateTo: dTo,
       timeFrom: s(j['time_from']),
       timeTo: s(j['time_to']),
-      noOfHours: (j['no_of_hours'] ?? j['hours'] ?? j['applied_hours'] ?? j['applied_hrs']) is num
-          ? (j['no_of_hours'] ?? j['hours'] ?? j['applied_hours'] ?? j['applied_hrs']).toDouble()
-          : double.tryParse((j['no_of_hours'] ?? j['hours'] ?? j['applied_hours'] ?? j['applied_hrs'] ?? '').toString()),
+      noOfHours:
+          (j['no_of_hours'] ??
+                  j['hours'] ??
+                  j['applied_hours'] ??
+                  j['applied_hrs'])
+              is num
+          ? (j['no_of_hours'] ??
+                    j['hours'] ??
+                    j['applied_hours'] ??
+                    j['applied_hrs'])
+                .toDouble()
+          : double.tryParse(
+              (j['no_of_hours'] ??
+                      j['hours'] ??
+                      j['applied_hours'] ??
+                      j['applied_hrs'] ??
+                      '')
+                  .toString(),
+            ),
+      fromDisplay: (j['from_display'] ?? '').toString(),
+      toDisplay: (j['to_display'] ?? '').toString(),
+      fromToDisplay: (j['from_to_display'] ?? '').toString(),
       rawJson: j,
     );
   }
@@ -911,13 +986,13 @@ class WhosOutRecord {
   }
 
   factory WhosOutRecord.fromJson(Map<String, dynamic> j) => WhosOutRecord(
-        name: (j['name'] ?? '').toString().trim(),
-        type: (j['type'] ?? '').toString(),
-        typeLabel: (j['type_label'] ?? j['type'] ?? '').toString(),
-        from: _day(j['date_from']),
-        to: _day(j['date_to']),
-        remarks: j['remarks'] as String?,
-      );
+    name: (j['name'] ?? '').toString().trim(),
+    type: (j['type'] ?? '').toString(),
+    typeLabel: (j['type_label'] ?? j['type'] ?? '').toString(),
+    from: _day(j['date_from']),
+    to: _day(j['date_to']),
+    remarks: j['remarks'] as String?,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -940,10 +1015,9 @@ class HrisApi {
       (res as Map).cast<String, dynamic>();
 
   // ---- Tenants (public — no auth needed) ----
-  Future<List<Tenant>> tenants() async =>
-      _dataList(await _api.get('/public/tenants'))
-          .map(Tenant.fromJson)
-          .toList();
+  Future<List<Tenant>> tenants() async => _dataList(
+    await _api.get('/public/tenants'),
+  ).map(Tenant.fromJson).toList();
 
   // ---- App version gate (public — checked on launch, before login) ----
   // Returns { minSupportedVersion, latestVersion, storeUrl, platform }.
@@ -960,17 +1034,22 @@ class HrisApi {
   // in the selected tenant. The backend always returns success regardless of
   // whether the account exists (no account enumeration).
   Future<void> forgotPassword({required String identifier, String? tenant}) =>
-      _api.post('/public/forgot-password', body: {
-        'identifier': identifier,
-        if (tenant != null && tenant.isNotEmpty) 'tenant': tenant,
-      });
+      _api.post(
+        '/public/forgot-password',
+        body: {
+          'identifier': identifier,
+          if (tenant != null && tenant.isNotEmpty) 'tenant': tenant,
+        },
+      );
 
   // ---- Profile ----
   Future<Profile> getProfile() async =>
       Profile.fromJson(_asMap(await _api.get('/auth/profile')));
 
   Future<ProfileBackground> profileBackground() async =>
-      ProfileBackground.fromJson(_asMap(await _api.get('/auth/profile/background')));
+      ProfileBackground.fromJson(
+        _asMap(await _api.get('/auth/profile/background')),
+      );
 
   Future<Mdr> profileMdr() async =>
       Mdr.fromJson(_asMap(await _api.get('/auth/profile/mdr')));
@@ -982,18 +1061,19 @@ class HrisApi {
           .map((e) => CertLevel.fromJson((e as Map).cast<String, dynamic>()))
           .toList();
 
-  Future<List<LinkedAccount>> linkedAccounts() async =>
-      _dataList(await _api.get('/auth/profile/linked-accounts'))
-          .map(LinkedAccount.fromJson)
-          .toList();
+  Future<List<LinkedAccount>> linkedAccounts() async => _dataList(
+    await _api.get('/auth/profile/linked-accounts'),
+  ).map(LinkedAccount.fromJson).toList();
 
-  Future<void> updateProfile(
-      {String? email, String? department, String? role}) async {
-    await _api.put('/auth/profile', body: {
-      'email': ?email,
-      'department': ?department,
-      'role': ?role,
-    });
+  Future<void> updateProfile({
+    String? email,
+    String? department,
+    String? role,
+  }) async {
+    await _api.put(
+      '/auth/profile',
+      body: {'email': ?email, 'department': ?department, 'role': ?role},
+    );
   }
 
   // ---- Security: change password + TOTP 2FA ----
@@ -1002,17 +1082,25 @@ class HrisApi {
     required String next,
     required String confirm,
   }) async {
-    await _api.post('/auth/profile/change-password', body: {
-      'current_password': current,
-      'new_password': next,
-      'confirm_password': confirm,
-    });
+    await _api.post(
+      '/auth/profile/change-password',
+      body: {
+        'current_password': current,
+        'new_password': next,
+        'confirm_password': confirm,
+      },
+    );
   }
 
   /// Confirms the signed-in user's current password (for enabling biometrics).
   Future<bool> verifyPassword(String password) async =>
-      (_asMap(await _api.post('/auth/verify-password',
-              body: {'password': password}))['valid'] as bool?) ??
+      (_asMap(
+            await _api.post(
+              '/auth/verify-password',
+              body: {'password': password},
+            ),
+          )['valid']
+          as bool?) ??
       false;
 
   /// Whether TOTP two-factor is currently enabled for the signed-in user.
@@ -1052,24 +1140,21 @@ class HrisApi {
     return _dataList(await _api.get(path)).map(Employee.fromJson).toList();
   }
 
-  Future<List<Employee>> whosOut() async =>
-      _dataList(await _api.get('/auth/directory/whos-out'))
-          .map(Employee.fromJson)
-          .toList();
+  Future<List<Employee>> whosOut() async => _dataList(
+    await _api.get('/auth/directory/whos-out'),
+  ).map(Employee.fromJson).toList();
 
   /// Everyone out (LOA + Call Approval) whose date range touches [month]/[year].
   /// Backs the Who's Out calendar; mirrors the web calendar's month filter.
   Future<List<WhosOutRecord>> whosOutMonth(int month, int year) async =>
-      _dataList(await _api.get('/hris/whosout?month=$month&year=$year'))
-          .map(WhosOutRecord.fromJson)
-          .toList();
+      _dataList(
+        await _api.get('/hris/whosout?month=$month&year=$year'),
+      ).map(WhosOutRecord.fromJson).toList();
 
   // ---- Leaves ----
-  Future<List<LeaveRequest>> leaves({String status = 'All'}) async =>
-      _dataList(await _api.get(
-              '/auth/leaves?status=${Uri.encodeQueryComponent(status)}'))
-          .map(LeaveRequest.fromJson)
-          .toList();
+  Future<List<LeaveRequest>> leaves({String status = 'All'}) async => _dataList(
+    await _api.get('/auth/leaves?status=${Uri.encodeQueryComponent(status)}'),
+  ).map(LeaveRequest.fromJson).toList();
 
   Future<LeaveRequest> fileLeave({
     required String type,
@@ -1078,13 +1163,16 @@ class HrisApi {
     String? days,
     String? reason,
   }) async {
-    final res = await _api.post('/auth/leaves', body: {
-      'type': type,
-      'start_date': startDate,
-      'end_date': ?endDate,
-      'days': ?days,
-      'reason': ?reason,
-    });
+    final res = await _api.post(
+      '/auth/leaves',
+      body: {
+        'type': type,
+        'start_date': startDate,
+        'end_date': ?endDate,
+        'days': ?days,
+        'reason': ?reason,
+      },
+    );
     return LeaveRequest.fromJson(_asMap(_asMap(res)['data']));
   }
 
@@ -1095,21 +1183,18 @@ class HrisApi {
       LeaveBalance.fromJson(_asMap(await _api.get('/auth/leaves/hours')));
 
   // ---- Payroll ----
-  Future<List<Payslip>> payslips() async =>
-      _dataList(await _api.get('/auth/payslips'))
-          .map(Payslip.fromJson)
-          .toList();
+  Future<List<Payslip>> payslips() async => _dataList(
+    await _api.get('/auth/payslips'),
+  ).map(Payslip.fromJson).toList();
 
   Future<Payslip> payslip(String id) async =>
       Payslip.fromJson(_asMap(await _api.get('/auth/payslips/$id')));
 
   /// Pay periods that have data for the current employee. Pass [type]
   /// ('timesheet' or 'payslip') to filter to periods that actually exist.
-  Future<List<PayPeriod>> payPeriods({String? type}) async =>
-      _dataList(await _api.get(
-              '/auth/pay-periods${type != null ? '?type=$type' : ''}'))
-          .map(PayPeriod.fromJson)
-          .toList();
+  Future<List<PayPeriod>> payPeriods({String? type}) async => _dataList(
+    await _api.get('/auth/pay-periods${type != null ? '?type=$type' : ''}'),
+  ).map(PayPeriod.fromJson).toList();
 
   /// The tenant's real next payday and current cutoff, straight from
   /// fm_pay_calendar. Returns null when HR hasn't configured a calendar for
@@ -1128,7 +1213,9 @@ class HrisApi {
       if (m['configured'] == true && m['next'] is Map) {
         return PayCalendarNext.fromJson(m);
       }
-    } catch (_) {/* fall through to pay-periods */}
+    } catch (_) {
+      /* fall through to pay-periods */
+    }
 
     // Fallback: compute from the pay-periods list (always deployed).
     try {
@@ -1142,7 +1229,10 @@ class HrisApi {
         return DateTime.utc(d.year, d.month + 1, 0); // last day of this month
       }
 
-      final enriched = <({DateTime from, DateTime to, DateTime pay, String yr, String pd})>[];
+      final enriched =
+          <
+            ({DateTime from, DateTime to, DateTime pay, String yr, String pd})
+          >[];
       for (final p in periods) {
         if (p.dateFrom == null || p.dateTo == null) continue;
         enriched.add((
@@ -1169,16 +1259,17 @@ class HrisApi {
       );
       final days = next.pay.difference(today).inDays;
 
-      PayCalendarPeriod toModel(({DateTime from, DateTime to, DateTime pay, String yr, String pd}) e,
-          {int? daysTo}) =>
-          PayCalendarPeriod(
-            payYear: e.yr,
-            payPeriod: e.pd,
-            payDate: e.pay,
-            cutoffFrom: e.from,
-            cutoffTo: e.to,
-            daysToPayday: daysTo,
-          );
+      PayCalendarPeriod toModel(
+        ({DateTime from, DateTime to, DateTime pay, String yr, String pd}) e, {
+        int? daysTo,
+      }) => PayCalendarPeriod(
+        payYear: e.yr,
+        payPeriod: e.pd,
+        payDate: e.pay,
+        cutoffFrom: e.from,
+        cutoffTo: e.to,
+        daysToPayday: daysTo,
+      );
 
       return PayCalendarNext(
         next: toModel(next, daysTo: days < 0 ? 0 : days),
@@ -1197,10 +1288,12 @@ class HrisApi {
       Attendance.fromJson(_asMap(await _api.get('/auth/attendance')));
 
   Future<AttendanceToday> clockIn() async => AttendanceToday.fromJson(
-      _asMap(_asMap(await _api.post('/auth/attendance/clock-in'))['data']));
+    _asMap(_asMap(await _api.post('/auth/attendance/clock-in'))['data']),
+  );
 
   Future<AttendanceToday> clockOut() async => AttendanceToday.fromJson(
-      _asMap(_asMap(await _api.post('/auth/attendance/clock-out'))['data']));
+    _asMap(_asMap(await _api.post('/auth/attendance/clock-out'))['data']),
+  );
 
   // ---- Notifications ----
   Future<NotificationsResult> notifications() async {
@@ -1219,10 +1312,9 @@ class HrisApi {
 
   // ---- Record / Request hub ----
   // type: 'loa' | 'call-approval' | 'manual-ad' | 'overtime'
-  Future<List<RequestRecord>> requestRecords(String type) async =>
-      _dataList(await _api.get('/auth/requests/$type'))
-          .map(RequestRecord.fromJson)
-          .toList();
+  Future<List<RequestRecord>> requestRecords(String type) async => _dataList(
+    await _api.get('/auth/requests/$type'),
+  ).map(RequestRecord.fromJson).toList();
 
   Future<RequestRecord> getRequest(String type, int id) async {
     final endpoints = <String>[
@@ -1276,14 +1368,19 @@ class HrisApi {
   }
 
   Future<RequestRecord> createRequest(
-      String type, Map<String, dynamic> body) async {
+    String type,
+    Map<String, dynamic> body,
+  ) async {
     final res = await _api.post('/auth/requests/$type', body: body);
     final data = res is Map && res['data'] != null ? res['data'] : res;
     return RequestRecord.fromJson(_asMap(data));
   }
 
   Future<RequestRecord> updateRequest(
-      String type, int id, Map<String, dynamic> body) async {
+    String type,
+    int id,
+    Map<String, dynamic> body,
+  ) async {
     final res = await _api.put('/auth/requests/$type/$id', body: body);
     final data = res is Map && res['data'] != null ? res['data'] : res;
     return RequestRecord.fromJson(_asMap(data));
@@ -1293,7 +1390,10 @@ class HrisApi {
     try {
       await _api.post('/auth/requests/$type/$id/send');
     } catch (_) {
-      await _api.put('/auth/requests/$type/$id', body: {'status': 'For Approval'});
+      await _api.put(
+        '/auth/requests/$type/$id',
+        body: {'status': 'For Approval'},
+      );
     }
   }
 
@@ -1309,7 +1409,10 @@ class HrisApi {
     try {
       await _api.post('/auth/requests/$type/$id/resend');
     } catch (_) {
-      await _api.put('/auth/requests/$type/$id', body: {'status': 'For Approval'});
+      await _api.put(
+        '/auth/requests/$type/$id',
+        body: {'status': 'For Approval'},
+      );
     }
   }
 
@@ -1336,7 +1439,10 @@ class HrisApi {
     try {
       await _api.post('/auth/requests/$type/$id/disapprove');
     } catch (_) {
-      await _api.put('/auth/requests/$type/$id', body: {'status': 'Disapproved'});
+      await _api.put(
+        '/auth/requests/$type/$id',
+        body: {'status': 'Disapproved'},
+      );
     }
   }
 
@@ -1348,10 +1454,12 @@ class HrisApi {
   }
 
   Future<Approval> approve(int id) async => Approval.fromJson(
-      _asMap(_asMap(await _api.post('/auth/approvals/$id/approve'))['data']));
+    _asMap(_asMap(await _api.post('/auth/approvals/$id/approve'))['data']),
+  );
 
   Future<Approval> reject(int id) async => Approval.fromJson(
-      _asMap(_asMap(await _api.post('/auth/approvals/$id/reject'))['data']));
+    _asMap(_asMap(await _api.post('/auth/approvals/$id/reject'))['data']),
+  );
 
   // ---- Approvals inbox (department approvers) ----
 
@@ -1378,16 +1486,17 @@ class HrisApi {
   Future<List<ApprovalTask>> approvalTasks(
     String scope, {
     String module = 'records',
-  }) async =>
-      _dataList(await _api.get('/auth/approvals?scope=$scope&module=$module'))
-          .map(ApprovalTask.fromJson)
-          .toList();
+  }) async => _dataList(
+    await _api.get('/auth/approvals?scope=$scope&module=$module'),
+  ).map(ApprovalTask.fromJson).toList();
 
   /// Approver sets the approved OT hours of a pending overtime (legacy
   /// update_approved_ot_hrs). Returns the stored value as "H:MM".
   Future<String> setApprovedOtHours(int id, int hours, int minutes) async {
-    final res = await _api.post('/auth/approvals/overtime/$id/approved-hours',
-        body: {'hours': hours, 'minutes': minutes});
+    final res = await _api.post(
+      '/auth/approvals/overtime/$id/approved-hours',
+      body: {'hours': hours, 'minutes': minutes},
+    );
     return _asMap(_asMap(res)['data'])['approved_ot_hours']?.toString() ?? '';
   }
 
@@ -1400,12 +1509,15 @@ class HrisApi {
     String? deviceId,
     String? deviceModel,
   }) async {
-    await _api.post('/auth/fcm-token', body: {
-      'fcm_token': token,
-      'platform': platform,
-      if (deviceId != null) 'device_id': deviceId,
-      if (deviceModel != null) 'device_model': deviceModel,
-    });
+    await _api.post(
+      '/auth/fcm-token',
+      body: {
+        'fcm_token': token,
+        'platform': platform,
+        if (deviceId != null) 'device_id': deviceId,
+        if (deviceModel != null) 'device_model': deviceModel,
+      },
+    );
   }
 
   /// Remove a device token (on logout) so a signed-out phone stops receiving.

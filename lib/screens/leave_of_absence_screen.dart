@@ -1259,6 +1259,11 @@ class _LoaActionSheet extends StatelessWidget {
             rows: [
               (Icons.event_note_rounded, 'Leave type', record.type),
               (
+                Icons.date_range_rounded,
+                'From – To',
+                _fromTo(record.requestRecord),
+              ),
+              (
                 Icons.schedule_rounded,
                 'Applied hours',
                 record.appliedHours ?? '',
@@ -1325,7 +1330,7 @@ class _LoaActionSheet extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: a.destructive ? AppColors.brandRed : AppColors.ink,
+                    color: AppColors.ink,
                   ),
                 ),
               ),
@@ -1513,4 +1518,14 @@ class _SheetIcon extends StatelessWidget {
       child: Icon(icon, size: 20, color: color),
     );
   }
+}
+
+/// The server's one-line From – To ("Oct 13, 2026 / 08:00 AM - 06:00 PM"),
+/// falling back to joining the two ends.
+String _fromTo(RequestRecord? r) {
+  if ((r?.fromToDisplay ?? '').isNotEmpty) return r!.fromToDisplay;
+  return [
+    r?.fromDisplay ?? '',
+    r?.toDisplay ?? '',
+  ].where((v) => v.isNotEmpty).join(' - ');
 }
