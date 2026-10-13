@@ -81,29 +81,12 @@ class _TopBar extends StatelessWidget {
     return first[0].toUpperCase() + first.substring(1).toLowerCase();
   }
 
-  /// Abbreviates a multi-word company to its initials so it fits on one line
-  /// (e.g. "ARDENT NETWORKS INC." -> "ANI"); short names are kept as-is.
-  String _shortCompany(String company) {
-    final words =
-        company.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-    if (words.length < 2) return company;
-    return words
-        .map((w) => w.replaceAll(RegExp(r'[^A-Za-z]'), ''))
-        .where((w) => w.isNotEmpty)
-        .map((w) => w[0].toUpperCase())
-        .join();
-  }
-
-  /// "POSITION • COMPANY" from the live session, falling back to role/privilege
-  /// and the company name if either is missing.
-  String _positionCompany() {
+  /// The employee's company (full name) under the greeting. The position
+  /// lives on the Profile screen, so it isn't repeated here.
+  String _companyLine() {
     final s = AppSession.instance;
-    final position = (s.position?.isNotEmpty ?? false)
-        ? s.position!
-        : s.role.name.toUpperCase();
     final name = (s.company?.isNotEmpty ?? false) ? s.company! : s.tenant?.name;
-    if (name == null || name.isEmpty) return position;
-    return '$position • ${_shortCompany(name).toUpperCase()}';
+    return (name ?? '').trim();
   }
 
   @override
@@ -115,7 +98,9 @@ class _TopBar extends StatelessWidget {
           // of pushing a full-screen route over the shell.
           onTap: () => HomeShellScope.of(context)?.selectTab(3),
           child: UserAvatar(
-              name: AppSession.instance.userName ?? kCurrentUser, size: 44),
+            name: AppSession.instance.userName ?? kCurrentUser,
+            size: 44,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -130,17 +115,19 @@ class _TopBar extends StatelessWidget {
                   color: AppColors.ink,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                _positionCompany(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.inkSoft,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
+              if (_companyLine().isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  _companyLine(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.inkSoft,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -308,12 +295,27 @@ class _QA extends StatelessWidget {
 /// display accurately with no hardcoded 15th/30th assumption.
 class _TodayCard extends StatelessWidget {
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   static const _wd = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-    'Saturday', 'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
 
   @override
@@ -334,8 +336,8 @@ class _TodayCard extends StatelessWidget {
     final payLabel = next == null
         ? 'Pay calendar not configured'
         : (next.daysToPayday == 0
-            ? 'Payday • ${_months[next.payDate.month - 1]} ${next.payDate.day}'
-            : 'Next payday • ${_months[next.payDate.month - 1]} ${next.payDate.day}');
+              ? 'Payday • ${_months[next.payDate.month - 1]} ${next.payDate.day}'
+              : 'Next payday • ${_months[next.payDate.month - 1]} ${next.payDate.day}');
     final days = next?.daysToPayday ?? -1;
 
     return Container(
@@ -354,7 +356,11 @@ class _TodayCard extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.today_rounded, color: Colors.white, size: 24),
+            child: const Icon(
+              Icons.today_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -383,8 +389,7 @@ class _TodayCard extends StatelessWidget {
           ),
           if (next != null)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
@@ -556,8 +561,10 @@ class _WhosOutToday extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.inkFaint),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.inkFaint,
+              ),
             ],
           ),
         );
@@ -566,13 +573,13 @@ class _WhosOutToday extends StatelessWidget {
   }
 
   Widget _ring({required Widget child}) => Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.card,
-        ),
-        padding: const EdgeInsets.all(2),
-        child: child,
-      );
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: AppColors.card,
+    ),
+    padding: const EdgeInsets.all(2),
+    child: child,
+  );
 }
 
 class _ApproverPendingSection extends StatelessWidget {
@@ -591,7 +598,9 @@ class _ApproverPendingSection extends StatelessWidget {
         final total = acc.pending + acc.pendingRequests + acc.pendingWitness;
         // Only witness work waiting -> open the witness list directly.
         final witnessOnly =
-            acc.pending == 0 && acc.pendingRequests == 0 && acc.pendingWitness > 0;
+            acc.pending == 0 &&
+            acc.pendingRequests == 0 &&
+            acc.pendingWitness > 0;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -648,8 +657,10 @@ class _ApproverPendingSection extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: AppColors.inkFaint),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.inkFaint,
+                  ),
                 ],
               ),
             ),
@@ -687,109 +698,134 @@ Future<List<_RecentItem>> _loadRecent() async {
   final isVersatech = AppSession.instance.tenant?.id == 'versatech';
 
   final futures = <Future>[
-    HrisApi.instance.requestRecords('loa').then((rows) {
-      for (final r in rows) {
-        final d =
-            r.appliedDate ?? parseAppDateTime(r.dateFrom) ?? DateTime(2000);
-        items.add(_RecentItem(
-          type: 'loa',
-          app: 'LOA',
-          no: r.no,
-          date: r.txnDate.isNotEmpty ? r.txnDate : r.dateApplied,
-          detail: r.leaveType ?? 'Leave of Absence',
-          status: r.status,
-          sortDate: d,
-          targetScreen: const LeaveOfAbsenceScreen(),
-        ));
-      }
-    }).catchError((_) {}),
-    HrisApi.instance.requestRecords('call-approval').then((rows) {
-      for (final r in rows) {
-        final d =
-            parseAppDateTime(r.txnDate) ?? r.appliedDate ?? DateTime(2000);
-        items.add(_RecentItem(
-          type: 'call-approval',
-          app: 'CA',
-          no: r.no,
-          date: r.txnDate.isNotEmpty ? r.txnDate : r.dateApplied,
-          detail: 'Call Approval',
-          status: r.status,
-          sortDate: d,
-          targetScreen: const ApprovalListScreen(
-            title: 'Call Approval',
-            subtitle: 'File and track call approval requests.',
-            icon: Icons.fact_check_rounded,
-            txnDateLabel: 'CA date',
-            type: 'call-approval',
-          ),
-        ));
-      }
-    }).catchError((_) {}),
-    HrisApi.instance.requestRecords('manual-ad').then((rows) {
-      for (final r in rows) {
-        final d =
-            parseAppDateTime(r.txnDate) ?? r.appliedDate ?? DateTime(2000);
-        items.add(_RecentItem(
-          type: 'manual-ad',
-          app: 'MAD',
-          no: r.no,
-          date: r.txnDate.isNotEmpty ? r.txnDate : r.dateApplied,
-          detail: 'Manual Arrival/Departure',
-          status: r.status,
-          sortDate: d,
-          targetScreen: const ApprovalListScreen(
-            title: 'Manual Arrival/Departure',
-            subtitle: 'File and track manual time in/out requests.',
-            icon: Icons.punch_clock_rounded,
-            txnDateLabel: 'MAD date',
-            showWitnessedBy: true,
-            type: 'manual-ad',
-          ),
-        ));
-      }
-    }).catchError((_) {}),
-    HrisApi.instance.requestRecords('overtime').then((rows) {
-      for (final r in rows) {
-        final d =
-            parseAppDateTime(r.txnDate) ?? r.appliedDate ?? DateTime(2000);
-        final hrs = r.appliedHours?.isNotEmpty == true
-            ? '${r.appliedHours} hrs'
-            : 'Overtime';
-        items.add(_RecentItem(
-          type: 'overtime',
-          app: 'OT',
-          no: r.no,
-          date: r.txnDate.isNotEmpty ? r.txnDate : r.dateApplied,
-          detail: hrs,
-          status: r.status,
-          sortDate: d,
-          targetScreen: const ApprovalListScreen(
-            title: 'Overtime',
-            subtitle: 'File and track overtime requests.',
-            icon: Icons.access_time_filled_rounded,
-            txnDateLabel: 'Overtime date',
-            showHours: true,
-            type: 'overtime',
-          ),
-        ));
-      }
-    }).catchError((_) {}),
+    HrisApi.instance
+        .requestRecords('loa')
+        .then((rows) {
+          for (final r in rows) {
+            final d =
+                r.appliedDate ?? parseAppDateTime(r.dateFrom) ?? DateTime(2000);
+            items.add(
+              _RecentItem(
+                type: 'loa',
+                app: 'LOA',
+                no: r.no,
+                date: r.txnDate.isNotEmpty ? r.txnDate : r.dateApplied,
+                detail: r.leaveType ?? 'Leave of Absence',
+                status: r.status,
+                sortDate: d,
+                targetScreen: const LeaveOfAbsenceScreen(),
+              ),
+            );
+          }
+        })
+        .catchError((_) {}),
+    HrisApi.instance
+        .requestRecords('call-approval')
+        .then((rows) {
+          for (final r in rows) {
+            final d =
+                parseAppDateTime(r.txnDate) ?? r.appliedDate ?? DateTime(2000);
+            items.add(
+              _RecentItem(
+                type: 'call-approval',
+                app: 'CA',
+                no: r.no,
+                date: r.txnDate.isNotEmpty ? r.txnDate : r.dateApplied,
+                detail: 'Call Approval',
+                status: r.status,
+                sortDate: d,
+                targetScreen: const ApprovalListScreen(
+                  title: 'Call Approval',
+                  subtitle: 'File and track call approval requests.',
+                  icon: Icons.fact_check_rounded,
+                  txnDateLabel: 'CA date',
+                  type: 'call-approval',
+                ),
+              ),
+            );
+          }
+        })
+        .catchError((_) {}),
+    HrisApi.instance
+        .requestRecords('manual-ad')
+        .then((rows) {
+          for (final r in rows) {
+            final d =
+                parseAppDateTime(r.txnDate) ?? r.appliedDate ?? DateTime(2000);
+            items.add(
+              _RecentItem(
+                type: 'manual-ad',
+                app: 'MAD',
+                no: r.no,
+                date: r.txnDate.isNotEmpty ? r.txnDate : r.dateApplied,
+                detail: 'Manual Arrival/Departure',
+                status: r.status,
+                sortDate: d,
+                targetScreen: const ApprovalListScreen(
+                  title: 'Manual Arrival/Departure',
+                  subtitle: 'File and track manual time in/out requests.',
+                  icon: Icons.punch_clock_rounded,
+                  txnDateLabel: 'MAD date',
+                  showWitnessedBy: true,
+                  type: 'manual-ad',
+                ),
+              ),
+            );
+          }
+        })
+        .catchError((_) {}),
+    HrisApi.instance
+        .requestRecords('overtime')
+        .then((rows) {
+          for (final r in rows) {
+            final d =
+                parseAppDateTime(r.txnDate) ?? r.appliedDate ?? DateTime(2000);
+            final hrs = r.appliedHours?.isNotEmpty == true
+                ? '${r.appliedHours} hrs'
+                : 'Overtime';
+            items.add(
+              _RecentItem(
+                type: 'overtime',
+                app: 'OT',
+                no: r.no,
+                date: r.txnDate.isNotEmpty ? r.txnDate : r.dateApplied,
+                detail: hrs,
+                status: r.status,
+                sortDate: d,
+                targetScreen: const ApprovalListScreen(
+                  title: 'Overtime',
+                  subtitle: 'File and track overtime requests.',
+                  icon: Icons.access_time_filled_rounded,
+                  txnDateLabel: 'Overtime date',
+                  showHours: true,
+                  type: 'overtime',
+                ),
+              ),
+            );
+          }
+        })
+        .catchError((_) {}),
     if (isVersatech)
-      HrisApi.instance.requestRecords('other').then((rows) {
-        for (final r in rows) {
-          final d = r.appliedDate ?? DateTime(2000);
-          items.add(_RecentItem(
-            type: 'other',
-            app: r.requestType ?? 'REQ',
-            no: r.no,
-            date: r.dateApplied,
-            detail: r.reason ?? 'Other Request',
-            status: r.status,
-            sortDate: d,
-            targetScreen: const OtherRequestsScreen(),
-          ));
-        }
-      }).catchError((_) {}),
+      HrisApi.instance
+          .requestRecords('other')
+          .then((rows) {
+            for (final r in rows) {
+              final d = r.appliedDate ?? DateTime(2000);
+              items.add(
+                _RecentItem(
+                  type: 'other',
+                  app: r.requestType ?? 'REQ',
+                  no: r.no,
+                  date: r.dateApplied,
+                  detail: r.reason ?? 'Other Request',
+                  status: r.status,
+                  sortDate: d,
+                  targetScreen: const OtherRequestsScreen(),
+                ),
+              );
+            }
+          })
+          .catchError((_) {}),
   ];
 
   await Future.wait(futures);
@@ -878,9 +914,9 @@ class _RecentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SoftCard(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => item.targetScreen),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => item.targetScreen)),
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
@@ -940,8 +976,10 @@ class _RecentCard extends StatelessWidget {
                     if (item.date.isNotEmpty) ...[
                       const Text(
                         ' • ',
-                        style:
-                            TextStyle(color: AppColors.inkFaint, fontSize: 12),
+                        style: TextStyle(
+                          color: AppColors.inkFaint,
+                          fontSize: 12,
+                        ),
                       ),
                       Flexible(
                         child: Text(
@@ -983,32 +1021,40 @@ class _LeaveBalance extends StatelessWidget {
         final hasCredits = _has(b.vlPaid) || _has(b.slPaid);
         final tiles = hasCredits
             ? [
-                _bigCredit(context,
-                    label: 'Vacation Leave',
-                    short: 'VL',
-                    val: _hhmm(b.vlPaid),
-                    unit: '',
-                    icon: Icons.beach_access_outlined),
-                _bigCredit(context,
-                    label: 'Sick Leave',
-                    short: 'SL',
-                    val: _hhmm(b.slPaid),
-                    unit: '',
-                    icon: Icons.healing_outlined),
+                _bigCredit(
+                  context,
+                  label: 'Vacation Leave',
+                  short: 'VL',
+                  val: _hhmm(b.vlPaid),
+                  unit: '',
+                  icon: Icons.beach_access_outlined,
+                ),
+                _bigCredit(
+                  context,
+                  label: 'Sick Leave',
+                  short: 'SL',
+                  val: _hhmm(b.slPaid),
+                  unit: '',
+                  icon: Icons.healing_outlined,
+                ),
               ]
             : [
-                _bigCredit(context,
-                    label: 'Approved Leave',
-                    short: 'AL',
-                    val: _hhmm(b.approvedLeave),
-                    unit: '',
-                    icon: Icons.event_note_outlined),
-                _bigCredit(context,
-                    label: 'Approved UT (AM/PM)',
-                    short: 'UT',
-                    val: _hhmm(b.approvedUt),
-                    unit: '',
-                    icon: Icons.timelapse_outlined),
+                _bigCredit(
+                  context,
+                  label: 'Approved Leave',
+                  short: 'AL',
+                  val: _hhmm(b.approvedLeave),
+                  unit: '',
+                  icon: Icons.event_note_outlined,
+                ),
+                _bigCredit(
+                  context,
+                  label: 'Approved UT (AM/PM)',
+                  short: 'UT',
+                  val: _hhmm(b.approvedUt),
+                  unit: '',
+                  icon: Icons.timelapse_outlined,
+                ),
               ];
         return Row(
           children: [
