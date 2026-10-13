@@ -1434,7 +1434,7 @@ class _ApprovalActionSheet extends StatelessWidget {
               Text(
                 record.no,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 21,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -1449,15 +1449,58 @@ class _ApprovalActionSheet extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             '$title • ${record.txnDate}',
-            style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
+            style: const TextStyle(fontSize: 14.5, color: AppColors.inkSoft),
           ),
-          const SizedBox(height: 16),
-          for (final a in actions) ...[
-            _tile(context, a),
-            const SizedBox(height: 10),
+          const SizedBox(height: 14),
+          _SheetSummary(
+            rows: [
+              (Icons.schedule_rounded, 'Applied hours', record.appliedHours),
+              if (record.witnessedBy.isNotEmpty)
+                (Icons.visibility_outlined, 'Witness', record.witnessedBy),
+              (
+                Icons.notes_rounded,
+                title.toLowerCase().contains('call') ? 'Purpose' : 'Reason',
+                record.reason ?? '',
+              ),
+            ],
+          ),
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Text(
+              'ACTIONS',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+                color: AppColors.inkFaint,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _actionGroup(context, actions),
           ],
         ],
       ),
+    );
+  }
+
+  /// Actions as one grouped card — same look and sizes as [_SheetSummary].
+  /// Each action as its own card (same look and sizes as [_SheetSummary]).
+  Widget _actionGroup(BuildContext context, List<_ApprovalActionItem> actions) {
+    return Column(
+      children: [
+        for (var i = 0; i < actions.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.fieldFill,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.line),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: _tile(context, actions[i]),
+          ),
+        ],
+      ],
     );
   }
 
@@ -1465,42 +1508,28 @@ class _ApprovalActionSheet extends StatelessWidget {
     final color =
         a.color ?? (a.destructive ? AppColors.brandRed : AppColors.ink);
     return Material(
-      color: AppColors.fieldFill,
-      borderRadius: BorderRadius.circular(14),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
         onTap: () => _run(context, a),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.line),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(a.icon, size: 20, color: color),
-              ),
-              const SizedBox(width: 14),
+              _SheetIcon(icon: a.icon, color: color),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   a.label,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: a.destructive ? AppColors.brandRed : AppColors.ink,
                   ),
                 ),
               ),
               const Icon(
                 Icons.chevron_right_rounded,
+                size: 22,
                 color: AppColors.inkFaint,
               ),
             ],
@@ -1574,4 +1603,91 @@ TimeOfDay? _timeFrom(String? s) {
   if (ampm == 'pm' && h < 12) h += 12;
   if (ampm == 'am' && h == 12) h = 0;
   return TimeOfDay(hour: h % 24, minute: min);
+}
+
+/// Compact record summary shown at the top of the action sheet: what was
+/// filed (type / hours) and why (reason or purpose).
+class _SheetSummary extends StatelessWidget {
+  const _SheetSummary({required this.rows});
+
+  /// (icon, label, value) — empty values are skipped.
+  final List<(IconData, String, String)> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = rows.where((r) => r.$3.trim().isNotEmpty).toList();
+    if (shown.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.fieldFill,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < shown.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _SheetIcon(icon: shown[i].$1, color: AppColors.brandRed),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        shown[i].$2.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                          color: AppColors.inkFaint,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        shown[i].$3.trim(),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 36px tinted icon box shared by the sheet's summary rows and action rows.
+class _SheetIcon extends StatelessWidget {
+  const _SheetIcon({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, size: 20, color: color),
+    );
+  }
 }
