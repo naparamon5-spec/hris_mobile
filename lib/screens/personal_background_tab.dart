@@ -496,6 +496,7 @@ class _LabeledField extends StatelessWidget {
     this.required = false,
     this.keyboardType,
     this.enabled = true,
+    this.error = false,
   });
 
   final String label;
@@ -503,6 +504,9 @@ class _LabeledField extends StatelessWidget {
   final bool required;
   final TextInputType? keyboardType;
   final bool enabled;
+
+  /// Required but left empty on submit — outlined in red.
+  final bool error;
 
   @override
   Widget build(BuildContext context) {
@@ -529,7 +533,9 @@ class _LabeledField extends StatelessWidget {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.line),
+                borderSide: error
+                    ? BorderSide(color: AppColors.brandRed, width: 1.6)
+                    : const BorderSide(color: AppColors.line),
               ),
               disabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -578,6 +584,7 @@ class _DropdownField extends StatelessWidget {
     required this.hint,
     required this.onChanged,
     this.required = false,
+    this.error = false,
   });
 
   final String label;
@@ -586,6 +593,7 @@ class _DropdownField extends StatelessWidget {
   final String hint;
   final ValueChanged<String?> onChanged;
   final bool required;
+  final bool error;
 
   @override
   Widget build(BuildContext context) {
@@ -599,7 +607,16 @@ class _DropdownField extends StatelessWidget {
           DropdownButtonFormField<String>(
             initialValue: value,
             isExpanded: true,
-            decoration: const InputDecoration(isDense: true),
+            decoration: InputDecoration(
+              isDense: true,
+              enabledBorder: error
+                  ? OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          BorderSide(color: AppColors.brandRed, width: 1.6),
+                    )
+                  : null,
+            ),
             hint: Text(hint,
                 style: const TextStyle(color: AppColors.inkFaint, fontSize: 14)),
             items: items
@@ -619,12 +636,14 @@ class _DateField extends StatelessWidget {
     required this.value,
     required this.onTap,
     this.required = false,
+    this.error = false,
   });
 
   final String label;
   final String value;
   final VoidCallback onTap;
   final bool required;
+  final bool error;
 
   @override
   Widget build(BuildContext context) {
@@ -643,7 +662,9 @@ class _DateField extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.fieldFill,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.line),
+                border: error
+                    ? Border.all(color: AppColors.brandRed, width: 1.6)
+                    : Border.all(color: AppColors.line),
               ),
               child: Row(
                 children: [
@@ -753,6 +774,22 @@ class _FamilyFormState extends State<_FamilyForm> {
   String? _relationship;
   String _birthdate = '';
 
+
+  /// Set on "Add Row" with missing fields: empty required fields turn red
+  /// (and clear as soon as they're filled).
+  bool _showErrors = false;
+  bool _empty(TextEditingController c) => c.text.trim().isEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final c in [_first, _last]) {
+      c.addListener(() {
+        if (_showErrors) setState(() {});
+      });
+    }
+  }
+
   static const _relationships = [
     'Father', 'Mother', 'Spouse', 'Child', 'Sibling', 'Guardian', 'Other',
   ];
@@ -766,10 +803,8 @@ class _FamilyFormState extends State<_FamilyForm> {
   }
 
   void _submit() {
-    if (_first.text.trim().isEmpty ||
-        _last.text.trim().isEmpty ||
-        _relationship == null) {
-      showToast(context, 'Please fill in the required fields');
+    if (_empty(_first) || _empty(_last) || _relationship == null) {
+      setState(() => _showErrors = true);
       return;
     }
     Navigator.pop(
@@ -783,12 +818,21 @@ class _FamilyFormState extends State<_FamilyForm> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _LabeledField(label: 'Firstname', controller: _first, required: true),
+        _LabeledField(
+            label: 'Firstname',
+            controller: _first,
+            required: true,
+            error: _showErrors && _empty(_first)),
         _LabeledField(label: 'Middlename', controller: _middle),
-        _LabeledField(label: 'Lastname', controller: _last, required: true),
+        _LabeledField(
+            label: 'Lastname',
+            controller: _last,
+            required: true,
+            error: _showErrors && _empty(_last)),
         _DropdownField(
           label: 'Relationship',
           required: true,
+          error: _showErrors && _relationship == null,
           hint: 'Select Family Relationship',
           value: _relationship,
           items: _relationships,
@@ -821,6 +865,22 @@ class _EducationFormState extends State<_EducationForm> {
   final _year = TextEditingController();
   String? _attainment;
 
+
+  /// Set on "Add Row" with missing fields: empty required fields turn red
+  /// (and clear as soon as they're filled).
+  bool _showErrors = false;
+  bool _empty(TextEditingController c) => c.text.trim().isEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final c in [_school, _year]) {
+      c.addListener(() {
+        if (_showErrors) setState(() {});
+      });
+    }
+  }
+
   static const _attainments = [
     'Elementary',
     'Secondary / High School',
@@ -838,10 +898,8 @@ class _EducationFormState extends State<_EducationForm> {
   }
 
   void _submit() {
-    if (_school.text.trim().isEmpty ||
-        _attainment == null ||
-        _year.text.trim().isEmpty) {
-      showToast(context, 'Please fill in the required fields');
+    if (_empty(_school) || _attainment == null || _empty(_year)) {
+      setState(() => _showErrors = true);
       return;
     }
     Navigator.pop(
@@ -854,10 +912,15 @@ class _EducationFormState extends State<_EducationForm> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _LabeledField(label: 'School', controller: _school, required: true),
+        _LabeledField(
+            label: 'School',
+            controller: _school,
+            required: true,
+            error: _showErrors && _empty(_school)),
         _DropdownField(
           label: 'Attainment',
           required: true,
+          error: _showErrors && _attainment == null,
           hint: 'Select Attainment',
           value: _attainment,
           items: _attainments,
@@ -867,6 +930,7 @@ class _EducationFormState extends State<_EducationForm> {
           label: 'Year Graduated',
           controller: _year,
           required: true,
+          error: _showErrors && _empty(_year),
           keyboardType: TextInputType.number,
         ),
         _AddRowFooter(onAdd: _submit),
@@ -892,6 +956,21 @@ class _EmploymentFormState extends State<_EmploymentForm> {
   String _from = '';
   String _to = '';
 
+  /// Set on "Add Row" with missing fields: empty required fields turn red
+  /// (and clear as soon as they're filled).
+  bool _showErrors = false;
+  bool _empty(TextEditingController c) => c.text.trim().isEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final c in [_company, _addr1, _position]) {
+      c.addListener(() {
+        if (_showErrors) setState(() {});
+      });
+    }
+  }
+
   @override
   void dispose() {
     _company.dispose();
@@ -903,12 +982,12 @@ class _EmploymentFormState extends State<_EmploymentForm> {
   }
 
   void _submit() {
-    if (_company.text.trim().isEmpty ||
-        _addr1.text.trim().isEmpty ||
-        _position.text.trim().isEmpty ||
+    if (_empty(_company) ||
+        _empty(_addr1) ||
+        _empty(_position) ||
         _from.isEmpty ||
         _to.isEmpty) {
-      showToast(context, 'Please fill in the required fields');
+      setState(() => _showErrors = true);
       return;
     }
     Navigator.pop(
@@ -929,14 +1008,27 @@ class _EmploymentFormState extends State<_EmploymentForm> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _LabeledField(label: 'Company', controller: _company, required: true),
-        _LabeledField(label: 'Address 1', controller: _addr1, required: true),
+        _LabeledField(
+            label: 'Company',
+            controller: _company,
+            required: true,
+            error: _showErrors && _empty(_company)),
+        _LabeledField(
+            label: 'Address 1',
+            controller: _addr1,
+            required: true,
+            error: _showErrors && _empty(_addr1)),
         _LabeledField(label: 'Address 2', controller: _addr2),
         _LabeledField(label: 'Address 3', controller: _addr3),
-        _LabeledField(label: 'Position', controller: _position, required: true),
+        _LabeledField(
+            label: 'Position',
+            controller: _position,
+            required: true,
+            error: _showErrors && _empty(_position)),
         _DateField(
           label: 'Date From',
           required: true,
+          error: _showErrors && _from.isEmpty,
           value: _from,
           onTap: () async {
             final d = await _pickDate(context);
@@ -946,6 +1038,7 @@ class _EmploymentFormState extends State<_EmploymentForm> {
         _DateField(
           label: 'Date To',
           required: true,
+          error: _showErrors && _to.isEmpty,
           value: _to,
           onTap: () async {
             final d = await _pickDate(context);
