@@ -273,6 +273,7 @@ class LeaveBalance {
     this.additionalVl,
     this.slPaid,
     this.vlPaid,
+    this.accumulatedLeave,
     this.slPaidHours,
     this.vlPaidHours,
   });
@@ -289,6 +290,7 @@ class LeaveBalance {
   final String? additionalVl;
   final String? slPaid;
   final String? vlPaid;
+  final String? accumulatedLeave;
 
   // Raw hours for the dashboard leave credits.
   final num? slPaidHours;
@@ -313,6 +315,7 @@ class LeaveBalance {
       additionalVl: s(j['additional_vl']),
       slPaid: s(j['sl_paid']),
       vlPaid: s(j['vl_paid']),
+      accumulatedLeave: s(j['accumulated_leave']),
       slPaidHours: j['sl_paid_hours'] as num?,
       vlPaidHours: j['vl_paid_hours'] as num?,
     );

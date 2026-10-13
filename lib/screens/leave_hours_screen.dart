@@ -6,12 +6,42 @@ import '../widgets/async_view.dart';
 import '../widgets/ui.dart';
 
 /// Leave Hours — the "Remaining Leave Hours" summary from the HRIS web app:
-/// Approved Leave and Approved UT (AM/PM). Values show a dash placeholder when
-/// no approved balance has been posted yet, matching the web behaviour.
+/// Approved Leave and Approved UT (AM/PM) always (dash when no balance), plus
+/// VL / SL / Additional VL / Accumulated Leave only when they have a value.
 class LeaveHoursScreen extends StatelessWidget {
   const LeaveHoursScreen({super.key});
 
   String _fmt(String? v) => (v == null || v.isEmpty) ? '— —' : v;
+
+  /// A value worth showing: present and not "00:00".
+  static bool _has(String? v) =>
+      v != null && v.isNotEmpty && v.replaceAll(RegExp(r'[0:]'), '').isNotEmpty;
+
+  List<Widget> _balanceCards(LeaveBalance b) => [
+        if (_has(b.vlPaid))
+          _HoursCard(
+              label: 'VL Paid',
+              value: b.vlPaid!,
+              icon: Icons.beach_access_rounded),
+        if (_has(b.slPaid))
+          _HoursCard(
+              label: 'SL Paid', value: b.slPaid!, icon: Icons.healing_rounded),
+        if (_has(b.additionalVl))
+          _HoursCard(
+              label: 'Additional VL',
+              value: b.additionalVl!,
+              icon: Icons.more_time_rounded),
+        if (_has(b.accumulatedLeave))
+          _HoursCard(
+              label: 'Accumulated Leave',
+              value: b.accumulatedLeave!,
+              icon: Icons.savings_rounded),
+      ];
+
+  static List<List<Widget>> _pairs(List<Widget> cards) => [
+        for (var i = 0; i < cards.length; i += 2)
+          cards.sublist(i, i + 2 > cards.length ? cards.length : i + 2),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -45,40 +75,19 @@ class LeaveHoursScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: _HoursCard(
-                      label: 'Additional VL',
-                      value: _fmt(b.additionalVl),
-                      icon: Icons.more_time_rounded,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: _HoursCard(
-                      label: 'SL Paid',
-                      value: _fmt(b.slPaid),
-                      icon: Icons.healing_rounded,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: _HoursCard(
-                      label: 'VL Paid',
-                      value: _fmt(b.vlPaid),
-                      icon: Icons.beach_access_rounded,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(child: SizedBox()),
-                ],
-              ),
+              // VL / SL / Additional VL / Accumulated Leave only when the
+              // employee actually has a balance for them.
+              for (final pair in _pairs(_balanceCards(b))) ...[
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(child: pair[0]),
+                    const SizedBox(width: 14),
+                    Expanded(
+                        child: pair.length > 1 ? pair[1] : const SizedBox()),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
               const _EmptyNote(),
             ],
