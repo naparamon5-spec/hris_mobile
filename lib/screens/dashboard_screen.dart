@@ -713,7 +713,10 @@ Future<List<_RecentItem>> _loadRecent() async {
                 detail: r.leaveType ?? 'Leave of Absence',
                 status: r.status,
                 sortDate: d,
-                targetScreen: const LeaveOfAbsenceScreen(),
+                targetScreen: LeaveOfAbsenceScreen(
+                  initialRecordId: r.id.toString(),
+                  initialRecordNo: r.no,
+                ),
               ),
             );
           }
@@ -734,12 +737,14 @@ Future<List<_RecentItem>> _loadRecent() async {
                 detail: 'Call Approval',
                 status: r.status,
                 sortDate: d,
-                targetScreen: const ApprovalListScreen(
+                targetScreen: ApprovalListScreen(
                   title: 'Call Approval',
                   subtitle: 'File and track call approval requests.',
                   icon: Icons.fact_check_rounded,
                   txnDateLabel: 'CA date',
                   type: 'call-approval',
+                  initialRecordId: r.id.toString(),
+                  initialRecordNo: r.no,
                 ),
               ),
             );
@@ -761,13 +766,15 @@ Future<List<_RecentItem>> _loadRecent() async {
                 detail: 'Manual Arrival/Departure',
                 status: r.status,
                 sortDate: d,
-                targetScreen: const ApprovalListScreen(
+                targetScreen: ApprovalListScreen(
                   title: 'Manual Arrival/Departure',
                   subtitle: 'File and track manual time in/out requests.',
                   icon: Icons.punch_clock_rounded,
                   txnDateLabel: 'MAD date',
                   showWitnessedBy: true,
                   type: 'manual-ad',
+                  initialRecordId: r.id.toString(),
+                  initialRecordNo: r.no,
                 ),
               ),
             );
@@ -792,13 +799,15 @@ Future<List<_RecentItem>> _loadRecent() async {
                 detail: hrs,
                 status: r.status,
                 sortDate: d,
-                targetScreen: const ApprovalListScreen(
+                targetScreen: ApprovalListScreen(
                   title: 'Overtime',
                   subtitle: 'File and track overtime requests.',
                   icon: Icons.access_time_filled_rounded,
                   txnDateLabel: 'Overtime date',
                   showHours: true,
                   type: 'overtime',
+                  initialRecordId: r.id.toString(),
+                  initialRecordNo: r.no,
                 ),
               ),
             );
@@ -820,7 +829,10 @@ Future<List<_RecentItem>> _loadRecent() async {
                   detail: r.reason ?? 'Other Request',
                   status: r.status,
                   sortDate: d,
-                  targetScreen: const OtherRequestsScreen(),
+                  targetScreen: OtherRequestsScreen(
+                    initialRecordId: r.id.toString(),
+                    initialRecordNo: r.no,
+                  ),
                 ),
               );
             }

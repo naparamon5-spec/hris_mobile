@@ -321,7 +321,7 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                   focusedBorder: InputBorder.none,
                   errorBorder: InputBorder.none,
                   disabledBorder: InputBorder.none,
-                  filled: false,
+                  filled: true,
                   isCollapsed: true,
                   contentPadding: EdgeInsets.symmetric(vertical: 8),
                   hintStyle: TextStyle(color: AppColors.inkFaint, fontSize: 15),
@@ -989,7 +989,7 @@ class _LoaActionSheet extends StatelessWidget {
           _LoaAction(
             'Reverse Record',
             Icons.undo_rounded,
-            color: Color(0xFF6B7280),
+            color: Color(0xFF2D3340), // dark, as on web
             destructive: true,
           ),
         ];
@@ -1000,7 +1000,7 @@ class _LoaActionSheet extends StatelessWidget {
           _LoaAction(
             'Reverse Record',
             Icons.undo_rounded,
-            color: Color(0xFF6B7280),
+            color: Color(0xFF2D3340), // dark, as on web
             destructive: true,
           ),
         ];
@@ -1290,56 +1290,73 @@ class _LoaActionSheet extends StatelessWidget {
     );
   }
 
-  /// Actions as one grouped card — same look and sizes as [_SheetSummary].
-  /// Each action as its own card (same look and sizes as [_SheetSummary]).
+  // Main action(s) — solid, full width. Everything else is secondary.
+  static const _primaryLabels = {'Send for Approval', 'Resend', 'Approve'};
+
+  /// Primary actions as full-width buttons on top; secondary actions
+  /// (Edit / Cancel / Reverse …) below, two per row. All solid-colored.
   Widget _actionGroup(BuildContext context, List<_LoaAction> actions) {
+    final primary =
+        actions.where((a) => _primaryLabels.contains(a.label)).toList();
+    final secondary =
+        actions.where((a) => !_primaryLabels.contains(a.label)).toList();
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < actions.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.fieldFill,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.line),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: _tile(context, actions[i]),
+        for (final a in primary) ...[
+          _button(context, a, filled: true),
+          const SizedBox(height: 10),
+        ],
+        for (var i = 0; i < secondary.length; i += 2) ...[
+          Row(
+            children: [
+              Expanded(child: _button(context, secondary[i], filled: true)),
+              if (i + 1 < secondary.length) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _button(context, secondary[i + 1], filled: true),
+                ),
+              ],
+            ],
           ),
+          const SizedBox(height: 10),
         ],
       ],
     );
   }
 
-  Widget _tile(BuildContext context, _LoaAction a) {
-    final color =
-        a.color ?? (a.destructive ? AppColors.brandRed : AppColors.ink);
+  static Color _actionColor(_LoaAction a) =>
+      a.color == AppColors.warning
+          ? _lightYellow
+          : a.color ?? (a.destructive ? AppColors.brandRed : AppColors.ink);
+
+  // Softer yellow for Send for Approval / Resend, like the web buttons.
+  static const _lightYellow = Color(0xFFF4BE4F);
+
+  Widget _button(BuildContext context, _LoaAction a, {required bool filled}) {
+    final color = _actionColor(a);
     return Material(
-      color: Colors.transparent,
+      color: filled ? color : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: filled ? BorderSide.none : BorderSide(color: color, width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => _run(context, a),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            children: [
-              _SheetIcon(icon: a.icon, color: color),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  a.label,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
-                  ),
-                ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+          child: Center(
+            child: Text(
+              a.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: filled ? Colors.white : color,
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                size: 22,
-                color: AppColors.inkFaint,
-              ),
-            ],
+            ),
           ),
         ),
       ),
