@@ -7,6 +7,7 @@ import '../data/payslip_pdf.dart';
 import '../theme/app_colors.dart';
 import '../widgets/downloadable.dart';
 import '../widgets/ui.dart';
+import '../widgets/secure_screen.dart';
 
 /// Bulk payslip download: pick multiple pay periods, confirm with a password,
 /// then export all selected payslips into one PDF (one per page) to save/print.
@@ -197,8 +198,12 @@ class _BulkPayslipScreenState extends State<BulkPayslipScreen> {
     }
   }
 
+  // Payslip data is sensitive — block screenshots / screen recording.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      SecureScreen(child: _build(context));
+
+  Widget _build(BuildContext context) {
     final visible = _visible;
     final allSelected =
         visible.isNotEmpty && visible.map(_idOf).every(_selected.contains);

@@ -1,3 +1,8 @@
+import 'dart:ui';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -37,6 +42,8 @@ void main() async {
   PushService.setNavigatorKey(hrisNavigatorKey);
   await PushService.instance.initialize();
 
+  await _initCrashReporting();
+
   // When the session expires while the app is in use (refresh token rejected),
   // force the user back to the login screen instead of leaving them "signed in".
   AppSession.instance.onSessionExpired = () {
@@ -57,6 +64,22 @@ void main() async {
   runApp(const HrisApp());
 }
 
+/// Sends uncaught Flutter and async errors to Firebase Crashlytics. Disabled in
+/// debug builds so development errors don't pollute the dashboard. Best-effort
+/// — a missing Firebase config never blocks startup.
+Future<void> _initCrashReporting() async {
+  try {
+    if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+    final crashlytics = FirebaseCrashlytics.instance;
+    await crashlytics.setCrashlyticsCollectionEnabled(!kDebugMode);
+    FlutterError.onError = crashlytics.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      crashlytics.recordError(error, stack, fatal: true);
+      return true;
+    };
+  } catch (_) {}
+}
+
 class HrisApp extends StatefulWidget {
   const HrisApp({super.key});
 
@@ -73,6 +96,13 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   // switcher), the splash is painted over the UI so the switcher snapshot
   // never shows payslips or other personal data.
   bool _obscured = false;
+  // True while the session is being re-validated on resume. The splash cover
+  // stays up (with a loader) so an expired session never flashes the home
+  // screen before routing to login.
+  bool _checkingSession = false;
+
+  // Away at least this long → re-validate the session before revealing the UI.
+  static const _revalidateAfter = Duration(seconds: 30);
 
   @override
   void initState() {
@@ -88,7 +118,7 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final obscure = state != AppLifecycleState.resumed;
+    final obscure = state != AppLifecycleState.resumed || _checkingSession;
     if (obscure != _obscured) setState(() => _obscured = obscure);
 
     if (state == AppLifecycleState.paused ||
@@ -109,9 +139,37 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
       if (!AppSession.instance.isSignedIn) InboxBadges.instance.clear();
       if (since == null) return;
       final away = DateTime.now().difference(since);
-      if (away >= AppSession.backgroundTimeout &&
-          AppSession.instance.isSignedIn) {
-        _signOutToLogin();
+      if (!AppSession.instance.isSignedIn || away < _revalidateAfter) return;
+      _coverWhile(() async {
+        if (away >= AppSession.backgroundTimeout) {
+          await _signOutToLogin();
+        } else {
+          // Expired → onSessionExpired routes to login while still covered.
+          await AppSession.instance.revalidate();
+        }
+      });
+    }
+  }
+
+  // Keeps the splash cover (with a loader) over the app while [task] runs, so
+  // the user sees a loading screen — or lands directly on login — instead of
+  // the signed-in UI briefly appearing.
+  Future<void> _coverWhile(Future<void> Function() task) async {
+    setState(() {
+      _checkingSession = true;
+      _obscured = true;
+    });
+    try {
+      await task();
+    } catch (_) {
+    } finally {
+      // Let the login route's first frame paint before lifting the cover.
+      await WidgetsBinding.instance.endOfFrame;
+      if (mounted) {
+        setState(() {
+          _checkingSession = false;
+          _obscured = false;
+        });
       }
     }
   }
@@ -186,7 +244,10 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
                 key: loadingOverlayKey,
                 child: child ?? const SizedBox.shrink(),
               ),
-              if (_obscured) const Positioned.fill(child: _PrivacyCover()),
+              if (_obscured)
+                Positioned.fill(
+                  child: _PrivacyCover(loading: _checkingSession),
+                ),
             ],
           ),
           home: const SplashScreen(),
@@ -199,11 +260,13 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
 /// Splash-style cover shown over the app while it is not in the foreground, so
 /// the multitask switcher shows the brand screen instead of the user's data.
 class _PrivacyCover extends StatelessWidget {
-  const _PrivacyCover();
+  const _PrivacyCover({this.loading = false});
+
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    return const Material(
+    return Material(
       color: Colors.white,
       child: Center(
         child: Column(
@@ -230,6 +293,20 @@ class _PrivacyCover extends StatelessWidget {
                 color: AppColors.inkSoft,
               ),
             ),
+            if (loading) ...[
+              const SizedBox(height: 32),
+              SizedBox(
+                width: 120,
+                height: 4,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    backgroundColor: const Color(0xFFF3D3D9),
+                    valueColor: AlwaysStoppedAnimation(AppColors.brandRed),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

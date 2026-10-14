@@ -24,6 +24,7 @@ plugins {
     // Firebase / FCM — declared here, applied in app/build.gradle.kts only when
     // google-services.json is present, so the build works before Firebase setup.
     id("com.google.gms.google-services") version "4.4.2" apply false
+    id("com.google.firebase.crashlytics") version "3.0.2" apply false
 }
 
 include(":app")

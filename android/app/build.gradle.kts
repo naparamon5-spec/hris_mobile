@@ -52,4 +52,5 @@ dependencies {
 // android/app/google-services.json (from the Firebase console) to enable FCM.
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
 }

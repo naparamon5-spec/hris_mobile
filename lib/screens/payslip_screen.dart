@@ -5,6 +5,7 @@ import '../theme/app_colors.dart';
 import '../widgets/async_view.dart';
 import 'bulk_payslip_screen.dart';
 import 'period_grid_screen.dart';
+import '../widgets/secure_screen.dart';
 
 /// PAYSLIP — a year selector over a grid of pay-period cards, loaded from the
 /// backend `/auth/pay-periods` endpoint, with pull-to-refresh and AppBar refresh.
@@ -28,8 +29,12 @@ class _PayslipScreenState extends State<PayslipScreen> {
     super.dispose();
   }
 
+  // Payslip data is sensitive — block screenshots / screen recording.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      SecureScreen(child: _build(context));
+
+  Widget _build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(

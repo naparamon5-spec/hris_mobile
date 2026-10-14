@@ -295,7 +295,9 @@ class AppSession extends ChangeNotifier {
     if (stored.user != null) _applyUser(stored.user!);
 
     // Renew the access token; if that fails the session is no longer valid.
-    final ok = await _refreshAccessToken();
+    // Offline at launch: keep the stored session (the access token is renewed
+    // on the next request) rather than sending the user to login.
+    final ok = await _refreshAccessToken() || _lastRefreshTransient;
     if (ok) {
       // Re-register this device for push on every launch (tokens rotate and
       // dead ones are pruned server-side), not only on a fresh login.
@@ -320,11 +322,22 @@ class AppSession extends ChangeNotifier {
   /// its widgets), they all share ONE refresh instead of each refreshing — and
   /// each failing — on its own.
   Future<bool>? _refreshing;
+
+  /// Re-checks the session (e.g. when the app returns from the background) by
+  /// renewing the access token. Returns false — and fires [onSessionExpired] —
+  /// if the session is no longer valid.
+  Future<bool> revalidate() async =>
+      await _refreshAccessToken() || _lastRefreshTransient;
   Future<bool> _refreshAccessToken() =>
       _refreshing ??= _doRefreshAccessToken()
           .whenComplete(() => _refreshing = null);
 
+  // True when the last refresh failed for a transient reason (offline,
+  // timeout, 5xx) rather than because the session was rejected.
+  bool _lastRefreshTransient = false;
+
   Future<bool> _doRefreshAccessToken() async {
+    _lastRefreshTransient = false;
     if (_refreshToken == null || _refreshToken!.isEmpty) {
       _onExpiredMidSession();
       return false;
@@ -344,12 +357,23 @@ class AppSession extends ChangeNotifier {
       }
       _onExpiredMidSession();
       return false;
-    } catch (_) {
+    } on ApiException catch (e) {
+      // No connection / timeout / server error: the session itself may still
+      // be valid, so keep it instead of signing the user out. Only a real
+      // rejection (4xx) means the refresh token is dead.
+      if (e.statusCode == 0 || e.statusCode >= 500) {
+        _lastRefreshTransient = true;
+        return false;
+      }
       // Refresh token invalid/expired — drop the stored session.
       api.accessToken = null;
       _refreshToken = null;
       await _store.clearSession();
       _onExpiredMidSession();
+      return false;
+    } catch (_) {
+      // Anything else (e.g. a malformed response) — treat as transient.
+      _lastRefreshTransient = true;
       return false;
     }
   }

@@ -7,6 +7,7 @@ import '../data/payslip_pdf.dart';
 import '../theme/app_colors.dart';
 import '../widgets/async_view.dart';
 import '../widgets/downloadable.dart';
+import '../widgets/secure_screen.dart';
 
 /// Payslip detail, shown after the identity check. Renders the earnings and
 /// deductions breakdown inside a capture boundary so it can be saved/shared as
@@ -101,8 +102,12 @@ class _PayslipDetailScreenState extends State<PayslipDetailScreen> {
     );
   }
 
+  // Payslip data is sensitive — block screenshots / screen recording.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      SecureScreen(child: _build(context));
+
+  Widget _build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(title: const Text('Payslip')),
