@@ -59,7 +59,7 @@ dependencies:
   # App icon badge count (sync with unread notifications).
   app_badge_plus: ^1.2.2
   firebase_crashlytics: ^5.4.0
-  no_screenshot: ^2.0.1
+  no_screenshot: ^1.2.0
 
 dev_dependencies:
   flutter_test:
