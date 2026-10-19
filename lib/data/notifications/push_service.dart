@@ -95,11 +95,9 @@ class PushService {
       FirebaseMessaging.onMessage.listen(_onForegroundMessage);
       FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTap);
 
+      // Held by _navigate until HomeShell mounts after the session restores.
       final initial = await FirebaseMessaging.instance.getInitialMessage();
-      if (initial != null) {
-        await Future.delayed(const Duration(milliseconds: 600));
-        _onNotificationTap(initial);
-      }
+      if (initial != null) _onNotificationTap(initial);
 
       _ready = true;
       debugPrint('✅ PushService ready');
@@ -170,19 +168,30 @@ class PushService {
 
   static Map<String, dynamic>? _pendingTap;
 
+  // True while the signed-in HomeShell is mounted. A tap that arrives earlier
+  // (cold start: splash still up, session not restored yet) or while signed
+  // out is held until then — pushing it over the splash got it discarded by
+  // the splash's pushReplacement, and over login it would call the API with
+  // no session.
+  static bool _homeMounted = false;
+
+  /// Called by HomeShell when it mounts; opens any tap held until now.
+  static void attachHome() {
+    _homeMounted = true;
+    final pending = _pendingTap;
+    if (pending == null) return;
+    _pendingTap = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _navigate(pending));
+  }
+
+  static void detachHome() => _homeMounted = false;
+
   /// Route based on `type` / `request_type` in the FCM data payload.
-  static void _navigate(Map<String, dynamic> data, {int attempt = 0}) {
+  static void _navigate(Map<String, dynamic> data) {
     debugPrint('👆 Notification tapped: $data');
     final nav = navigatorKey?.currentState;
-    if (nav == null) {
-      if (attempt >= 8) return;
+    if (nav == null || !_homeMounted) {
       _pendingTap = data;
-      Future.delayed(const Duration(milliseconds: 500), () {
-        final pending = _pendingTap;
-        if (pending == null) return;
-        _pendingTap = null;
-        _navigate(pending, attempt: attempt + 1);
-      });
       return;
     }
     final screen = screenForNotification(
@@ -236,6 +245,8 @@ class PushService {
   /// sign-in. Also clears any notifications we've shown and the OS app badge so
   /// a signed-out phone is left clean.
   Future<void> deleteToken() async {
+    // Never carry a held tap over to whoever signs in next.
+    _pendingTap = null;
     try {
       await FirebaseMessaging.instance.deleteToken();
     } catch (_) {}

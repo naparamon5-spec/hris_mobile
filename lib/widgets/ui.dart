@@ -16,9 +16,17 @@ void showLoadingOverlay(BuildContext context, {bool immediate = false}) {
   loadingOverlayKey.currentState?.show(immediate: immediate);
 }
 
-/// Hide full-screen loading overlay
-void hideLoadingOverlay(BuildContext context) {
+/// Hide full-screen loading overlay. The overlay is global, so [context] is
+/// optional — omit it to hide safely after an await even if the caller's
+/// screen has since been disposed (skipping hide() leaves the blur stuck).
+void hideLoadingOverlay([BuildContext? context]) {
   loadingOverlayKey.currentState?.hide();
+}
+
+/// Force-hide the overlay, discarding any loaders that never called hide().
+/// Used when the whole stack is replaced (sign-out / session expiry).
+void resetLoadingOverlay() {
+  loadingOverlayKey.currentState?.reset();
 }
 
 /// Runs [action] while the global blur loader is shown, hiding it afterwards
@@ -1253,6 +1261,17 @@ class _LoadingOverlayState extends State<LoadingOverlay> {
     } else {
       setState(() => _isLoading = false);
     }
+  }
+
+  /// Drops every outstanding show() at once. Screens that were torn down
+  /// mid-request (e.g. by a session-expiry redirect) skip their hide(), which
+  /// would otherwise leave the blur up over the next screen forever.
+  void reset() {
+    if (!mounted) return;
+    _refCount = 0;
+    _showTimer?.cancel();
+    _showTimer = null;
+    if (_isLoading) setState(() => _isLoading = false);
   }
 
   @override

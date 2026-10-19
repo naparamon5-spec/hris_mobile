@@ -49,6 +49,9 @@ void main() async {
   AppSession.instance.onSessionExpired = () {
     final ctx = hrisNavigatorKey.currentContext;
     if (ctx == null) return;
+    // The request that hit the expiry usually had the loader up; its screen is
+    // about to be torn down without hiding it.
+    resetLoadingOverlay();
     final t = AppSession.instance.tenant;
     Navigator.of(ctx).pushAndRemoveUntil(
       MaterialPageRoute(
@@ -210,6 +213,7 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
     await AppSession.instance.logout();
     final ctx = hrisNavigatorKey.currentContext;
     if (ctx == null || !ctx.mounted) return;
+    resetLoadingOverlay();
     final t = AppSession.instance.tenant;
     Navigator.of(ctx).pushAndRemoveUntil(
       MaterialPageRoute(

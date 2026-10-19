@@ -127,9 +127,10 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
       if ((targetKey != null && targetKey.isNotEmpty && t.key == targetKey) ||
           (targetId != null &&
               targetId.isNotEmpty &&
-              (t.id == targetId ||
-                  t.no.toLowerCase() == targetId.toLowerCase() ||
-                  targetId.contains(t.no)))) {
+              (t.id.toString() == targetId ||
+                  (t.no.isNotEmpty &&
+                      (t.no.toLowerCase() == targetId.toLowerCase() ||
+                          targetId.contains(t.no)))))) {
         match = t;
         break;
       }
@@ -335,8 +336,8 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
         failed++;
       }
     }
+    hideLoadingOverlay();
     if (!mounted) return;
-    hideLoadingOverlay(context);
     setState(() => _selected.clear());
     showToast(
       context,

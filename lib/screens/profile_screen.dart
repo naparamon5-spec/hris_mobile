@@ -1193,12 +1193,12 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
       buttonLabel: 'Confirm & Enable',
       accent: AppColors.success,
     );
-    if (password == null) return;
+    if (password == null || !mounted) return;
     showLoadingOverlay(context);
     try {
       final ok = await HrisApi.instance.verifyPassword(password);
       if (!ok) {
-        hideLoadingOverlay(context);
+        hideLoadingOverlay();
         if (mounted) showToast(context, 'The password you entered is incorrect. Please try again.', isSuccess: false, title: 'Incorrect Password');
         return;
       }
@@ -1206,8 +1206,8 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
       // never leave creds with the flag off (which reconciliation would purge).
       _sec.setBiometricsEnabled(true);
       await AppSession.instance.saveBiometricCredentials();
+      hideLoadingOverlay();
       if (mounted) {
-        hideLoadingOverlay(context);
         showToast(context, 'You can now sign in quickly using biometrics.',
             isSuccess: true,
             title: 'Biometric Enabled',
@@ -1215,7 +1215,7 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
                 const FingerprintIllustration(size: 150, enabled: true));
       }
     } on ApiException catch (e) {
-      hideLoadingOverlay(context);
+      hideLoadingOverlay();
       if (mounted) showToast(context, e.message, isSuccess: false, title: 'Error');
     }
   }
@@ -1238,19 +1238,19 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
       message: 'Confirm your password to disable biometric sign-in.',
       buttonLabel: 'Confirm & Disable',
     );
-    if (password == null) return;
+    if (password == null || !mounted) return;
     showLoadingOverlay(context);
     try {
       final ok = await HrisApi.instance.verifyPassword(password);
+      hideLoadingOverlay();
       if (!mounted) return;
-      hideLoadingOverlay(context);
       if (!ok) {
         showToast(context, 'The password you entered is incorrect. Please try again.', isSuccess: false, title: 'Incorrect Password');
         return;
       }
       await _disableBiometrics();
     } on ApiException catch (e) {
-      if (mounted) hideLoadingOverlay(context);
+      hideLoadingOverlay();
       if (mounted) showToast(context, e.message, isSuccess: false, title: 'Error');
     }
   }
@@ -1276,8 +1276,8 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
     showLoadingOverlay(context);
     try {
       final setup = await HrisApi.instance.twoFactorSetup();
+      hideLoadingOverlay();
       if (!mounted) return;
-      hideLoadingOverlay(context);
       final enabled = await showPremiumBottomSheet<bool>(
         context,
         isScrollControlled: true,
@@ -1293,7 +1293,7 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
                 size: 150, accent: AppColors.brandRedSoft));
       }
     } on ApiException catch (e) {
-      hideLoadingOverlay(context);
+      hideLoadingOverlay();
       if (mounted) showToast(context, e.message, isSuccess: false, title: 'Error');
     } finally {
       if (mounted) setState(() => _twoFactorBusy = false);
@@ -1307,13 +1307,13 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
       message:
           'Enter a current code from your authenticator app to turn 2FA off.',
     );
-    if (code == null) return;
+    if (code == null || !mounted) return;
     setState(() => _twoFactorBusy = true);
     showLoadingOverlay(context);
     try {
       await HrisApi.instance.twoFactorDisable(code);
+      hideLoadingOverlay();
       if (mounted) {
-        hideLoadingOverlay(context);
         setState(() => _twoFactorOn = false);
         showToast(context, 'Two-factor authentication has been disabled.',
             isSuccess: true,
@@ -1322,7 +1322,7 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
                 size: 150, accent: Color(0xFF94A3B8)));
       }
     } on ApiException catch (e) {
-      hideLoadingOverlay(context);
+      hideLoadingOverlay();
       if (mounted) showToast(context, e.message, isSuccess: false, title: 'Error');
     } finally {
       if (mounted) setState(() => _twoFactorBusy = false);

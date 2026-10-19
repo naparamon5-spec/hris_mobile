@@ -42,29 +42,36 @@ class ApiClient {
 
   Uri _uri(String path) => Uri.parse('${ApiConfig.baseUrl}$path');
 
-  Future<dynamic> get(String path) => _send(() => _http
+  Future<dynamic> get(String path) => _send(path, () => _http
       .get(_uri(path), headers: _headers)
       .timeout(_timeout));
 
-  Future<dynamic> post(String path, {Object? body}) => _send(() => _http
+  Future<dynamic> post(String path, {Object? body}) => _send(path, () => _http
       .post(_uri(path),
           headers: _headers, body: body == null ? null : jsonEncode(body))
       .timeout(_timeout));
 
-  Future<dynamic> put(String path, {Object? body}) => _send(() => _http
+  Future<dynamic> put(String path, {Object? body}) => _send(path, () => _http
       .put(_uri(path),
           headers: _headers, body: body == null ? null : jsonEncode(body))
       .timeout(_timeout));
 
-  Future<dynamic> delete(String path, {Object? body}) => _send(() => _http
+  Future<dynamic> delete(String path, {Object? body}) => _send(path, () => _http
       .delete(_uri(path),
           headers: _headers, body: body == null ? null : jsonEncode(body))
       .timeout(_timeout));
 
   /// Runs [request], decodes JSON on success, and maps every failure mode to a
-  /// user-friendly [ApiException]. On a first 401 it tries [onUnauthorized]
-  /// (token refresh) once and retries.
+  /// user-friendly [ApiException]. On a first 401/403 from an authenticated
+  /// route it tries [onUnauthorized] (token refresh) once and retries.
+  ///
+  /// The backend's auth middleware answers an expired/invalid access token with
+  /// 403 (401 only when no token is sent), so both trigger the refresh.
+  /// `/public/*` routes (login, refresh, forgot-password) never do: their 401 is
+  /// a wrong password / bad code, not an expired session — and refreshing from
+  /// inside `/public/refresh` would wait on itself.
   Future<dynamic> _send(
+    String path,
     Future<http.Response> Function() request, {
     bool allowRetry = true,
   }) async {
@@ -83,7 +90,11 @@ class ApiClient {
     }
 
     // Access token likely expired — try a one-time refresh, then retry.
-    if (res.statusCode == 401 && allowRetry && onUnauthorized != null) {
+    if ((res.statusCode == 401 || res.statusCode == 403) &&
+        allowRetry &&
+        accessToken != null &&
+        !path.startsWith('/public/') &&
+        onUnauthorized != null) {
       bool refreshed = false;
       try {
         refreshed = await onUnauthorized!();
@@ -91,7 +102,7 @@ class ApiClient {
         refreshed = false;
       }
       if (refreshed) {
-        return _send(request, allowRetry: false);
+        return _send(path, request, allowRetry: false);
       }
     }
 

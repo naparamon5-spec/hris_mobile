@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../data/inbox_badges.dart';
+import '../data/notifications/push_service.dart';
 import 'dashboard_screen.dart';
 import 'requests_screen.dart';
 import 'whos_out_screen.dart';
@@ -31,6 +32,13 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     InboxBadges.instance.refresh();
+    PushService.attachHome();
+  }
+
+  @override
+  void dispose() {
+    PushService.detachHome();
+    super.dispose();
   }
 
   static const _items = [
