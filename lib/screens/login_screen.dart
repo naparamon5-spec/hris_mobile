@@ -367,6 +367,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   icon: Icons.assignment_outlined,
                                   label: 'For examination?',
                                   color: widget.company.color,
+                                  // Examination flow is hidden until the
+                                  // backend is ready (see ExaminationScreen).
                                   onTap: () {},
                                 ),
                               ],
@@ -799,6 +801,10 @@ class _TwoFactorLoginSheetState extends State<_TwoFactorLoginSheet> {
               isDense: true,
             ),
             onSubmitted: (_) => _verify(),
+            // Submit as soon as the 6th digit is in.
+            onChanged: (v) {
+              if (v.trim().length == 6 && !_verifying) _verify();
+            },
           ),
           const SizedBox(height: 20),
           ElevatedButton(

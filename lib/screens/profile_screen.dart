@@ -1354,6 +1354,9 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
                   fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.w800),
               decoration: const InputDecoration(
                   counterText: '', hintText: '000000', isDense: true),
+              onChanged: (v) {
+                if (v.trim().length == 6) Navigator.pop(ctx, v.trim());
+              },
             ),
           ],
         ),
@@ -1811,6 +1814,9 @@ class _TwoFactorSetupSheetState extends State<_TwoFactorSetupSheet> {
               decoration: const InputDecoration(
                   counterText: '', hintText: '000000', isDense: true),
               onSubmitted: (_) => _verify(),
+              onChanged: (v) {
+                if (v.trim().length == 6 && !_verifying) _verify();
+              },
             ),
             const SizedBox(height: 16),
             SizedBox(

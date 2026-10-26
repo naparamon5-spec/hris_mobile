@@ -67,14 +67,16 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 icon: Icons.event_busy_rounded,
                 label: 'Leave of Absence',
                 color: AppColors.inkSoft,
-                onTap: () => _go(context, const LeaveOfAbsenceScreen()),
+                badge: InboxBadges.instance.decisionNew('loa'),
+                onTap: () => _goConsuming('loa',context, const LeaveOfAbsenceScreen()),
               ),
               const SizedBox(height: 10),
               NavListTile(
                 icon: Icons.fact_check_rounded,
                 label: 'Call Approval',
                 color: AppColors.inkSoft,
-                onTap: () => _go(
+                badge: InboxBadges.instance.decisionNew('call-approval'),
+                onTap: () => _goConsuming('call-approval',
                   context,
                   ApprovalListScreen(
                     title: 'Call Approval',
@@ -90,7 +92,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 icon: Icons.punch_clock_rounded,
                 label: 'Manual Arrival/Departure',
                 color: AppColors.inkSoft,
-                onTap: () => _go(
+                badge: InboxBadges.instance.decisionNew('manual-ad'),
+                onTap: () => _goConsuming('manual-ad',
                   context,
                   ApprovalListScreen(
                     title: 'Manual Arrival/Departure',
@@ -107,7 +110,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 icon: Icons.access_time_filled_rounded,
                 label: 'Overtime',
                 color: AppColors.inkSoft,
-                onTap: () => _go(
+                badge: InboxBadges.instance.decisionNew('overtime'),
+                onTap: () => _goConsuming('overtime',
                   context,
                   ApprovalListScreen(
                     title: 'Overtime',
@@ -277,4 +281,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
   Future<void> _go(BuildContext context, Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+
+  /// Opens a request list and clears its status-change dot.
+  Future<void> _goConsuming(
+      String requestType, BuildContext context, Widget screen) {
+    InboxBadges.instance.consumeDecisions(requestType);
+    return _go(context, screen);
+  }
 }

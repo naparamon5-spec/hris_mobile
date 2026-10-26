@@ -133,7 +133,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => _sendLink(),
-          decoration: const InputDecoration(isDense: true),
+          decoration: const InputDecoration(
+            isDense: true,
+            hintText: 'Enter Employee ID or Email',
+          ),
         ),
         const SizedBox(height: 18),
         _label('Company'),

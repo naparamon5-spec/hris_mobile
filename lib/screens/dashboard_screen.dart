@@ -202,17 +202,16 @@ class _QuickActions extends StatelessWidget {
         () => _go(context, const LeaveOfAbsenceScreen()),
       ),
       _QA(
-        Icons.access_time_rounded,
-        'Overtime',
+        Icons.fact_check_outlined,
+        'Call Approval',
         () => _go(
           context,
           ApprovalListScreen(
-            title: 'Overtime',
-            subtitle: 'File and track overtime requests.',
-            icon: Icons.access_time_filled_rounded,
-            txnDateLabel: 'Overtime date',
-            showHours: true,
-            type: 'overtime',
+            title: 'Call Approval',
+            subtitle: 'File and track call approval requests.',
+            icon: Icons.fact_check_rounded,
+            txnDateLabel: 'CA date',
+            type: 'call-approval',
           ),
         ),
       ),
@@ -227,13 +226,17 @@ class _QuickActions extends StatelessWidget {
         () => _go(context, const PayslipScreen()),
       ),
     ];
-    return Row(
-      children: [
-        for (int i = 0; i < actions.length; i++) ...[
-          Expanded(child: actions[i]),
-          if (i != actions.length - 1) const SizedBox(width: 10),
+    // Equal-height tiles even when a label (e.g. "Call Approval") wraps.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < actions.length; i++) ...[
+            Expanded(child: actions[i]),
+            if (i != actions.length - 1) const SizedBox(width: 10),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -271,13 +274,17 @@ class _QA extends StatelessWidget {
               child: Icon(icon, color: AppColors.inkSoft, size: 20),
             ),
             const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
+            // One line; long labels ("Call Approval") shrink to fit the tile.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
               ),
             ),
           ],

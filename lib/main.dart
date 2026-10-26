@@ -25,6 +25,7 @@ final GlobalKey<NavigatorState> hrisNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _disablePasswordReveal();
   // Load the frontend .env (API base URL) before anything makes a request.
   // Best-effort — a missing/omitted file just falls back to the dart-define
   // or the local dev host (see ApiConfig).
@@ -65,6 +66,22 @@ void main() async {
   };
 
   runApp(const HrisApp());
+}
+
+/// Show only dots while typing passwords (no brief last-letter reveal). The
+/// engine reads this from a platform setting, so ask iOS to send it, echoing
+/// the current settings so nothing else changes. Best-effort; no-op elsewhere.
+Future<void> _disablePasswordReveal() async {
+  if (defaultTargetPlatform != TargetPlatform.iOS) return;
+  final d = PlatformDispatcher.instance;
+  try {
+    await const MethodChannel('hris/password_reveal').invokeMethod('disable', {
+      'textScaleFactor': d.textScaleFactor,
+      'alwaysUse24HourFormat': d.alwaysUse24HourFormat,
+      'platformBrightness':
+          d.platformBrightness == Brightness.dark ? 'dark' : 'light',
+    });
+  } catch (_) {}
 }
 
 /// Sends uncaught Flutter and async errors to Firebase Crashlytics. Disabled in

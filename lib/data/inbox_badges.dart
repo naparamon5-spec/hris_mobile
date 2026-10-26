@@ -3,9 +3,10 @@ import 'package:flutter/foundation.dart';
 
 import 'hris_api.dart';
 import 'mock_data.dart';
+import 'notifications/notification_routes.dart';
 
 /// Live unread counts that drive the notification bell, Requests tab, and
-/// Payslip / Timesheet row dots. Sourced from `/auth/notifications`.
+/// Payslip / Timesheet / request-status row dots. Sourced from `/auth/notifications`.
 class InboxBadges extends ChangeNotifier {
   InboxBadges._();
   static final InboxBadges instance = InboxBadges._();
@@ -17,8 +18,15 @@ class InboxBadges extends ChangeNotifier {
   bool payslipNew = false;
   bool timesheetNew = false;
 
+  /// Request types ('loa' | 'call-approval' | 'manual-ad' | 'overtime') with
+  /// an unread status-change (decision) notification for the signed-in user.
+  Set<String> decisionTypes = const {};
+
   bool get hasUnread => unread > 0;
-  bool get requestsNew => payslipNew || timesheetNew;
+  bool get requestsNew =>
+      payslipNew || timesheetNew || decisionTypes.isNotEmpty;
+
+  bool decisionNew(String requestType) => decisionTypes.contains(requestType);
 
   List<AppNotification> _unreadItems = const [];
 
@@ -29,6 +37,10 @@ class InboxBadges extends ChangeNotifier {
       _unreadItems = res.items.where((n) => n.unread).toList();
       payslipNew = _unreadItems.any((n) => payslipKinds.contains(n.kind));
       timesheetNew = _unreadItems.any((n) => timesheetKinds.contains(n.kind));
+      decisionTypes = _unreadItems
+          .where(_isDecision)
+          .map((n) => inferRequestType(n.requestType, n.title, n.body))
+          .toSet();
       _syncAppBadge(unread);
       notifyListeners();
     } catch (_) {
@@ -49,10 +61,21 @@ class InboxBadges extends ChangeNotifier {
     }
   }
 
+  static bool _isDecision(AppNotification n) =>
+      inferKind(n.kind, n.title, n.body) == 'decision';
+
   /// Marks matching unread rows as read (so the red dots clear after a visit).
-  Future<void> consumeKinds(Set<String> kinds) async {
+  Future<void> consumeKinds(Set<String> kinds) =>
+      _consume((n) => kinds.contains(n.kind));
+
+  /// Clears the status-change dot for one request type after a visit.
+  Future<void> consumeDecisions(String requestType) => _consume((n) =>
+      _isDecision(n) &&
+      inferRequestType(n.requestType, n.title, n.body) == requestType);
+
+  Future<void> _consume(bool Function(AppNotification) test) async {
     final ids = _unreadItems
-        .where((n) => kinds.contains(n.kind) && n.id != null)
+        .where((n) => test(n) && n.id != null)
         .map((n) => n.id!)
         .toList();
     for (final id in ids) {
@@ -67,6 +90,7 @@ class InboxBadges extends ChangeNotifier {
     unread = 0;
     payslipNew = false;
     timesheetNew = false;
+    decisionTypes = const {};
     _unreadItems = const [];
     _syncAppBadge(0);
     notifyListeners();
