@@ -384,15 +384,31 @@ class PayCalendarPeriod {
   final DateTime cutoffTo;
   final int? daysToPayday;
 
-  factory PayCalendarPeriod.fromJson(Map<String, dynamic> j) =>
-      PayCalendarPeriod(
-        payYear: (j['pay_year'] ?? '').toString(),
-        payPeriod: (j['pay_period'] ?? '').toString(),
-        payDate: DateTime.parse(j['pay_date'] as String),
-        cutoffFrom: DateTime.parse(j['cutoff_from'] as String),
-        cutoffTo: DateTime.parse(j['cutoff_to'] as String),
-        daysToPayday: (j['days_to_payday'] as num?)?.toInt(),
-      );
+  /// Payday from the cutoff end: on/before the 15th → the 15th, otherwise the
+  /// 30th (February: its last day). Never the 31st. Applied here too so the
+  /// dashboard is right even if the server is running an older rule.
+  static DateTime paydayFromCutoff(DateTime cutoffEnd) {
+    final d = cutoffEnd.toUtc();
+    if (d.day <= 15) return DateTime.utc(d.year, d.month, 15);
+    final lastDay = DateTime.utc(d.year, d.month + 1, 0).day;
+    return DateTime.utc(d.year, d.month, lastDay < 30 ? lastDay : 30);
+  }
+
+  factory PayCalendarPeriod.fromJson(Map<String, dynamic> j) {
+    final cutoffTo = DateTime.parse(j['cutoff_to'] as String);
+    final payDate = paydayFromCutoff(cutoffTo);
+    final now = DateTime.now();
+    final today = DateTime.utc(now.year, now.month, now.day);
+    final days = payDate.difference(today).inDays;
+    return PayCalendarPeriod(
+      payYear: (j['pay_year'] ?? '').toString(),
+      payPeriod: (j['pay_period'] ?? '').toString(),
+      payDate: payDate,
+      cutoffFrom: DateTime.parse(j['cutoff_from'] as String),
+      cutoffTo: cutoffTo,
+      daysToPayday: j.containsKey('days_to_payday') ? (days < 0 ? 0 : days) : null,
+    );
+  }
 }
 
 class AttendanceToday {
@@ -1229,13 +1245,8 @@ class HrisApi {
       final now = DateTime.now();
       final today = DateTime.utc(now.year, now.month, now.day);
 
-      DateTime paydayFromCutoff(DateTime cutoffEnd) {
-        final d = cutoffEnd.toUtc();
-        if (d.day <= 15) return DateTime.utc(d.year, d.month, 15);
-        // 30th, never the 31st; February (no 30th) pays on its last day.
-        final lastDay = DateTime.utc(d.year, d.month + 1, 0).day;
-        return DateTime.utc(d.year, d.month, lastDay < 30 ? lastDay : 30);
-      }
+      DateTime paydayFromCutoff(DateTime cutoffEnd) =>
+          PayCalendarPeriod.paydayFromCutoff(cutoffEnd);
 
       final enriched =
           <
