@@ -1232,7 +1232,9 @@ class HrisApi {
       DateTime paydayFromCutoff(DateTime cutoffEnd) {
         final d = cutoffEnd.toUtc();
         if (d.day <= 15) return DateTime.utc(d.year, d.month, 15);
-        return DateTime.utc(d.year, d.month + 1, 0); // last day of this month
+        // 30th, never the 31st; February (no 30th) pays on its last day.
+        final lastDay = DateTime.utc(d.year, d.month + 1, 0).day;
+        return DateTime.utc(d.year, d.month, lastDay < 30 ? lastDay : 30);
       }
 
       final enriched =
