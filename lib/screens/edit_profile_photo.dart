@@ -61,7 +61,11 @@ Future<void> editProfilePhoto(BuildContext context) async {
 
   if (action == 'remove') {
     ProfileState.instance.clearPhoto();
-    showToast(context, 'Your profile photo has been removed.', isSuccess: true, title: 'Photo Removed');
+    showSuccessDialog(
+      context,
+      title: 'Photo Removed',
+      message: 'Your profile photo has been removed.',
+    );
     return;
   }
 
@@ -117,7 +121,11 @@ class _EditProfilePhotoScreenState extends State<_EditProfilePhotoScreen> {
       ProfileState.instance.setPhoto(byteData.buffer.asUint8List());
       if (!mounted) return;
       Navigator.of(context).pop();
-      showToast(context, 'Your profile photo has been successfully updated.', isSuccess: true, title: 'Photo Updated');
+      showSuccessDialog(
+        context,
+        title: 'Photo Updated',
+        message: 'Your profile photo has been successfully updated.',
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }

@@ -280,14 +280,20 @@ class _CreateCallApprovalScreenState extends State<CreateCallApprovalScreen> {
         await HrisApi.instance
             .updateRequest(widget.type, widget.initialId!, payload);
         if (!mounted) return;
-        await showToast(context, '${widget.title} record has been updated.',
-            isSuccess: true, title: 'Record Updated');
+        await showSuccessDialog(
+          context,
+          title: 'Record Updated',
+          message: '${widget.title} record has been updated.',
+        );
       } else {
         await HrisApi.instance.createRequest(widget.type, payload);
         if (!mounted) return;
-        await showToast(context,
-            '${widget.title} has been created. Open it and tap “Send for Approval” when ready.',
-            isSuccess: true, title: 'Record Created');
+        await showSuccessDialog(
+          context,
+          title: 'Record Created',
+          message:
+              '${widget.title} has been created. Open it and tap “Send for Approval” when ready.',
+        );
       }
       if (!mounted) return;
       Navigator.pop(context, true);

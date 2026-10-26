@@ -58,12 +58,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           .changePassword(current: current, next: next, confirm: confirm);
       if (!mounted) return;
       hideLoadingOverlay(context);
-      showToast(context, 'Your password has been successfully updated.',
-          isSuccess: true,
-          title: 'Password Updated',
-          illustration:
-              SecurityIllustration(
-                  size: 150, accent: AppColors.brandRedSoft));
+      await showSuccessDialog(
+        context,
+        title: 'Password Updated',
+        message: 'Your password has been successfully updated.',
+        illustration:
+            SecurityIllustration(size: 150, accent: AppColors.brandRedSoft),
+      );
+      if (!mounted) return;
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
       if (mounted) hideLoadingOverlay(context);

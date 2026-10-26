@@ -1076,6 +1076,12 @@ class HrisApi {
     );
   }
 
+  /// Saves edited Personal Information fields. [changes] is keyed by the
+  /// `personal_info` names from [profileBackground] (e.g. `telephone`).
+  Future<void> updatePersonalInfo(Map<String, String> changes) async {
+    await _api.put('/auth/profile/background', body: changes);
+  }
+
   // ---- Security: change password + TOTP 2FA ----
   Future<void> changePassword({
     required String current,

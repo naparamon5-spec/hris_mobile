@@ -1375,3 +1375,72 @@ Future<bool> showConfirmDialog(
   );
   return ok == true;
 }
+
+/// A success confirmation dialog (green check, title, message, one OK button),
+/// for results the user should clearly see — e.g. saved changes.
+Future<void> showSuccessDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String okLabel = 'OK',
+  Widget? illustration,
+}) {
+  // Resolve the root navigator now: callers often pop a sheet first, and the
+  // caller's context goes away once that route finishes closing.
+  final nav = Navigator.of(context, rootNavigator: true);
+  return showDialog<void>(
+    context: nav.context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (illustration != null)
+            illustration
+          else
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check_rounded,
+                color: Colors.green, size: 36),
+          ),
+          const SizedBox(height: 16),
+          Text(title,
+              textAlign: TextAlign.center,
+              style:
+                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+          const SizedBox(height: 8),
+          Text(message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 14, color: AppColors.inkSoft, height: 1.4)),
+        ],
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      actions: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              backgroundColor: AppColors.brandRed,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(okLabel,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: Colors.white)),
+          ),
+        ),
+      ],
+    ),
+  );
+}

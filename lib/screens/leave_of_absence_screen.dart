@@ -1064,11 +1064,10 @@ class _LoaActionSheet extends StatelessWidget {
         await HrisApi.instance.sendForApproval('loa', record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(
+          showSuccessDialog(
             context,
-            '${record.no} submitted for approval.',
-            isSuccess: true,
             title: 'Sent for Approval',
+            message: '${record.no} submitted for approval.',
           );
           onRefresh();
         }
@@ -1095,11 +1094,10 @@ class _LoaActionSheet extends StatelessWidget {
         await HrisApi.instance.reverseRecord('loa', record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(
+          showSuccessDialog(
             context,
-            '${record.no} has been reversed.',
-            isSuccess: true,
             title: 'Record Reversed',
+            message: '${record.no} has been reversed.',
           );
           onRefresh();
         }
@@ -1118,11 +1116,10 @@ class _LoaActionSheet extends StatelessWidget {
         await HrisApi.instance.resendRecord('loa', record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(
+          showSuccessDialog(
             context,
-            '${record.no} resent successfully.',
-            isSuccess: true,
             title: 'Resent',
+            message: '${record.no} resent successfully.',
           );
           onRefresh();
         }
@@ -1149,11 +1146,10 @@ class _LoaActionSheet extends StatelessWidget {
         await HrisApi.instance.cancelRecord('loa', record.id);
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(
+          showSuccessDialog(
             context,
-            '${record.no} cancelled.',
-            isSuccess: true,
             title: 'Record Cancelled',
+            message: '${record.no} cancelled.',
           );
           onRefresh();
         }
@@ -1186,11 +1182,10 @@ class _LoaActionSheet extends StatelessWidget {
         }
         if (context.mounted) {
           hideLoadingOverlay(context);
-          showToast(
+          showSuccessDialog(
             context,
-            '${record.no} ${approve ? 'approved' : 'disapproved'}.',
-            isSuccess: true,
             title: approve ? 'Record Approved' : 'Record Disapproved',
+            message: '${record.no} ${approve ? 'approved' : 'disapproved'}.',
           );
           onRefresh();
         }
@@ -1203,11 +1198,10 @@ class _LoaActionSheet extends StatelessWidget {
       return;
     }
 
-    showToast(
+    showSuccessDialog(
       context,
-      '${a.label} — ${record.no} done.',
-      isSuccess: true,
       title: a.label,
+      message: '${a.label} — ${record.no} done.',
     );
     onRefresh();
   }

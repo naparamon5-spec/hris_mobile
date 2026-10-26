@@ -468,8 +468,11 @@ class _EmploymentTabState extends State<_EmploymentTab> {
     if (saved != true) return;
     setState(() => _bio = ctrl.text.trim());
     if (mounted) {
-      showToast(context, 'Your bio has been updated.',
-          isSuccess: true, title: 'Bio Updated');
+      showSuccessDialog(
+        context,
+        title: 'Bio Updated',
+        message: 'Your bio has been updated.',
+      );
     }
   }
 
@@ -1179,9 +1182,9 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
 
   // ---- Change password (own page) ----
   Future<void> _changePassword() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ChangePasswordScreen()));
   }
 
   // ---- Enable biometrics (verify password first, then remember it) ----
@@ -1208,11 +1211,12 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
       await AppSession.instance.saveBiometricCredentials();
       hideLoadingOverlay();
       if (mounted) {
-        showToast(context, 'You can now sign in quickly using biometrics.',
-            isSuccess: true,
-            title: 'Biometric Enabled',
-            illustration:
-                const FingerprintIllustration(size: 150, enabled: true));
+        showSuccessDialog(
+          context,
+          title: 'Biometric Enabled',
+          message: 'You can now sign in quickly using biometrics.',
+          illustration: const FingerprintIllustration(size: 150, enabled: true),
+        );
       }
     } on ApiException catch (e) {
       hideLoadingOverlay();
@@ -1224,11 +1228,12 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
     await AppSession.instance.clearBiometricCredentials();
     _sec.setBiometricsEnabled(false);
     if (mounted) {
-      showToast(context, 'Biometric sign-in has been turned off.',
-          isSuccess: true,
-          title: 'Biometric Disabled',
-          illustration:
-              const FingerprintIllustration(size: 150, enabled: false));
+      showSuccessDialog(
+        context,
+        title: 'Biometric Disabled',
+        message: 'Biometric sign-in has been turned off.',
+        illustration: const FingerprintIllustration(size: 150, enabled: false),
+      );
     }
   }
 
@@ -1285,12 +1290,12 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
       );
       if (enabled == true && mounted) {
         setState(() => _twoFactorOn = true);
-        showToast(context,
-            'Two-factor authentication has been successfully enabled.',
-            isSuccess: true,
-            title: '2FA Enabled',
-            illustration: SecurityIllustration(
-                size: 150, accent: AppColors.brandRedSoft));
+        showSuccessDialog(
+          context,
+          title: '2FA Enabled',
+          message: 'Two-factor authentication has been successfully enabled.',
+          illustration: SecurityIllustration(size: 150, accent: AppColors.brandRedSoft),
+        );
       }
     } on ApiException catch (e) {
       hideLoadingOverlay();
@@ -1315,11 +1320,12 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
       hideLoadingOverlay();
       if (mounted) {
         setState(() => _twoFactorOn = false);
-        showToast(context, 'Two-factor authentication has been disabled.',
-            isSuccess: true,
-            title: '2FA Disabled',
-            illustration: const SecurityIllustration(
-                size: 150, accent: Color(0xFF94A3B8)));
+        showSuccessDialog(
+          context,
+          title: '2FA Disabled',
+          message: 'Two-factor authentication has been disabled.',
+          illustration: const SecurityIllustration(size: 150, accent: Color(0xFF94A3B8)),
+        );
       }
     } on ApiException catch (e) {
       hideLoadingOverlay();
@@ -1353,7 +1359,10 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
               style: const TextStyle(
                   fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.w800),
               decoration: const InputDecoration(
-                  counterText: '', hintText: '000000', isDense: true),
+                counterText: '',
+                hintText: '000000',
+                isDense: true,
+              ),
               onChanged: (v) {
                 if (v.trim().length == 6) Navigator.pop(ctx, v.trim());
               },

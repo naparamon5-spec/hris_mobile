@@ -57,7 +57,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await HrisApi.instance.markAllNotificationsRead();
       InboxBadges.instance.refresh(); // sync bell + app-icon badge
-      if (mounted) showToast(context, 'All notifications have been marked as read.', isSuccess: true, title: 'Updated');
+      if (mounted)
+        showSuccessDialog(
+          context,
+          title: 'Updated',
+          message: 'All notifications have been marked as read.',
+        );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _notifications = previous); // revert on failure

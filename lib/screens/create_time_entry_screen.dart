@@ -178,17 +178,21 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
         await HrisApi.instance.updateRequest(widget.type, widget.initialId!, payload);
         if (!mounted) return;
         hideLoadingOverlay(context);
-        await showToast(context, '${widget.title} record has been updated.',
-            isSuccess: true, title: 'Record Updated');
+        await showSuccessDialog(
+          context,
+          title: 'Record Updated',
+          message: '${widget.title} record has been updated.',
+        );
       } else {
         await HrisApi.instance.createRequest(widget.type, payload);
         if (!mounted) return;
         hideLoadingOverlay(context);
-        await showToast(
-            context,
-            'Your ${widget.title} record has been created. Open it and tap “Send for Approval” when ready.',
-            isSuccess: true,
-            title: 'Record Created');
+        await showSuccessDialog(
+          context,
+          title: 'Record Created',
+          message:
+              'Your ${widget.title} record has been created. Open it and tap “Send for Approval” when ready.',
+        );
       }
       if (!mounted) return;
       Navigator.of(context).pop(true);

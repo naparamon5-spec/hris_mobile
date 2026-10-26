@@ -339,14 +339,21 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
     hideLoadingOverlay();
     if (!mounted) return;
     setState(() => _selected.clear());
-    showToast(
-      context,
-      failed == 0
-          ? '$done record${done == 1 ? '' : 's'} ${approve ? 'approved' : 'disapproved'}.'
-          : '$done ${approve ? 'approved' : 'disapproved'}, $failed failed.',
-      isSuccess: failed == 0,
-      title: approve ? 'Approved' : 'Disapproved',
-    );
+    if (failed == 0) {
+      showSuccessDialog(
+        context,
+        title: approve ? 'Approved' : 'Disapproved',
+        message:
+            '$done record${done == 1 ? '' : 's'} ${approve ? 'approved' : 'disapproved'}.',
+      );
+    } else {
+      showToast(
+        context,
+        '$done ${approve ? 'approved' : 'disapproved'}, $failed failed.',
+        isSuccess: false,
+        title: approve ? 'Approved' : 'Disapproved',
+      );
+    }
     await _load();
   }
 
@@ -1079,8 +1086,11 @@ class _ApprovalDetailSheetState extends State<_ApprovalDetailSheet> {
         _busy = false;
         if (saved.isNotEmpty) _approvedOt = saved;
       });
-      showToast(context, 'Approved OT hours updated.',
-          isSuccess: true, title: 'Saved');
+      showSuccessDialog(
+        context,
+        title: 'Saved',
+        message: 'Approved OT hours updated.',
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -1100,11 +1110,10 @@ class _ApprovalDetailSheetState extends State<_ApprovalDetailSheet> {
       }
       if (!mounted) return;
       Navigator.pop(context);
-      showToast(
+      showSuccessDialog(
         context,
-        '${t.no} ${approve ? 'approved' : 'disapproved'}.',
-        isSuccess: true,
         title: approve ? 'Approved' : 'Disapproved',
+        message: '${t.no} ${approve ? 'approved' : 'disapproved'}.',
       );
       widget.onDecided();
     } on ApiException catch (e) {

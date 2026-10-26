@@ -265,8 +265,59 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
       isScrollControlled: true,
       builder: (_) => _PersonalInfoEditSheet(initial: Map.of(_info)),
     );
-    if (result != null) setState(() => _info.addAll(result));
+    if (result == null || !mounted) return;
+    final changes = <String, String>{
+      for (final e in result.entries)
+        if (_personalInfoApiKeys.containsKey(e.key) && e.value != _info[e.key])
+          _personalInfoApiKeys[e.key]!: e.value,
+    };
+    if (changes.isEmpty) {
+      showToast(
+        context,
+        "You didn't change anything, so there was nothing to save.",
+        isSuccess: false,
+        title: 'No Changes',
+      );
+      return;
+    }
+    showLoadingOverlay(context);
+    try {
+      await HrisApi.instance.updatePersonalInfo(changes);
+      if (!mounted) return;
+      hideLoadingOverlay(context);
+      setState(() => _info.addAll(result));
+      await showSuccessDialog(
+        context,
+        title: 'Changes Saved',
+        message: 'Your personal information has been updated.',
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      hideLoadingOverlay(context);
+      showToast(context, e.message, isSuccess: false, title: 'Not saved');
+    } catch (_) {
+      if (!mounted) return;
+      hideLoadingOverlay(context);
+      showToast(
+        context,
+        'Could not save your changes. Please try again.',
+        isSuccess: false,
+        title: 'Not saved',
+      );
+    }
   }
+
+  // Editable Personal Information fields -> `personal_info` API keys.
+  static const _personalInfoApiKeys = {
+    'Nickname': 'nickname',
+    'Mobile': 'mobile',
+    'Telephone': 'telephone',
+    'Email': 'email',
+    'Birthplace': 'birthplace',
+    'Address': 'address',
+    'Civil Status': 'civil_status',
+    'Religion': 'religion',
+  };
 
   Future<void> _addFamily() async {
     final r = await _showFormSheet<FamilyMember>(
@@ -1197,7 +1248,7 @@ class _PersonalInfoEditSheet extends StatefulWidget {
 
 class _PersonalInfoEditSheetState extends State<_PersonalInfoEditSheet> {
   // Fields sourced from the HR master record — shown but not editable here.
-  static const _readOnlyKeys = {'Full Name', 'Telephone'};
+  static const _readOnlyKeys = {'Full Name'};
 
   late final Map<String, TextEditingController> _controllers = {
     for (final e in widget.initial.entries)

@@ -363,16 +363,21 @@ class _CreateLeaveOfAbsenceScreenState
         await HrisApi.instance.updateRequest('loa', widget.initialId!, payload);
         if (!mounted) return;
         hideLoadingOverlay(context);
-        await showToast(context,
-            'Leave of absence record has been updated.',
-            isSuccess: true, title: 'Record Updated');
+        await showSuccessDialog(
+          context,
+          title: 'Record Updated',
+          message: 'Leave of absence record has been updated.',
+        );
       } else {
         await HrisApi.instance.createRequest('loa', payload);
         if (!mounted) return;
         hideLoadingOverlay(context);
-        await showToast(context,
-            'Your leave of absence has been created. Open it and tap “Send for Approval” when ready.',
-            isSuccess: true, title: 'Record Created');
+        await showSuccessDialog(
+          context,
+          title: 'Record Created',
+          message:
+              'Your leave of absence has been created. Open it and tap “Send for Approval” when ready.',
+        );
       }
       if (!mounted) return;
       Navigator.of(context).pop(true);

@@ -85,30 +85,41 @@ const Map<String, List<_FieldDef>> _typeFields = {
     _FieldDef('address', 'Address', required: true, kind: _FieldKind.multiline),
   ],
   'COE': [
-    _FieldDef('reason', 'Reason',
-        kind: _FieldKind.multiline,
-        hint:
-            'Please specify i.e. loan application, visa application, credit card application, etc.'),
-    _FieldDef('compensation', '',
-        kind: _FieldKind.radio,
-        options: ['Without Compensation', 'With Compensation'],
-        defaultValue: 'Without Compensation'),
+    _FieldDef(
+      'reason',
+      'Reason',
+      kind: _FieldKind.multiline,
+      hint:
+          'Please specify i.e. loan application, visa application, credit card application, etc.',
+    ),
+    _FieldDef(
+      'compensation',
+      '',
+      kind: _FieldKind.radio,
+      options: ['Without Compensation', 'With Compensation'],
+      defaultValue: 'Without Compensation',
+    ),
   ],
   'EPP': [
     _FieldDef('epp_type', 'EPP Type',
         kind: _FieldKind.radio, required: true, options: ['Cash', 'Charge']),
   ],
   'COL': [
-    _FieldDef('reason', 'Reason',
-        kind: _FieldKind.multiline,
-        hint:
-            'Please specify i.e. medical emergency, death of immediate family, or natural disaster etc.'),
-    _FieldDef('terms', 'Terms',
-        kind: _FieldKind.radio,
-        options: ['5 Months', '10 Months'],
-        defaultValue: '5 Months'),
-    _FieldDef('loan_amount', 'Loan Amount',
-        keyboard: TextInputType.number),
+    _FieldDef(
+      'reason',
+      'Reason',
+      kind: _FieldKind.multiline,
+      hint:
+          'Please specify i.e. medical emergency, death of immediate family, or natural disaster etc.',
+    ),
+    _FieldDef(
+      'terms',
+      'Terms',
+      kind: _FieldKind.radio,
+      options: ['5 Months', '10 Months'],
+      defaultValue: '5 Months',
+    ),
+    _FieldDef('loan_amount', 'Loan Amount', keyboard: TextInputType.number),
   ],
   'BUP': [
     _FieldDef('month', 'Choose Month',
@@ -278,8 +289,11 @@ class _CreateOtherRequestScreenState extends State<CreateOtherRequestScreen> {
       await HrisApi.instance.createRequest('other', payload);
       if (!mounted) return;
       hideLoadingOverlay(context);
-      await showToast(context, 'Your ${_type.label} request has been submitted.',
-          isSuccess: true, title: 'Request Submitted');
+      await showSuccessDialog(
+        context,
+        title: 'Request Submitted',
+        message: 'Your ${_type.label} request has been submitted.',
+      );
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {

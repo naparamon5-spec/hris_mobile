@@ -33,13 +33,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         await HrisApi.instance.clockOut();
         hideLoadingOverlay();
         if (mounted) {
-          showToast(context, 'You have successfully clocked out.', isSuccess: true, title: 'Clocked Out');
+          showSuccessDialog(
+            context,
+            title: 'Clocked Out',
+            message: 'You have successfully clocked out.',
+          );
         }
       } else {
         await HrisApi.instance.clockIn();
         hideLoadingOverlay();
         if (mounted) {
-          showToast(context, 'You have successfully clocked in.', isSuccess: true, title: 'Clocked In');
+          showSuccessDialog(
+            context,
+            title: 'Clocked In',
+            message: 'You have successfully clocked in.',
+          );
         }
       }
       // The controller is disposed with the screen.

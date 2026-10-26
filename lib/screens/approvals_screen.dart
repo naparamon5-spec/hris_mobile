@@ -206,11 +206,12 @@ class _ApprovalInboxScreenState extends State<_ApprovalInboxScreen> {
       item.decidedBy = _me;
       item.approvedDate = 'September 11, 2026';
     });
-    showToast(
+    showSuccessDialog(
       context,
-      approve ? '${item.no} has been approved.' : '${item.no} has been rejected.',
-      isSuccess: true,
       title: approve ? 'Approved' : 'Rejected',
+      message: approve
+          ? '${item.no} has been approved.'
+          : '${item.no} has been rejected.',
     );
   }
 
