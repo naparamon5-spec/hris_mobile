@@ -137,6 +137,31 @@ const Map<String, List<_FieldDef>> _typeFields = {
   ],
 };
 
+/// Extra EPP fields when "Charge" is chosen — same as the website: a 3/6/9/12
+/// month term, one item and its amount (deducted over the term's payrolls).
+const List<_FieldDef> _eppChargeFields = [
+  _FieldDef('terms', 'Terms',
+      kind: _FieldKind.radio,
+      required: true,
+      options: ['3 Months', '6 Months', '9 Months', '12 Months'],
+      defaultValue: '3 Months'),
+  _FieldDef('item', 'Item Description', required: true),
+  _FieldDef('amt', 'Amount', required: true, keyboard: TextInputType.number),
+];
+
+/// One EPP "Cash" item row — the website's item[] / qty[] / uprice[] / amt[].
+class _EppItem {
+  final item = TextEditingController();
+  final qty = TextEditingController();
+  final uprice = TextEditingController();
+  final amt = TextEditingController();
+  void dispose() {
+    for (final c in [item, qty, uprice, amt]) {
+      c.dispose();
+    }
+  }
+}
+
 /// Create Other Request — Request Type + type-specific fields, matching the web
 /// layout. NOTE: submitting does NOT write to the database; the backend
 /// validates and acknowledges the request only.
@@ -155,7 +180,16 @@ class _CreateOtherRequestScreenState extends State<CreateOtherRequestScreen> {
   bool _submitting = false;
   String? _active;
 
-  List<_FieldDef> get _fields => _typeFields[_type.code] ?? const [];
+  final List<_EppItem> _eppItems = [];
+
+  bool get _isEpp => _type.code == 'EPP';
+  bool get _eppCash => _isEpp && _radios['epp_type'] == 'Cash';
+  bool get _eppCharge => _isEpp && _radios['epp_type'] == 'Charge';
+
+  List<_FieldDef> get _fields => [
+        ...(_typeFields[_type.code] ?? const <_FieldDef>[]),
+        if (_eppCharge) ..._eppChargeFields,
+      ];
 
   TextEditingController _ctrl(String key) =>
       _fieldCtrls.putIfAbsent(key, () => TextEditingController());
@@ -168,6 +202,9 @@ class _CreateOtherRequestScreenState extends State<CreateOtherRequestScreen> {
 
   @override
   void dispose() {
+    for (final it in _eppItems) {
+      it.dispose();
+    }
     for (final c in _fieldCtrls.values) {
       c.dispose();
     }
@@ -278,6 +315,44 @@ class _CreateOtherRequestScreenState extends State<CreateOtherRequestScreen> {
       }
     }
 
+    // EPP Cash: every item row needs a description, quantity, unit price and
+    // amount (same checks as the website).
+    final items = <Map<String, String>>[];
+    if (_eppCash) {
+      double n(TextEditingController c) =>
+          double.tryParse(c.text.trim().replaceAll(',', '')) ?? 0;
+      for (final it in _eppItems) {
+        final blank = [it.item, it.qty, it.uprice, it.amt]
+            .every((c) => c.text.trim().isEmpty);
+        if (blank) continue;
+        String? err;
+        if (it.item.text.trim().isEmpty) {
+          err = 'Invalid item description';
+        } else if (n(it.qty) <= 0) {
+          err = 'Invalid quantity';
+        } else if (n(it.uprice) <= 0) {
+          err = 'Invalid unit price';
+        } else if (n(it.amt) <= 0) {
+          err = 'Invalid amount';
+        }
+        if (err != null) {
+          showToast(context, err, isSuccess: false, title: 'EPP Item');
+          return;
+        }
+        items.add({
+          'item': it.item.text.trim(),
+          'qty': it.qty.text.trim(),
+          'uprice': it.uprice.text.trim(),
+          'amt': it.amt.text.trim(),
+        });
+      }
+      if (items.isEmpty) {
+        showToast(context, 'Please provide at least 1 item.',
+            isSuccess: false, title: 'EPP Item');
+        return;
+      }
+    }
+
     setState(() => _submitting = true);
     showLoadingOverlay(context);
     try {
@@ -286,6 +361,7 @@ class _CreateOtherRequestScreenState extends State<CreateOtherRequestScreen> {
         payload[f.key] =
             f.kind == _FieldKind.radio ? _radioValue(f) : _ctrl(f.key).text.trim();
       }
+      if (_eppCash) payload['items'] = items;
       await HrisApi.instance.createRequest('other', payload);
       if (!mounted) return;
       hideLoadingOverlay(context);
@@ -383,6 +459,7 @@ class _CreateOtherRequestScreenState extends State<CreateOtherRequestScreen> {
               const SizedBox(height: 16),
             ],
             ..._fields.map(_buildField),
+            if (_eppCash) _eppItemsSection(),
           ],
         ),
       ),
@@ -410,6 +487,85 @@ class _CreateOtherRequestScreenState extends State<CreateOtherRequestScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // EPP Cash item rows (website: item[] / qty[] / uprice[] / amt[]).
+  Widget _eppItemsSection() {
+    if (_eppItems.isEmpty) _eppItems.add(_EppItem());
+    InputDecoration deco(String label) =>
+        InputDecoration(labelText: label, isDense: true);
+    const numKb = TextInputType.numberWithOptions(decimal: true);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < _eppItems.length; i++)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.fromLTRB(12, 8, 4, 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.line),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Text('Item ${i + 1}',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: 'Remove item',
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      onPressed: () {
+                        if (_eppItems.length == 1) {
+                          showToast(context, 'Please provide at least 1 item.',
+                              isSuccess: false, title: 'EPP Item');
+                          return;
+                        }
+                        setState(() => _eppItems.removeAt(i).dispose());
+                      },
+                    ),
+                  ],
+                ),
+                TextField(
+                    controller: _eppItems[i].item,
+                    decoration: deco('Item Description')),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                        child: TextField(
+                            controller: _eppItems[i].qty,
+                            keyboardType: numKb,
+                            decoration: deco('Quantity'))),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: TextField(
+                            controller: _eppItems[i].uprice,
+                            keyboardType: numKb,
+                            decoration: deco('Unit Price'))),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: TextField(
+                            controller: _eppItems[i].amt,
+                            keyboardType: numKb,
+                            decoration: deco('Amount'))),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => setState(() => _eppItems.add(_EppItem())),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add item'),
+          ),
+        ),
+      ],
     );
   }
 
