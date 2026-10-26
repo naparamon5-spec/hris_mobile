@@ -1708,6 +1708,7 @@ class _TwoFactorSetupSheetState extends State<_TwoFactorSetupSheet> {
     } on ApiException catch (e) {
       if (mounted) hideLoadingOverlay(context);
       if (mounted) showToast(context, e.message, isSuccess: false, title: 'Verification Failed');
+      _code.clear();
     } finally {
       if (mounted) setState(() => _verifying = false);
     }

@@ -735,9 +735,11 @@ class _TwoFactorLoginSheetState extends State<_TwoFactorLoginSheet> {
     } on ApiException catch (e) {
       if (mounted) hideLoadingOverlay(context);
       if (mounted) showToast(context, e.message, isSuccess: false);
+      _codeController.clear();
     } catch (_) {
       if (mounted) hideLoadingOverlay(context);
       if (mounted) showToast(context, 'Could not verify the code. Try again.', isSuccess: false);
+      _codeController.clear();
     } finally {
       if (mounted) setState(() => _verifying = false);
     }
