@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'api_client.dart';
@@ -535,6 +538,48 @@ class AppSession extends ChangeNotifier {
   /// swallowed so it never blocks sign-in.
   bool _tokenRefreshBound = false;
 
+  /// device_id + device_model sent with the push token so each row in
+  /// mobile_fcm_tokens identifies the phone. iOS: Apple's per-app device id
+  /// and readable model name. Android has no stable per-app hardware id, so
+  /// a random install id is generated once and kept in secure storage.
+  Map<String, String>? _deviceFieldsCache;
+
+  Future<Map<String, String>> _deviceFields() async {
+    final cached = _deviceFieldsCache;
+    if (cached != null) return cached;
+    final fields = <String, String>{};
+    try {
+      final info = DeviceInfoPlugin();
+      if (Platform.isIOS) {
+        final ios = await info.iosInfo;
+        fields['device_model'] = ios.modelName;
+        final idfv = ios.identifierForVendor;
+        if (idfv != null && idfv.isNotEmpty) fields['device_id'] = idfv;
+      } else if (Platform.isAndroid) {
+        final a = await info.androidInfo;
+        fields['device_model'] = '${a.manufacturer} ${a.model}'.trim();
+      }
+      fields['device_id'] ??= await _installId();
+    } catch (_) {
+      // Best-effort: the token still registers without device details.
+    }
+    return _deviceFieldsCache = fields;
+  }
+
+  static const _installIdKey = 'hris_install_id';
+
+  Future<String> _installId() async {
+    const storage = FlutterSecureStorage();
+    final existing = await storage.read(key: _installIdKey);
+    if (existing != null && existing.isNotEmpty) return existing;
+    final rnd = Random.secure();
+    final id = List.generate(16, (_) => rnd.nextInt(256))
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
+    await storage.write(key: _installIdKey, value: id);
+    return id;
+  }
+
   Future<void> _registerPush() async {
     final platform = Platform.isIOS ? 'ios' : 'android';
     // Let the foreground notification handler know a user is signed in.
@@ -549,8 +594,11 @@ class AppSession extends ChangeNotifier {
         if (t.isEmpty || !isSignedIn) return;
         _fcmToken = t;
         try {
-          await api.post('/auth/fcm-token',
-              body: {'fcm_token': t, 'platform': platform});
+          await api.post('/auth/fcm-token', body: {
+            'fcm_token': t,
+            'platform': platform,
+            ...await _deviceFields(),
+          });
         } catch (_) {}
       });
     }
@@ -559,8 +607,11 @@ class AppSession extends ChangeNotifier {
       final token = await PushService.instance.getToken();
       if (token == null || token.isEmpty) return;
       _fcmToken = token;
-      await api.post('/auth/fcm-token',
-          body: {'fcm_token': token, 'platform': platform});
+      await api.post('/auth/fcm-token', body: {
+        'fcm_token': token,
+        'platform': platform,
+        ...await _deviceFields(),
+      });
     } catch (_) {
       // Firebase not configured / permission denied — ignore.
     }
