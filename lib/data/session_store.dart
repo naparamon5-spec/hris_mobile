@@ -94,11 +94,28 @@ class SessionStore {
   }
 
   // ---- Remember me (Employee ID prefill only — never the password) ----
-  Future<void> saveRememberedUserId(String? userId) =>
-      _write(_kRememberId, userId == null || userId.isEmpty ? null : userId);
-  Future<String?> readRememberedUserId() => _read(_kRememberId);
-  Future<void> clearRememberedUserId() async {
-    await _storage.delete(key: _kRememberId);
+  // Stored PER COMPANY, so an ID remembered for one company never prefills
+  // another company's login. The old shared key can't be attributed to a
+  // company, so it is dropped the first time we touch remember-me.
+  String _rememberKey(String? tenantId) =>
+      '${_kRememberId}_${(tenantId ?? '').trim().toLowerCase()}';
+
+  Future<void> _dropLegacyRemember() => _storage.delete(key: _kRememberId);
+
+  Future<void> saveRememberedUserId(String? tenantId, String? userId) async {
+    await _dropLegacyRemember();
+    await _write(_rememberKey(tenantId),
+        userId == null || userId.isEmpty ? null : userId);
+  }
+
+  Future<String?> readRememberedUserId(String? tenantId) async {
+    await _dropLegacyRemember();
+    return _read(_rememberKey(tenantId));
+  }
+
+  Future<void> clearRememberedUserId(String? tenantId) async {
+    await _dropLegacyRemember();
+    await _storage.delete(key: _rememberKey(tenantId));
   }
 
   // ---- Biometric enrollment (kept across restarts so biometric works) ----

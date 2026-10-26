@@ -110,10 +110,11 @@ class AppSession extends ChangeNotifier {
   /// Stored so a future token-refresh flow can call `POST /auth/refresh`.
   String? get refreshToken => _refreshToken;
 
-  /// The last-remembered Employee ID (prefills the login form). Never
-  /// contains a password. Null when "Remember me" was never used or when the
-  /// user has unchecked it on a subsequent sign-in.
-  Future<String?> readRememberedUserId() => _store.readRememberedUserId();
+  /// The Employee ID remembered for [tenantId] (prefills that company's login
+  /// form). Never a password. Null when "Remember me" was never used for that
+  /// company or was unchecked on a later sign-in there.
+  Future<String?> readRememberedUserId(String? tenantId) =>
+      _store.readRememberedUserId(tenantId);
   bool get isSignedIn => api.accessToken != null;
 
   /// True when biometric sign-in has persisted credentials to reuse (set when
@@ -199,10 +200,11 @@ class AppSession extends ChangeNotifier {
     // "Remember me" — only the Employee ID is persisted (never the password),
     // so the login form prefills it after relaunch/logout. When unchecked, we
     // actively clear any previously-remembered ID.
+    // Scoped to the company signed into, so it never prefills another company.
     if (remember) {
-      await _store.saveRememberedUserId(userId);
+      await _store.saveRememberedUserId(tenant?.id, userId);
     } else {
-      await _store.clearRememberedUserId();
+      await _store.clearRememberedUserId(tenant?.id);
     }
 
     // Biometric enrollment is per-user. If the saved enrollment is for THIS

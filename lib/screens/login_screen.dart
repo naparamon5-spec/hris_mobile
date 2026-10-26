@@ -62,12 +62,27 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Prefill the Employee ID + tick the "Remember me" box when the user asked
   /// to be remembered on a previous login. The password is never stored.
   Future<void> _restoreRememberedId() async {
-    final id = await AppSession.instance.readRememberedUserId();
-    if (!mounted || id == null || id.isEmpty) return;
+    final companyId = widget.company.id;
+    final id = await AppSession.instance.readRememberedUserId(companyId);
+    // Ignore a late result if the company changed while we were reading.
+    if (!mounted || widget.company.id != companyId) return;
     setState(() {
-      _employeeId.text = id;
-      _remember = true;
+      _employeeId.text = id ?? '';
+      _remember = id != null && id.isNotEmpty;
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant LoginScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Same screen reused for a different company: never carry over the
+    // previous company's Employee ID or "Remember me" tick.
+    if (oldWidget.company.id != widget.company.id) {
+      _employeeId.clear();
+      _password.clear();
+      _remember = false;
+      _restoreRememberedId();
+    }
   }
 
   Future<void> _loadAppVersion() async {
