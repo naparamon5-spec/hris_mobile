@@ -205,11 +205,12 @@ class _ClockCard extends StatelessWidget {
                   child: _miniStat('Time in', today.timeIn ?? '—',
                       Icons.login_rounded, AppColors.brandRed),
                 ),
-                Container(width: 1, height: 28, color: AppColors.line),
-                Expanded(
-                  child: _miniStat('Break', '${today.breakMinutes} min',
-                      Icons.coffee_outlined, AppColors.brandRed),
-                ),
+                // Break hidden: the database has no break data.
+                // Container(width: 1, height: 28, color: AppColors.line),
+                // Expanded(
+                //   child: _miniStat('Break', '${today.breakMinutes} min',
+                //       Icons.coffee_outlined, AppColors.brandRed),
+                // ),
                 Container(width: 1, height: 28, color: AppColors.line),
                 Expanded(
                   child: _miniStat(

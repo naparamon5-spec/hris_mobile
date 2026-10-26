@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../data/app_session.dart';
 import '../data/hris_api.dart';
 import '../data/inbox_badges.dart';
-import '../data/mock_data.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/async_view.dart';
@@ -98,7 +97,7 @@ class _TopBar extends StatelessWidget {
           // of pushing a full-screen route over the shell.
           onTap: () => HomeShellScope.of(context)?.selectTab(3),
           child: UserAvatar(
-            name: AppSession.instance.userName ?? kCurrentUser,
+            name: AppSession.instance.userName ?? '',
             size: 44,
           ),
         ),

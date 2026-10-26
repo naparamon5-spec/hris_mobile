@@ -117,11 +117,12 @@ class _LatestPayslip extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              StatusPill(
-                label: payslip.status,
-                color: AppColors.success,
-                icon: Icons.check_circle_rounded,
-              ),
+              if (payslip.status.isNotEmpty)
+                StatusPill(
+                  label: payslip.status,
+                  color: AppColors.success,
+                  icon: Icons.check_circle_rounded,
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -274,8 +275,10 @@ class _PayslipRow extends StatelessWidget {
               ],
             ),
           ),
-          StatusPill(label: payslip.status, color: AppColors.success),
-          const SizedBox(width: 8),
+          if (payslip.status.isNotEmpty) ...[
+            StatusPill(label: payslip.status, color: AppColors.success),
+            const SizedBox(width: 8),
+          ],
           const Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
         ],
       ),
