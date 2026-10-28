@@ -163,17 +163,20 @@ class _CreateLeaveOfAbsenceScreenState
     _leaveType = _normalizeLeaveType(widget.initialLeaveType);
     _reason.text = widget.initialReason ?? '';
     _loadLeaveTypes();
+    _loadRemainingHours();
 
     final now = DateTime.now();
-    _from = parseAppDateTime(widget.initialDateFrom, isFrom: true) ??
+    _from = _wallClockOrNull(parseAppDateTime(widget.initialDateFrom, isFrom: true)) ??
         parseAppDateTime(widget.initialTxnDate, isFrom: true) ??
         DateTime(now.year, now.month, now.day, 8, 0);
 
-    _to = parseAppDateTime(widget.initialDateTo, isFrom: false) ??
+    _to = _wallClockOrNull(parseAppDateTime(widget.initialDateTo, isFrom: false)) ??
         parseAppDateTime(widget.initialTxnDate, isFrom: false) ??
         DateTime(now.year, now.month, now.day, 18, 0);
 
-    if (widget.initialId != null && widget.initialId! > 0) {
+    // Unposted LOA rows have negative ids (-loa_no), so any non-zero id is a
+    // real record to reload.
+    if (widget.initialId != null && widget.initialId! != 0) {
       _loadServerRecord();
     }
   }
@@ -205,6 +208,33 @@ class _CreateLeaveOfAbsenceScreenState
     } catch (_) {
       // Keep the two defaults if the balance can't be loaded.
     }
+  }
+
+  /// Remaining leave hours (the Leave Hours tiles), for "Current Remaining".
+  LeaveBalance? _hours;
+
+  Future<void> _loadRemainingHours() async {
+    try {
+      final h = await HrisApi.instance.leaveHours();
+      if (mounted) setState(() => _hours = h);
+    } catch (_) {
+      // Leave the field showing a dash.
+    }
+  }
+
+  /// Remaining hours for the selected leave type, as HH:MM. Approved Leave and
+  /// Approved UT carry no balance, so they show a dash (like the website).
+  String get _remaining {
+    final h = _hours;
+    if (h == null) return '—';
+    final v = switch (_leaveType) {
+      'Vacation Leave' => h.vlPaid,
+      'Sick Leave' => h.slPaid,
+      'Additional VL' => h.additionalVl,
+      'Accumulated Leave' => h.accumulatedLeave,
+      _ => null,
+    };
+    return v ?? '—';
   }
 
   Future<void> _loadServerRecord() async {
@@ -242,7 +272,7 @@ class _CreateLeaveOfAbsenceScreenState
             r.txnDate;
         if (rawFrom != null) {
           final df = parseAppDateTime(rawFrom, isFrom: true);
-          if (df != null) _from = df;
+          if (df != null) _from = _wallClock(df);
         }
 
         final rawTo = r.dateTo ??
@@ -254,15 +284,30 @@ class _CreateLeaveOfAbsenceScreenState
             r.txnDate;
         if (rawTo != null) {
           final dt = parseAppDateTime(rawTo, isFrom: false);
-          if (dt != null) _to = dt;
+          if (dt != null) _to = _wallClock(dt);
         }
       });
     } catch (e) {
       debugPrint('Error loading LOA server record by ID: $e');
+      // Don't leave a form of guessed values that could be saved over the
+      // real record.
+      if (!mounted) return;
+      showToast(context, "Couldn't load this record. Please try again.",
+          isSuccess: false, title: 'Load Failed');
+      Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _loadingServer = false);
     }
   }
+
+  /// The server sends stored wall-clock times as UTC ISO strings; keep the
+  /// clock values as-is instead of shifting them into the phone's timezone.
+  static DateTime? _wallClockOrNull(DateTime? d) =>
+      d == null ? null : _wallClock(d);
+
+  static DateTime _wallClock(DateTime d) => d.isUtc
+      ? DateTime(d.year, d.month, d.day, d.hour, d.minute, d.second)
+      : d;
 
   @override
   void dispose() {
@@ -386,6 +431,12 @@ class _CreateLeaveOfAbsenceScreenState
       if (mounted) {
         showToast(context, e.message, isSuccess: false, title: 'Submission Error');
       }
+    } catch (_) {
+      hideLoadingOverlay(context);
+      if (mounted) {
+        showToast(context, 'Something went wrong. Please try again.',
+            isSuccess: false, title: 'Submission Error');
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -464,7 +515,7 @@ class _CreateLeaveOfAbsenceScreenState
                   Expanded(
                     child: _Labeled(
                       label: 'Current Remaining',
-                      child: const _HoursField(value: '00:00', muted: true),
+                      child: _HoursField(value: _remaining, muted: true),
                     ),
                   ),
                 ],

@@ -201,6 +201,12 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
       if (mounted) {
         showToast(context, e.message, isSuccess: false, title: 'Submission Error');
       }
+    } catch (_) {
+      hideLoadingOverlay(context);
+      if (mounted) {
+        showToast(context, 'Something went wrong. Please try again.',
+            isSuccess: false, title: 'Submission Error');
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

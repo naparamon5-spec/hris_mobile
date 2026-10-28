@@ -185,8 +185,9 @@ class _CreateCallApprovalScreenState extends State<CreateCallApprovalScreen> {
       // Try ISO-8601 first (server returns datetimes for date_from/date_to).
       final iso = DateTime.tryParse(str);
       if (iso != null) {
-        final local = iso.isUtc ? iso.toLocal() : iso;
-        return TimeOfDay(hour: local.hour, minute: local.minute);
+        // Server times are wall-clock values sent as UTC ISO; read the clock
+        // as-is (toLocal() would shift them by the phone's UTC offset).
+        return TimeOfDay(hour: iso.hour, minute: iso.minute);
       }
       // Otherwise HH:mm[am/pm] or HH:mm.
       final m = RegExp(r'(\d{1,2}):(\d{2})\s*([AaPp][Mm])?').firstMatch(str);
