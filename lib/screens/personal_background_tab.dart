@@ -735,6 +735,104 @@ class _DropdownField extends StatelessWidget {
   final bool required;
   final bool error;
 
+  Future<void> _pick(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+    final picked = await showPremiumBottomSheet<String>(
+      context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.line,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                child: Text(
+                  hint,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 6),
+                  itemBuilder: (_, i) {
+                    final item = items[i];
+                    final selected = item == value;
+                    return Material(
+                      color: selected ? AppColors.dangerSoft : AppColors.fieldFill,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => Navigator.of(ctx).pop(item),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 13),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: selected
+                                  ? AppColors.brandRed
+                                  : AppColors.line,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item,
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: selected
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: selected
+                                        ? AppColors.brandRed
+                                        : AppColors.ink,
+                                  ),
+                                ),
+                              ),
+                              if (selected)
+                                Icon(Icons.check_circle_rounded,
+                                    size: 20, color: AppColors.brandRed),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null && picked != value) onChanged(picked);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -744,29 +842,42 @@ class _DropdownField extends StatelessWidget {
         children: [
           _label(label, required),
           const SizedBox(height: 6),
-          DropdownButtonFormField<String>(
-            initialValue: value,
-            isExpanded: true,
-            decoration: InputDecoration(
-              isDense: true,
-              enabledBorder: error
-                  ? OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColors.brandRed,
-                        width: 1.6,
+          // Same look as the date field; tapping opens a picker sheet.
+          GestureDetector(
+            onTap: () => _pick(context),
+            child: Container(
+              height: 46,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppColors.fieldFill,
+                borderRadius: BorderRadius.circular(12),
+                border: error
+                    ? Border.all(color: AppColors.brandRed, width: 1.6)
+                    : Border.all(color: AppColors.line),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      value ?? hint,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight:
+                            value == null ? FontWeight.w400 : FontWeight.w600,
+                        color: value == null ? AppColors.inkFaint : AppColors.ink,
                       ),
-                    )
-                  : null,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 22,
+                    color: AppColors.inkSoft,
+                  ),
+                ],
+              ),
             ),
-            hint: Text(
-              hint,
-              style: const TextStyle(color: AppColors.inkFaint, fontSize: 14),
-            ),
-            items: items
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: onChanged,
           ),
           if (error) _errorText(label),
         ],

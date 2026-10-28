@@ -870,8 +870,8 @@ class _LoaCard extends StatelessWidget {
   }
 
   void _openActions(BuildContext context) {
-    // A posted record has no available actions — don't open the sheet at all.
-    if (record.status == 'Posted') return;
+    // Posted records still open (details only); the sheet shows no buttons
+    // since _actionsFor('Posted') is empty.
     showPremiumBottomSheet(
       context,
       isScrollControlled: true,
