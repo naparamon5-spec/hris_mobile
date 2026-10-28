@@ -34,8 +34,11 @@ class PrevEmployment {
     this.address3,
     this.position,
     this.dateFrom,
-    this.dateTo,
-  );
+    this.dateTo, {
+    this.salary = '',
+    this.reasonForLeaving = '',
+  });
+  final String salary, reasonForLeaving;
   final String company,
       address1,
       address2,
@@ -117,6 +120,8 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
                 p['position'] ?? '',
                 p['date_from'] ?? '',
                 p['date_to'] ?? '',
+                salary: p['salary'] ?? '',
+                reasonForLeaving: p['reason_for_leaving'] ?? '',
               ),
             ),
           );
@@ -248,8 +253,13 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
               _recordTile(
                 icon: Icons.work_outline_rounded,
                 title: _employment[i].company,
-                subtitle:
-                    '${_employment[i].position} • ${_employment[i].dateFrom} – ${_employment[i].dateTo}',
+                subtitle: [
+                  '${_employment[i].position} • ${_employment[i].dateFrom} – ${_employment[i].dateTo}',
+                  if (_employment[i].salary.isNotEmpty)
+                    'Salary: ${_employment[i].salary}',
+                  if (_employment[i].reasonForLeaving.isNotEmpty)
+                    'Reason for leaving: ${_employment[i].reasonForLeaving}',
+                ].join('\n'),
                 onDelete: () => setState(() => _employment.removeAt(i)),
               ),
           ],
@@ -597,10 +607,14 @@ class _LabeledField extends StatelessWidget {
     this.enabled = true,
     this.error = false,
     this.optional = false,
+    this.minLines = 1,
   });
 
   final String label;
   final TextEditingController controller;
+
+  /// > 1 makes a multi-line box that grows as you type.
+  final int minLines;
   final bool optional;
   final bool required;
   final TextInputType? keyboardType;
@@ -620,7 +634,12 @@ class _LabeledField extends StatelessWidget {
           const SizedBox(height: 6),
           TextField(
             controller: controller,
-            keyboardType: keyboardType,
+            keyboardType: minLines > 1 ? TextInputType.multiline : keyboardType,
+            minLines: minLines,
+            maxLines: minLines > 1 ? minLines + 3 : 1,
+            textCapitalization: minLines > 1
+                ? TextCapitalization.sentences
+                : TextCapitalization.none,
             enabled: enabled,
             decoration: InputDecoration(
               isDense: true,
@@ -1243,6 +1262,8 @@ class _EmploymentFormState extends State<_EmploymentForm> {
   final _addr2 = TextEditingController();
   final _addr3 = TextEditingController();
   final _position = TextEditingController();
+  final _salary = TextEditingController();
+  final _reason = TextEditingController();
   String _from = '';
   String _to = '';
 
@@ -1254,7 +1275,7 @@ class _EmploymentFormState extends State<_EmploymentForm> {
   @override
   void initState() {
     super.initState();
-    for (final c in [_company, _addr1, _position]) {
+    for (final c in [_company, _addr1, _position, _reason]) {
       c.addListener(() {
         if (_showErrors) setState(() {});
       });
@@ -1268,6 +1289,8 @@ class _EmploymentFormState extends State<_EmploymentForm> {
     _addr2.dispose();
     _addr3.dispose();
     _position.dispose();
+    _salary.dispose();
+    _reason.dispose();
     super.dispose();
   }
 
@@ -1276,7 +1299,8 @@ class _EmploymentFormState extends State<_EmploymentForm> {
         _empty(_addr1) ||
         _empty(_position) ||
         _from.isEmpty ||
-        _to.isEmpty) {
+        _to.isEmpty ||
+        _empty(_reason)) {
       setState(() => _showErrors = true);
       return;
     }
@@ -1290,6 +1314,8 @@ class _EmploymentFormState extends State<_EmploymentForm> {
         _position.text.trim(),
         _from,
         _to,
+        salary: _salary.text.trim(),
+        reasonForLeaving: _reason.text.trim(),
       ),
     );
   }
@@ -1339,6 +1365,19 @@ class _EmploymentFormState extends State<_EmploymentForm> {
             final d = await _pickDate(context);
             if (d != null) setState(() => _to = _fmtDate(d));
           },
+        ),
+        _LabeledField(
+          label: 'Salary',
+          controller: _salary,
+          optional: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        _LabeledField(
+          label: 'Reason for Leaving',
+          controller: _reason,
+          minLines: 4,
+          required: true,
+          error: _showErrors && _empty(_reason),
         ),
         _AddRowFooter(onAdd: _submit),
       ],
