@@ -10,6 +10,7 @@ import '../../screens/home_shell.dart';
 import '../../screens/whos_out_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/ui.dart';
+import '../hris_api.dart';
 import '../mock_data.dart';
 
 /// Infers the kind of notification when backend or mock data omits it.
@@ -100,14 +101,17 @@ String inferRequestNo(String? explicitId, String title, String body) {
 }
 
 /// Opens the bottom-nav tab a notification belongs to (Who's Out), instead
-/// of pushing a copy of that tab. Returns false if it isn't a tab target.
+/// of pushing a copy of that tab, and slides up that day's list. Returns false if it isn't a tab target.
 bool openNotificationTab(
   NavigatorState nav, {
   String? kind,
   String title = '',
   String body = '',
+  DateTime? day,
 }) {
   if (inferKind(kind, title, body) != 'whos_out') return false;
+  // Open the notification's day (today if unknown) once Who's Out is shown.
+  WhosOutScreen.focusDay.value = day ?? DateTime.now();
   if (HomeShell.openTab(nav, HomeTab.whosOut)) return true;
   // Shell not available: still open Who's Out (on its own page), never the
   // details sheet.
@@ -209,7 +213,10 @@ Widget? screenForNotification({
 /// opens a bottom sheet with full details of the notification.
 void openNotification(BuildContext context, AppNotification item) {
   if (openNotificationTab(Navigator.of(context),
-      kind: item.kind, title: item.title, body: item.body)) {
+      kind: item.kind,
+      title: item.title,
+      body: item.body,
+      day: parseAppDateTime(item.time))) {
     return;
   }
   final screen = screenForNotification(

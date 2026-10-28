@@ -60,6 +60,10 @@ class OutEntry {
 class WhosOutScreen extends StatefulWidget {
   const WhosOutScreen({super.key});
 
+  /// Set to a day to make the calendar jump to it and open that day's sheet
+  /// (used when a Who's Out notification is tapped).
+  static final focusDay = ValueNotifier<DateTime?>(null);
+
   @override
   State<WhosOutScreen> createState() => _WhosOutScreenState();
 }
@@ -69,6 +73,30 @@ class _WhosOutScreenState extends State<WhosOutScreen> {
   late DateTime _month = DateTime(_today.year, _today.month);
 
   final _reload = AsyncViewController();
+
+  /// Day whose sheet opens once its month has loaded (from [focusDay]).
+  DateTime? _pendingDay;
+
+  @override
+  void initState() {
+    super.initState();
+    WhosOutScreen.focusDay.addListener(_onFocusDay);
+    // A request made before this tab was first built.
+    if (WhosOutScreen.focusDay.value != null) _onFocusDay(initial: true);
+  }
+
+  void _onFocusDay({bool initial = false}) {
+    final day = WhosOutScreen.focusDay.value;
+    if (day == null) return;
+    WhosOutScreen.focusDay.value = null;
+    _pendingDay = DateTime(day.year, day.month, day.day);
+    _month = DateTime(day.year, day.month);
+    // On first build the initial load already fetches this month.
+    if (!initial) {
+      setState(() {});
+      _reload.reload();
+    }
+  }
 
   /// Precomputed day -> entries index, so each day cell is an O(1) lookup
   /// instead of scanning every record (keeps the frame cheap and the loader
@@ -98,6 +126,7 @@ class _WhosOutScreenState extends State<WhosOutScreen> {
 
   @override
   void dispose() {
+    WhosOutScreen.focusDay.removeListener(_onFocusDay);
     _reload.dispose();
     super.dispose();
   }
@@ -107,7 +136,16 @@ class _WhosOutScreenState extends State<WhosOutScreen> {
   Future<List<OutEntry>> _load() async {
     final records =
         await HrisApi.instance.whosOutMonth(_month.month, _month.year);
-    return records.map(OutEntry.fromRecord).toList();
+    final entries = records.map(OutEntry.fromRecord).toList();
+    // Open the requested day's sheet once the grid has built with this data.
+    final day = _pendingDay;
+    if (day != null) {
+      _pendingDay = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showDaySheet(day);
+      });
+    }
+    return entries;
   }
 
   void _prev() {

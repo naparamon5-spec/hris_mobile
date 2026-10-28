@@ -12,8 +12,14 @@ Future<bool> verifyIdentity(
   String title = "We'll verify it's you",
   String message =
       'For your privacy, please confirm your password to view this information.',
+  String? subject,
+  String? subjectDetail,
 }) async {
-  final password = await promptPassword(context, title: title, message: message);
+  final password = await promptPassword(context,
+      title: title,
+      message: message,
+      subject: subject,
+      subjectDetail: subjectDetail);
   if (password == null || password.isEmpty || !context.mounted) return false;
 
   showLoadingOverlay(context);

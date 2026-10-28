@@ -488,6 +488,8 @@ Future<String?> promptPassword(
       'For your privacy, please confirm your password to view this information.',
   String buttonLabel = 'Verify',
   Color? accent,
+  String? subject,
+  String? subjectDetail,
 }) {
   final Color resolvedAccent = accent ?? AppColors.brandRed;
   final controller = TextEditingController();
@@ -530,6 +532,49 @@ Future<String?> promptPassword(
               style: const TextStyle(
                   fontSize: 14, color: AppColors.inkSoft, height: 1.5),
             ),
+            // What's being unlocked (e.g. "Period 016 · Nov 23 – Dec 06"), so
+            // the user can tell which item they tapped behind the sheet.
+            if (subject != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: resolvedAccent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: resolvedAccent.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.receipt_long_rounded,
+                        size: 18, color: resolvedAccent),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text.rich(
+                        TextSpan(
+                          text: subject,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink),
+                          children: [
+                            if (subjectDetail != null)
+                              TextSpan(
+                                text: '  ·  $subjectDetail',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.inkSoft),
+                              ),
+                          ],
+                        ),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 28),
             TextField(
               controller: controller,

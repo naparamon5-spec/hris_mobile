@@ -324,6 +324,9 @@ class _PeriodCard extends StatelessWidget {
         context,
         message:
             'For your privacy, please confirm your password to view this payslip.',
+        subject: 'Period ${entry.period}',
+        subjectDetail:
+            entry.dates.isEmpty ? null : entry.dates.join(' – '),
       );
       if (!ok || !context.mounted) return;
     }
