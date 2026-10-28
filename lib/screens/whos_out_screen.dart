@@ -428,9 +428,14 @@ class _DayCell extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: inMonth
-                              ? AppColors.ink
-                              : AppColors.inkFaint,
+                          // Sundays in red, like the weekday header.
+                          color: day.weekday == DateTime.sunday
+                              ? (inMonth
+                                  ? AppColors.brandRed
+                                  : AppColors.brandRed.withValues(alpha: 0.45))
+                              : inMonth
+                                  ? AppColors.ink
+                                  : AppColors.inkFaint,
                         ),
                       ),
               ),

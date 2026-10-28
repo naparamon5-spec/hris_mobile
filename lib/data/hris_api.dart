@@ -273,6 +273,8 @@ class LeaveBalance {
     this.accumulatedLeave,
     this.slPaidHours,
     this.vlPaidHours,
+    this.approvedLeaveUsed,
+    this.approvedUtUsed,
   });
 
   final int year;
@@ -292,6 +294,21 @@ class LeaveBalance {
   // Raw hours for the dashboard leave credits.
   final num? slPaidHours;
   final num? vlPaidHours;
+
+  // Approved Leave / Approved UT have no balance; these are the hours taken
+  // this year as HH:MM ("00:00" when none, null when unknown).
+  final String? approvedLeaveUsed;
+  final String? approvedUtUsed;
+
+  /// "HH:MM" -> "N hrs" (e.g. "00:00" -> "0 hrs", "05:30" -> "5.5 hrs");
+  /// null when unknown.
+  static String? hrsLabel(String? hhmm) {
+    if (hhmm == null || hhmm.isEmpty) return null;
+    final p = hhmm.split(':');
+    final h = (int.tryParse(p[0]) ?? 0) + (p.length > 1 ? (int.tryParse(p[1]) ?? 0) / 60 : 0);
+    final n = h == h.roundToDouble() ? h.toInt().toString() : h.toStringAsFixed(2).replaceFirst(RegExp(r'0$'), '');
+    return '$n hrs';
+  }
 
   factory LeaveBalance.fromJson(Map<String, dynamic> j) {
     String? s(dynamic v) {
@@ -315,6 +332,8 @@ class LeaveBalance {
       accumulatedLeave: s(j['accumulated_leave']),
       slPaidHours: j['sl_paid_hours'] as num?,
       vlPaidHours: j['vl_paid_hours'] as num?,
+      approvedLeaveUsed: s(j['approved_leave_used']),
+      approvedUtUsed: s(j['approved_ut_used']),
     );
   }
 }

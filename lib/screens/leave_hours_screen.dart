@@ -61,7 +61,7 @@ class LeaveHoursScreen extends StatelessWidget {
                   Expanded(
                     child: _HoursCard(
                       label: 'Approved Leave',
-                      value: _fmt(b.approvedLeave),
+                      value: LeaveBalance.hrsLabel(b.approvedLeaveUsed) ?? _fmt(b.approvedLeave),
                       icon: Icons.event_note_rounded,
                     ),
                   ),
@@ -69,7 +69,7 @@ class LeaveHoursScreen extends StatelessWidget {
                   Expanded(
                     child: _HoursCard(
                       label: 'Approved UT (AM/PM)',
-                      value: _fmt(b.approvedUt),
+                      value: LeaveBalance.hrsLabel(b.approvedUtUsed) ?? _fmt(b.approvedUt),
                       icon: Icons.timelapse_rounded,
                     ),
                   ),

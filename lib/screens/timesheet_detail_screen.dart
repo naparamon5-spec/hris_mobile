@@ -72,9 +72,17 @@ class _DayRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasTime = day.timeIn.isNotEmpty || day.timeOut.isNotEmpty;
     final flagged = _flagged;
+    // Remarks (Call Approval, NO TIME OUT, Approved Leave…) as on the web.
+    // Skip one that just repeats the day type (e.g. a day relabelled as its
+    // leave type).
+    final remarks =
+        day.remarks.toLowerCase() == day.dayType.toLowerCase() ? '' : day.remarks;
+    // Shown beside the date in brackets, e.g. "2026-08-10 (Call Approval)";
+    // the ***…*** markers are dropped ("***NO ENTRY***" -> "(NO ENTRY)").
+    final note = remarks.replaceAll('*', '').trim();
     final subtitle = hasTime
         ? '${day.dayType}  •  ${day.timeIn} – ${day.timeOut}'
-        : '${day.dayType}  •  ${day.remarks.isNotEmpty ? day.remarks : 'No entry'}';
+        : day.dayType;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -88,28 +96,56 @@ class _DayRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(day.date,
-                    style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink)),
+                Text.rich(
+                  TextSpan(
+                    text: day.date,
+                    children: [
+                      if (note.isNotEmpty)
+                        TextSpan(
+                          text: '  ($note)',
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: flagged
+                                  ? AppColors.brandRed
+                                  : AppColors.inkSoft),
+                        ),
+                    ],
+                  ),
+                  style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink),
+                ),
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: const TextStyle(
                       fontSize: 12.5,
-                      fontWeight: flagged ? FontWeight.w700 : FontWeight.w600,
-                      color: flagged ? AppColors.brandRed : AppColors.inkSoft),
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.inkSoft),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 12),
-          Text('${TimesheetDetailScreen._h(day.totalHrs)} hrs',
-              style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w900,
-                  color: flagged ? AppColors.brandRed : AppColors.ink)),
+          // No entry at all (no time in/out, remark "NO ENTRY" or none) -> a
+          // muted dash; otherwise the day's Total hours, as on the website
+          // (leave days included, 0 -> "0 hrs").
+          if (!hasTime &&
+              day.totalHrs == 0 &&
+              (remarks.isEmpty || remarks.toLowerCase().contains('no entry')))
+            const Text('—',
+                style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.inkFaint))
+          else
+            Text('${TimesheetDetailScreen._h(day.totalHrs)} hrs',
+                style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                    color: flagged ? AppColors.brandRed : AppColors.ink)),
         ],
       ),
     );
