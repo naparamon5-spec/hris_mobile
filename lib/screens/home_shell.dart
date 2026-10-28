@@ -16,11 +16,32 @@ class HomeShell extends StatefulWidget {
 
   final int initialIndex;
 
+  /// Closes any pushed screens and switches to [index] (see [HomeTab]).
+  /// Returns false when the shell isn't mounted.
+  static bool openTab(NavigatorState nav, int index) {
+    final select = _HomeShellState._selectFromOutside;
+    if (select == null) return false;
+    nav.popUntil((r) => r.isFirst);
+    select(index);
+    return true;
+  }
+
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
 
+/// Tab indexes, for switching tabs from outside the shell (e.g. a
+/// notification tap).
+class HomeTab {
+  static const home = 0;
+  static const requests = 1;
+  static const whosOut = 2;
+  static const profile = 3;
+}
+
 class _HomeShellState extends State<HomeShell> {
+  /// The mounted shell's tab switcher (null when the shell isn't on screen).
+  static void Function(int index)? _selectFromOutside;
   late int _index = widget.initialIndex;
 
   // Tabs are built lazily: only a visited tab is instantiated, so sign-in
@@ -33,11 +54,13 @@ class _HomeShellState extends State<HomeShell> {
     super.initState();
     InboxBadges.instance.refresh();
     PushService.attachHome();
+    _selectFromOutside = _select;
   }
 
   @override
   void dispose() {
     PushService.detachHome();
+    if (_selectFromOutside == _select) _selectFromOutside = null;
     super.dispose();
   }
 
@@ -68,6 +91,9 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Re-register on every build too, so the switcher survives hot reload
+    // (initState doesn't rerun then).
+    _selectFromOutside = _select;
     // The loading overlay is mounted globally in main.dart's MaterialApp
     // builder, so it is not wrapped here.
     return Scaffold(

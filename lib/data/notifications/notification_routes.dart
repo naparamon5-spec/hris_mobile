@@ -6,6 +6,7 @@ import '../../screens/leave_of_absence_screen.dart';
 import '../../screens/other_requests_screen.dart';
 import '../../screens/payslip_screen.dart';
 import '../../screens/timesheet_screen.dart';
+import '../../screens/home_shell.dart';
 import '../../screens/whos_out_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/ui.dart';
@@ -98,6 +99,24 @@ String inferRequestNo(String? explicitId, String title, String body) {
   return '';
 }
 
+/// Opens the bottom-nav tab a notification belongs to (Who's Out), instead
+/// of pushing a copy of that tab. Returns false if it isn't a tab target.
+bool openNotificationTab(
+  NavigatorState nav, {
+  String? kind,
+  String title = '',
+  String body = '',
+}) {
+  if (inferKind(kind, title, body) != 'whos_out') return false;
+  if (HomeShell.openTab(nav, HomeTab.whosOut)) return true;
+  // Shell not available: still open Who's Out (on its own page), never the
+  // details sheet.
+  nav.push(MaterialPageRoute(
+    builder: (_) => Scaffold(appBar: AppBar(), body: const WhosOutScreen()),
+  ));
+  return true;
+}
+
 /// Destination screen for a notification tap (inbox card or FCM payload).
 Widget? screenForNotification({
   String? kind,
@@ -136,10 +155,6 @@ Widget? screenForNotification({
 
   if (resolvedKind == 'timesheet') {
     return const TimesheetScreen();
-  }
-
-  if (resolvedKind == 'whos_out') {
-    return const WhosOutScreen();
   }
 
   switch (resolvedType) {
@@ -193,6 +208,10 @@ Widget? screenForNotification({
 /// Opens the notification target screen if one is resolved; otherwise
 /// opens a bottom sheet with full details of the notification.
 void openNotification(BuildContext context, AppNotification item) {
+  if (openNotificationTab(Navigator.of(context),
+      kind: item.kind, title: item.title, body: item.body)) {
+    return;
+  }
   final screen = screenForNotification(
     kind: item.kind,
     requestType: item.requestType,

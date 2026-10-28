@@ -80,6 +80,7 @@ class _DayRow extends StatelessWidget {
     // Shown beside the date in brackets, e.g. "2026-08-10 (Call Approval)";
     // the ***…*** markers are dropped ("***NO ENTRY***" -> "(NO ENTRY)").
     final note = remarks.replaceAll('*', '').trim();
+    final noEntry = note.toLowerCase() == 'no entry';
     final subtitle = hasTime
         ? '${day.dayType}  •  ${day.timeIn} – ${day.timeOut}'
         : day.dayType;
@@ -102,10 +103,15 @@ class _DayRow extends StatelessWidget {
                     children: [
                       if (note.isNotEmpty)
                         TextSpan(
-                          text: '  ($note)',
+                          text: noEntry ? '  (--$note)' : '  ($note)',
                           style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
+                              // "NO ENTRY" in italics, so empty days read
+                              // differently from real remarks.
+                              fontStyle: noEntry
+                                  ? FontStyle.italic
+                                  : FontStyle.normal,
                               color: flagged
                                   ? AppColors.brandRed
                                   : AppColors.inkSoft),

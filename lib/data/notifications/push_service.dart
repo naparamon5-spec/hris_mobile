@@ -194,6 +194,14 @@ class PushService {
       _pendingTap = data;
       return;
     }
+    if (openNotificationTab(
+      nav,
+      kind: '${data['type'] ?? data['kind'] ?? ''}',
+      title: '${data['title'] ?? ''}',
+      body: '${data['body'] ?? ''}',
+    )) {
+      return;
+    }
     final screen = screenForNotification(
       kind: '${data['type'] ?? data['kind'] ?? ''}',
       requestType: '${data['request_type'] ?? ''}',
