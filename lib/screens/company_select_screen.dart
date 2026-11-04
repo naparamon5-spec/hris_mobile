@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../data/hris_api.dart';
+import '../data/tenant_cache.dart';
 import '../data/tenants.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand.dart';
@@ -35,15 +36,18 @@ class _CompanySelectScreenState extends State<CompanySelectScreen> {
     } catch (_) {/* leave blank */}
   }
 
-  /// Loads companies from `/public/tenants`, falling back to the bundled list
-  /// if the backend is unreachable (this is the pre-login entry screen).
+  /// Loads companies from `/public/tenants` (source of truth) and caches them.
+  /// If the backend is unreachable, uses the last cached list, then the
+  /// bundled fallback (this is the pre-login entry screen).
   Future<List<Tenant>> _loadTenants() async {
     try {
       final list = await HrisApi.instance.tenants();
-      return list.isEmpty ? kTenants : list;
-    } catch (_) {
-      return kTenants;
-    }
+      if (list.isNotEmpty) {
+        await TenantCache.instance.save(list);
+        return list;
+      }
+    } catch (_) {/* fall through to offline list */}
+    return TenantCache.instance.offlineList();
   }
 
   void _select(Tenant t) {

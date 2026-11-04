@@ -43,6 +43,15 @@ class Tenant {
     return value == null ? AppColors.defaultBrand : Color(value);
   }
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'subtitle': subtitle,
+        'color':
+            '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
+        if (logo != null) 'logo': logo,
+      };
+
   String get initial => name.characters.first.toUpperCase();
 
   Color get colorDark => Color.lerp(color, Colors.black, 0.28)!;
@@ -54,9 +63,11 @@ class Tenant {
       );
 }
 
-// Fallback list used only if the backend `/public/tenants` is unreachable on
-// the pre-login screen. The live list (with real company names read from each
-// company's database) comes from the backend.
+// Last-resort fallback. The backend `/public/tenants` is the source of truth;
+// when it's unreachable the app first uses the on-device cache of the last
+// backend list (see TenantCache). This bundled list is only used on a fresh
+// install that has never reached the server, so it does NOT need updating
+// when companies are added — only the backend does.
 const List<Tenant> kTenants = [
   Tenant(
     id: 'ardent',
@@ -106,12 +117,13 @@ const List<Tenant> kTenants = [
     subtitle: 'Logistics',
     color: Color(0xFF10600D),
   ),
-  Tenant(
-    id: 'ez_touch',
-    name: 'EZ Touch',
-    subtitle: 'Touch Solutions',
-    color: Color(0xFFFE0002),
-  ),
+  // EZ Touch is not included yet — re-enable when it's onboarded.
+  // Tenant(
+  //   id: 'ez_touch',
+  //   name: 'EZ Touch',
+  //   subtitle: 'Touch Solutions',
+  //   color: Color(0xFFFE0002),
+  // ),
   Tenant(
     id: 'rmd',
     name: 'Real Modern Design',

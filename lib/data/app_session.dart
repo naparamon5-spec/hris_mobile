@@ -14,6 +14,7 @@ import 'inbox_badges.dart';
 import 'notifications/push_service.dart';
 import 'security_state.dart';
 import 'session_store.dart';
+import 'tenant_cache.dart';
 import 'tenants.dart';
 
 /// The signed-in user's role. Elevated roles (manager, department head,
@@ -259,12 +260,9 @@ class AppSession extends ChangeNotifier {
     // company picker.
     final lastTenantId = await _store.readTenantId();
     if (lastTenantId != null) {
-      for (final t in kTenants) {
-        if (t.id == lastTenantId) {
-          tenant = t;
-          break;
-        }
-      }
+      // Cached backend list first, so backend-only companies are remembered.
+      final t = await TenantCache.instance.findById(lastTenantId);
+      if (t != null) tenant = t;
     }
     final bio = await _store.readBiometric();
     if (bio != null) {
