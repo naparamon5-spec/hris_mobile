@@ -1059,11 +1059,6 @@ class _ApprovalCard extends StatelessWidget {
               Expanded(child: _kv(txnDateLabel, record.txnDate)),
             ],
           ),
-          // Call Approval: total hours filed (no approved-hours column).
-          if (type == 'call-approval' && record.appliedHours.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            _kv('Hours', '${record.appliedHours} hrs'),
-          ],
           if (showHours) ...[
             const SizedBox(height: 14),
             Row(
@@ -1458,7 +1453,14 @@ class _ApprovalActionSheet extends StatelessWidget {
                 'From – To',
                 _fromTo(record.requestRecord),
               ),
-              (Icons.schedule_rounded, 'Applied hours', record.appliedHours),
+              (
+                Icons.schedule_rounded,
+                'Applied hours',
+                // Call Approval reads as "9 hrs" instead of "9:00".
+                type == 'call-approval'
+                    ? (LeaveBalance.hrsLabel(record.appliedHours) ?? '')
+                    : record.appliedHours,
+              ),
               if (record.witnessedBy.isNotEmpty)
                 (Icons.visibility_outlined, 'Witness', record.witnessedBy),
               (

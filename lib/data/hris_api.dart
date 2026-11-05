@@ -898,6 +898,22 @@ class RequestRecord {
       '',
     );
 
+    // Call Approval: total of its rows' hours ("9:00") when the server
+    // doesn't send applied_hours itself.
+    String rowsHours() {
+      final rows = j['rows'];
+      if (rows is! List || rows.isEmpty) return '';
+      var total = 0.0;
+      for (final r in rows) {
+        if (r is Map) {
+          final v = r['no_of_hrs'] ?? r['hrs'];
+          total += v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
+        }
+      }
+      final mins = (total * 60).round();
+      return '${mins ~/ 60}:${(mins % 60).toString().padLeft(2, '0')}';
+    }
+
     return RequestRecord(
       id: id,
       no: sOr(
@@ -951,7 +967,8 @@ class RequestRecord {
             j['hours'] ??
             j['applied_hrs'] ??
             j['no_of_hours'] ??
-            j['duration'],
+            j['duration'] ??
+            rowsHours(),
       ),
       approvedHours: s(j['approved_hours'] ?? j['approved_hrs']),
       reason: rsn,
