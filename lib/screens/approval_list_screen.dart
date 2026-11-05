@@ -1059,6 +1059,11 @@ class _ApprovalCard extends StatelessWidget {
               Expanded(child: _kv(txnDateLabel, record.txnDate)),
             ],
           ),
+          // Call Approval: total hours filed (no approved-hours column).
+          if (type == 'call-approval' && record.appliedHours.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _kv('Hours', '${record.appliedHours} hrs'),
+          ],
           if (showHours) ...[
             const SizedBox(height: 14),
             Row(

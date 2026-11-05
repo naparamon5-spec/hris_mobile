@@ -47,9 +47,21 @@ class _CallRow {
   final customer = TextEditingController();
   final purpose = TextEditingController();
 
+  // Lunch break (12:00–1:00 PM) isn't counted, as on the website:
+  // 7:00 AM – 5:00 PM is 9 hrs, not 10.
+  static const _lunchStart = 12 * 60, _lunchEnd = 13 * 60;
+
   int get _minutes {
-    var mins = (to.hour * 60 + to.minute) - (from.hour * 60 + from.minute);
-    if (mins < 0) mins += 24 * 60;
+    final start = from.hour * 60 + from.minute;
+    var end = to.hour * 60 + to.minute;
+    if (end < start) end += 24 * 60; // overnight
+    var mins = end - start;
+    // Subtract the part of each day's lunch hour inside the range.
+    for (final day in [0, 24 * 60]) {
+      final ls = _lunchStart + day, le = _lunchEnd + day;
+      final overlap = (end < le ? end : le) - (start > ls ? start : ls);
+      if (overlap > 0) mins -= overlap;
+    }
     return mins;
   }
 
