@@ -127,6 +127,33 @@ class PayItem {
       );
 }
 
+/// Display sequence of a deduction, matching the HRIS website's payslip: loans,
+/// NHIP (PhilHealth), provident fund, HDMF (Pag-IBIG), SSS, withholding tax, then
+/// anything else. Loans are checked first so "SSS Loan" stays with the loans
+/// rather than the SSS premium.
+int deductionRank(String label) {
+  final l = label.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
+  if (RegExp(r'\bloans?\b').hasMatch(l)) return 0;
+  if (RegExp(r'\bnhip\b|phil ?health|\bphic\b').hasMatch(l)) return 1;
+  // "PRVIDENT" is how the payroll data spells it on the website.
+  if (RegExp(r'\bpro?vident\b').hasMatch(l)) return 2;
+  if (RegExp(r'\bhdmf\b|pag ?ibig').hasMatch(l)) return 3;
+  if (RegExp(r'\bsss\b').hasMatch(l)) return 4;
+  if (RegExp(r'\bw?tax\b').hasMatch(l)) return 5;
+  return 6;
+}
+
+/// [items] in the fixed deduction sequence; items of equal rank keep the order
+/// the server sent them in.
+List<PayItem> sortDeductions(List<PayItem> items) {
+  final indexed = items.indexed.toList()
+    ..sort((a, b) {
+      final byRank = deductionRank(a.$2.label) - deductionRank(b.$2.label);
+      return byRank != 0 ? byRank : a.$1 - b.$1;
+    });
+  return [for (final e in indexed) e.$2];
+}
+
 class Payslip {
   const Payslip({
     this.id,
@@ -163,7 +190,7 @@ class Payslip {
       deductions: j['deductions'] as String?,
       payDate: j['pay_date'] as String?,
       earnings: items(j['earnings']),
-      deductionItems: items(j['deduction_items']),
+      deductionItems: sortDeductions(items(j['deduction_items'])),
     );
   }
 }

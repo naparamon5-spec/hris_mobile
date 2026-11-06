@@ -176,7 +176,7 @@ class _BulkPayslipScreenState extends State<BulkPayslipScreen> {
 
       if (mounted) hideLoadingOverlay(context);
       if (mounted) {
-        await sharePdfBytes(context, bytes, 'Payslips_${slips.length}');
+        await savePdfBytes(context, bytes, 'Payslips_${slips.length}');
       }
     } on ApiException catch (e) {
       if (mounted) hideLoadingOverlay(context);

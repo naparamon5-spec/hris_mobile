@@ -3,15 +3,16 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
-    <!-- gal: saving images to the gallery needs this only on Android 9 and
-         below; API 29+ uses scoped storage (MediaStore) with no permission. -->
+    <!-- gal writes through a file path up to API 29, so it needs this permission
+         and requestLegacyExternalStorage (below) to save into an album there. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28"/>
+        android:maxSdkVersion="29"/>
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION"/>
     <application
         android:label="ANI HRIS"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

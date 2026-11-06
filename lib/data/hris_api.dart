@@ -404,14 +404,23 @@ class PayCalendarPeriod {
   final int? daysToPayday;
 
   /// Payday from the cutoff end: on/before the 15th → the 15th, otherwise the
-  /// 30th (February: its last day). Never the 31st. Applied here too so the
-  /// dashboard is right even if the server is running an older rule.
+  /// 30th (February: its last day). Never the 31st. A payday on a weekend is
+  /// paid early, on the Friday before. Applied here too so the dashboard is
+  /// right even if the server is running an older rule.
   static DateTime paydayFromCutoff(DateTime cutoffEnd) {
     final d = cutoffEnd.toUtc();
-    if (d.day <= 15) return DateTime.utc(d.year, d.month, 15);
+    if (d.day <= 15) return _fridayIfWeekend(DateTime.utc(d.year, d.month, 15));
     final lastDay = DateTime.utc(d.year, d.month + 1, 0).day;
-    return DateTime.utc(d.year, d.month, lastDay < 30 ? lastDay : 30);
+    return _fridayIfWeekend(
+      DateTime.utc(d.year, d.month, lastDay < 30 ? lastDay : 30),
+    );
   }
+
+  static DateTime _fridayIfWeekend(DateTime d) => switch (d.weekday) {
+    DateTime.saturday => DateTime.utc(d.year, d.month, d.day - 1),
+    DateTime.sunday => DateTime.utc(d.year, d.month, d.day - 2),
+    _ => d,
+  };
 
   factory PayCalendarPeriod.fromJson(Map<String, dynamic> j) {
     final cutoffTo = DateTime.parse(j['cutoff_to'] as String);
@@ -1259,23 +1268,34 @@ class HrisApi {
   /// the tenant (the dashboard hides the tile in that case).
   /// Real next payday for the signed-in tenant. We derive it from
   /// `/auth/pay-periods` (which already streams `fm_pay_calendar` rows) using
-  /// the same semi-monthly rule the server uses: cutoff ends on/before the
-  /// 15th → pay 15th same month; otherwise pay the last day of that month.
-  /// Falls back to the server-computed `/auth/pay-calendar/next` endpoint if
-  /// it is deployed (newer backends) so the mobile stays accurate even when
-  /// HR changes the rule.
+  /// [PayCalendarPeriod.paydayFromCutoff]. Prefers the server-computed
+  /// `/auth/pay-calendar/next` endpoint when it is deployed. That endpoint may
+  /// pick its period from the unshifted date, so on a weekend it can return a
+  /// payday already paid on Friday; that case uses the pay-periods list instead.
   Future<PayCalendarNext?> nextPayCalendar() async {
-    // Preferred path: dedicated endpoint when the backend has it.
+    PayCalendarNext? server;
     try {
       final m = _asMap(await _api.get('/auth/pay-calendar/next'));
       if (m['configured'] == true && m['next'] is Map) {
-        return PayCalendarNext.fromJson(m);
+        server = PayCalendarNext.fromJson(m);
       }
     } catch (_) {
       /* fall through to pay-periods */
     }
+    if (server == null) return _nextPayFromPeriods();
 
-    // Fallback: compute from the pay-periods list (always deployed).
+    final now = DateTime.now();
+    final today = DateTime.utc(now.year, now.month, now.day);
+    if (!server.next.payDate.isBefore(today)) return server;
+
+    final computed = await _nextPayFromPeriods();
+    return computed == null || computed.next.payDate.isBefore(today)
+        ? server
+        : computed;
+  }
+
+  /// Next payday computed from the pay-periods list (always deployed).
+  Future<PayCalendarNext?> _nextPayFromPeriods() async {
     try {
       final periods = await payPeriods();
       final now = DateTime.now();

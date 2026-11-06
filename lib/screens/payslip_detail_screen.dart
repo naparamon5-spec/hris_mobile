@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../data/app_session.dart';
@@ -8,6 +10,7 @@ import '../theme/app_colors.dart';
 import '../widgets/async_view.dart';
 import '../widgets/downloadable.dart';
 import '../widgets/secure_screen.dart';
+import '../widgets/ui.dart';
 
 /// Payslip detail, shown after the identity check. Renders the earnings and
 /// deductions breakdown inside a capture boundary so it can be saved/shared as
@@ -36,16 +39,24 @@ class _PayslipDetailScreenState extends State<PayslipDetailScreen> {
     final format = await _pickFormat();
     if (format == null || !mounted) return;
     setState(() => _downloading = true);
-    if (format == DownloadFormat.pdf) {
-      // Data-driven PDF laid out like the HRIS web payslip.
-      final bytes = await buildPayslipPdf(slip);
-      if (mounted) {
-        await sharePdfBytes(context, bytes, 'Payslip_${widget.id}');
+    try {
+      if (format == DownloadFormat.pdf) {
+        // Data-driven PDF laid out like the HRIS web payslip.
+        final bytes = await buildPayslipPdf(slip);
+        if (mounted) {
+          await savePdfBytes(context, bytes, 'Payslip_${widget.id}');
+        }
+      } else {
+        await captureAndShare(context, _boundaryKey, 'Payslip_${widget.id}');
       }
-    } else {
-      await captureAndShare(context, _boundaryKey, 'Payslip_${widget.id}');
+    } catch (e) {
+      if (mounted) {
+        await showToast(context, "We couldn't prepare the PDF.\n($e)",
+            isSuccess: false, title: 'Download Failed');
+      }
+    } finally {
+      if (mounted) setState(() => _downloading = false);
     }
-    if (mounted) setState(() => _downloading = false);
   }
 
   /// Ask whether to save the payslip as an image or a PDF.
@@ -92,7 +103,9 @@ class _PayslipDetailScreenState extends State<PayslipDetailScreen> {
                   color: AppColors.brandRed),
               title: const Text('PDF document',
                   style: TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Save to Files or print'),
+              subtitle: Text(Platform.isAndroid
+                  ? 'Save to Downloads'
+                  : 'Save to Files or print'),
               onTap: () => Navigator.pop(ctx, DownloadFormat.pdf),
             ),
             const SizedBox(height: 10),
@@ -121,7 +134,12 @@ class _PayslipDetailScreenState extends State<PayslipDetailScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                 child: RepaintBoundary(
                   key: _boundaryKey,
-                  child: _PayslipSheet(id: widget.id, slip: slip),
+                  // Opaque backing so the rounded corners aren't transparent
+                  // (they show up black in Android gallery apps).
+                  child: ColoredBox(
+                    color: AppColors.bg,
+                    child: _PayslipSheet(id: widget.id, slip: slip),
+                  ),
                 ),
               ),
             ),
