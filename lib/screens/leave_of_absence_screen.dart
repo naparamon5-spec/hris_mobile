@@ -547,25 +547,6 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
                                           color: AppColors.inkSoft,
                                         ),
                                       ),
-                                      const SizedBox(height: 14),
-                                      TextButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            final now = DateTime.now();
-                                            _dateRange = DateTimeRange(
-                                              start: DateTime(now.year, 1, 1),
-                                              end: DateTime(now.year, 12, 31),
-                                            );
-                                            _dateLabel = 'Year ${now.year}';
-                                            _selectedStatus = 'All';
-                                            _selectedType = 'All';
-                                            _searchQuery = '';
-                                          });
-                                        },
-                                        child: const Text(
-                                          'Reset Date Range & Filters',
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),

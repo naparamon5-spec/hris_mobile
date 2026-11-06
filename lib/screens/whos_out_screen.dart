@@ -262,9 +262,12 @@ class _WhosOutScreenState extends State<WhosOutScreen> {
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.3,
-                          color: (i == 0 || i == 6)
+                          // Sunday red, Saturday black.
+                          color: i == 0
                               ? AppColors.brandRed
-                              : AppColors.inkSoft,
+                              : i == 6
+                                  ? AppColors.ink
+                                  : AppColors.inkSoft,
                         ),
                       ),
                     ),
