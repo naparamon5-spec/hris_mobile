@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'app_session.dart';
@@ -21,10 +22,11 @@ enum UpdateAction {
 
 /// Result of [AppVersionGate.check]: the decision plus the store link to open.
 class UpdateDecision {
-  const UpdateDecision(this.action, {this.storeUrl});
+  const UpdateDecision(this.action, {this.storeUrl, this.latestVersion});
 
   final UpdateAction action;
   final String? storeUrl;
+  final String? latestVersion;
 
   static const none = UpdateDecision(UpdateAction.none);
 }
@@ -40,6 +42,15 @@ class AppVersionGate {
 
   /// The platform string the backend understands.
   static String get _platform => Platform.isAndroid ? 'android' : 'ios';
+
+  static const _storage = FlutterSecureStorage();
+  static const _softPromptKey = 'soft_update_prompt';
+
+  /// How long to stay quiet about a version after prompting for it. The App
+  /// Store can keep showing "Update" after the user has updated, so repeating
+  /// the prompt on every launch only sends them in circles. A newer version
+  /// still prompts straight away.
+  static const _softPromptCooldown = Duration(days: 3);
 
   /// When the last check completed. The resume re-check uses it to throttle
   /// quick app switches (e.g. copying an OTP) to one request per minute.
@@ -76,14 +87,44 @@ class AppVersionGate {
       if (_isBelow(current, min)) {
         return UpdateDecision(UpdateAction.forced, storeUrl: storeUrl);
       }
-      if (_isBelow(current, latest)) {
-        return UpdateDecision(UpdateAction.soft, storeUrl: storeUrl);
+      if (_isBelow(current, latest) && await _softPromptAllowed(latest)) {
+        return UpdateDecision(
+          UpdateAction.soft,
+          storeUrl: storeUrl,
+          latestVersion: latest,
+        );
       }
       return UpdateDecision.none;
     } catch (_) {
       // Never block launch on a failed check.
       return UpdateDecision.none;
     }
+  }
+
+  /// False while [latest] is inside its cooldown. A storage failure allows the
+  /// prompt: worst case it repeats.
+  Future<bool> _softPromptAllowed(String latest) async {
+    try {
+      final saved = (await _storage.read(key: _softPromptKey))?.split('|');
+      if (saved == null || saved.length != 2 || saved[0] != latest) return true;
+      final at = DateTime.tryParse(saved[1]);
+      return at == null || DateTime.now().difference(at) >= _softPromptCooldown;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Call when the soft prompt is really shown, so a skipped prompt doesn't
+  /// use up the cooldown.
+  Future<void> markSoftPromptShown(String? latest) async {
+    softShownThisLaunch = true;
+    if (latest == null) return;
+    try {
+      await _storage.write(
+        key: _softPromptKey,
+        value: '$latest|${DateTime.now().toIso8601String()}',
+      );
+    } catch (_) {}
   }
 
   /// Convenience: the tenant id chosen for the current session, if any.

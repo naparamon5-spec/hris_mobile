@@ -97,6 +97,7 @@ class _SplashScreenState extends State<SplashScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final ctx = context;
         if (ctx.mounted) {
+          AppVersionGate.instance.markSoftPromptShown(decision.latestVersion);
           showSoftUpdateDialog(ctx, storeUrl: decision.storeUrl);
         }
       });

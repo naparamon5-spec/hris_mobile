@@ -216,9 +216,9 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
       );
     } else if (decision.action == UpdateAction.soft &&
         !gate.softShownThisLaunch) {
-      gate.softShownThisLaunch = true;
       final overlayCtx = hrisNavigatorKey.currentState?.overlay?.context;
       if (overlayCtx != null) {
+        gate.markSoftPromptShown(decision.latestVersion);
         showSoftUpdateDialog(overlayCtx, storeUrl: decision.storeUrl);
       }
     }
