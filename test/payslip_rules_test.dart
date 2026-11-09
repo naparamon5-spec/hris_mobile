@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hris_mobile/data/hris_api.dart';
 import 'package:hris_mobile/data/mock_data.dart';
+import 'package:hris_mobile/data/ph_holidays.dart';
 
 void main() {
   group('sortDeductions', () {
@@ -67,7 +68,7 @@ void main() {
 
     test('weekday paydays stay put', () {
       expect(pay(2026, 10, 10), DateTime.utc(2026, 10, 15)); // Thu
-      expect(pay(2026, 11, 25), DateTime.utc(2026, 11, 30)); // Mon
+      expect(pay(2026, 10, 25), DateTime.utc(2026, 10, 30)); // Fri
     });
 
     test('Sunday moves back to Friday', () {
@@ -83,6 +84,49 @@ void main() {
     test('February uses its last day, then shifts', () {
       expect(pay(2026, 2, 25), DateTime.utc(2026, 2, 27)); // Sat 28th
       expect(pay(2027, 2, 25), DateTime.utc(2027, 2, 26)); // Sun 28th
+    });
+
+    test('a holiday moves to the last working day before it', () {
+      expect(pay(2026, 11, 25), DateTime.utc(2026, 11, 27)); // Bonifacio, Mon
+      expect(pay(2026, 12, 25), DateTime.utc(2026, 12, 29)); // Rizal, Wed
+      expect(pay(2027, 8, 25), DateTime.utc(2027, 8, 27)); // Heroes, Mon
+    });
+
+    test('keeps moving back through consecutive days off', () {
+      // Good Friday is Mar 30, 2029 and Maundy Thursday is Mar 29.
+      expect(pay(2029, 3, 25), DateTime.utc(2029, 3, 28));
+    });
+  });
+
+  group('isPhilippineHoliday', () {
+    test('matches the 2026 and 2027 proclamations', () {
+      for (final d in [
+        DateTime.utc(2026, 2, 17),
+        DateTime.utc(2026, 4, 2),
+        DateTime.utc(2026, 4, 3),
+        DateTime.utc(2026, 4, 4),
+        DateTime.utc(2026, 8, 31),
+        DateTime.utc(2026, 11, 2),
+        DateTime.utc(2026, 12, 24),
+        DateTime.utc(2027, 2, 6),
+        DateTime.utc(2027, 3, 25),
+        DateTime.utc(2027, 3, 26),
+        DateTime.utc(2027, 3, 27),
+        DateTime.utc(2027, 8, 30),
+      ]) {
+        expect(isPhilippineHoliday(d), isTrue, reason: '$d');
+      }
+    });
+
+    test('leaves working days alone', () {
+      for (final d in [
+        DateTime.utc(2026, 2, 25), // EDSA is a special working day
+        DateTime.utc(2026, 4, 5), // Easter Sunday itself
+        DateTime.utc(2026, 8, 24), // Not the last Monday of August
+        DateTime.utc(2026, 11, 13),
+      ]) {
+        expect(isPhilippineHoliday(d), isFalse, reason: '$d');
+      }
     });
   });
 }

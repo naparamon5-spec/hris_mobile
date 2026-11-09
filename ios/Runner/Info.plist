@@ -33,7 +33,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Allow camera access to take a profile photo.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Use Face ID to sign in to ANI HRIS.</string>
+	<string>Use Face ID to sign in to ANI HRIS and view your payslips.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow access to your photos to set a profile photo.</string>
 	<key>UIApplicationSceneManifest</key>

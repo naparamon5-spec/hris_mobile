@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
+import '../data/app_session.dart';
 import '../widgets/verify_identity.dart';
 import 'payslip_detail_screen.dart';
 import 'timesheet_detail_screen.dart';
@@ -317,7 +318,8 @@ class _PeriodCard extends StatelessWidget {
   final PeriodKind kind;
   final String title;
 
-  // Payslip is gated behind a password check; timesheet opens directly.
+  // Payslip is gated behind biometrics (when enabled in Settings) or a password
+  // check; timesheet opens directly.
   Future<void> _open(BuildContext context) async {
     if (kind == PeriodKind.payslip) {
       final ok = await verifyIdentity(
@@ -327,6 +329,8 @@ class _PeriodCard extends StatelessWidget {
         subject: 'Period ${entry.period}',
         subjectDetail:
             entry.dates.isEmpty ? null : entry.dates.join(' – '),
+        allowBiometrics: AppSession.instance.hasSavedCredentials,
+        biometricReason: "Verify it's you to view this payslip",
       );
       if (!ok || !context.mounted) return;
     }

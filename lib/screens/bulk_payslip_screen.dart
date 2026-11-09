@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
+import '../data/app_session.dart';
 import '../data/hris_api.dart';
 import '../data/mock_data.dart';
 import '../data/payslip_pdf.dart';
@@ -8,8 +9,9 @@ import '../theme/app_colors.dart';
 import '../widgets/downloadable.dart';
 import '../widgets/ui.dart';
 import '../widgets/secure_screen.dart';
+import '../widgets/verify_identity.dart';
 
-/// Bulk payslip download: pick multiple pay periods, confirm with a password,
+/// Bulk payslip download: pick multiple pay periods, confirm your identity,
 /// then export all selected payslips into one PDF (one per page) to save/print.
 class BulkPayslipScreen extends StatefulWidget {
   const BulkPayslipScreen({super.key, required this.periods});
@@ -139,33 +141,21 @@ class _BulkPayslipScreenState extends State<BulkPayslipScreen> {
   Future<void> _download() async {
     if (_busy || _selected.isEmpty) return;
 
-    // Password verification before releasing the payslips.
-    final password = await promptPassword(
+    // Identity check before releasing the payslips.
+    final verified = await verifyIdentity(
       context,
       title: 'Confirm to download',
       message:
           'Enter your password to download ${_selected.length} payslip(s).',
       buttonLabel: 'Confirm',
+      allowBiometrics: AppSession.instance.hasSavedCredentials,
+      biometricReason: "Verify it's you to download your payslips",
     );
-    if (password == null || !mounted) return;
+    if (!verified || !mounted) return;
 
     setState(() => _busy = true);
     showLoadingOverlay(context);
     try {
-      final ok = await HrisApi.instance.verifyPassword(password);
-      if (!ok) {
-        if (mounted) hideLoadingOverlay(context);
-        if (mounted) {
-          showToast(
-            context,
-            'The password you entered is incorrect.',
-            isSuccess: false,
-            title: 'Incorrect Password',
-          );
-        }
-        return;
-      }
-
       // Fetch the selected payslips (newest first, across all years).
       final ids = widget.periods.map(_idOf).where(_selected.contains).toList();
       final slips = <Payslip>[];

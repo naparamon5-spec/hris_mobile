@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
+import '../data/biometric_service.dart';
 import '../data/hris_api.dart';
 import 'ui.dart';
 
-/// Gates a sensitive screen behind a password check: prompts for the password,
-/// verifies it against the backend, and returns true only on success. Shows the
-/// blur loader while verifying and an error toast on a wrong password.
+/// Gates a sensitive screen behind an identity check and returns true only on
+/// success. With [allowBiometrics], the OS prompt (Face ID / fingerprint, with
+/// the device PIN or passcode as its own fallback) is tried first; if it fails
+/// or is cancelled, the password prompt below takes over. The password is
+/// verified against the backend, showing the blur loader while verifying and an
+/// error toast on a wrong password.
 Future<bool> verifyIdentity(
   BuildContext context, {
   String title = "We'll verify it's you",
@@ -14,10 +18,24 @@ Future<bool> verifyIdentity(
       'For your privacy, please confirm your password to view this information.',
   String? subject,
   String? subjectDetail,
+  String buttonLabel = 'Verify',
+  bool allowBiometrics = false,
+  String biometricReason = "Verify it's you to continue",
 }) async {
+  if (allowBiometrics) {
+    final caps = await BiometricService.instance.capabilities();
+    if (caps.deviceSupported &&
+        await BiometricService.instance
+            .authenticate(reason: biometricReason, biometricOnly: false)) {
+      return true;
+    }
+    if (!context.mounted) return false;
+  }
+
   final password = await promptPassword(context,
       title: title,
       message: message,
+      buttonLabel: buttonLabel,
       subject: subject,
       subjectDetail: subjectDetail);
   if (password == null || password.isEmpty || !context.mounted) return false;
@@ -38,6 +56,13 @@ Future<bool> verifyIdentity(
     if (context.mounted) {
       hideLoadingOverlay(context);
       await showToast(context, e.message, isSuccess: false, title: 'Verification Failed');
+    }
+    return false;
+  } catch (e) {
+    if (context.mounted) {
+      hideLoadingOverlay(context);
+      await showToast(context, "We couldn't verify your password.\n($e)",
+          isSuccess: false, title: 'Verification Failed');
     }
     return false;
   }

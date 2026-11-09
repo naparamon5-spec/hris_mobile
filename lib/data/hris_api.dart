@@ -2,6 +2,7 @@ import 'app_session.dart';
 import 'api_client.dart';
 import 'mock_data.dart';
 import 'tenants.dart';
+import 'ph_holidays.dart';
 
 // ---------------------------------------------------------------------------
 // Models that only the API needs (the four UI models live in mock_data.dart).
@@ -404,23 +405,26 @@ class PayCalendarPeriod {
   final int? daysToPayday;
 
   /// Payday from the cutoff end: on/before the 15th → the 15th, otherwise the
-  /// 30th (February: its last day). Never the 31st. A payday on a weekend is
-  /// paid early, on the Friday before. Applied here too so the dashboard is
-  /// right even if the server is running an older rule.
+  /// 30th (February: its last day). Never the 31st. A payday on a weekend or
+  /// Philippine holiday is paid early, on the last working day before it.
+  /// Applied here too so the dashboard is right even if the server is running
+  /// an older rule.
   static DateTime paydayFromCutoff(DateTime cutoffEnd) {
     final d = cutoffEnd.toUtc();
-    if (d.day <= 15) return _fridayIfWeekend(DateTime.utc(d.year, d.month, 15));
+    if (d.day <= 15) return _workingDayOnOrBefore(d.year, d.month, 15);
     final lastDay = DateTime.utc(d.year, d.month + 1, 0).day;
-    return _fridayIfWeekend(
-      DateTime.utc(d.year, d.month, lastDay < 30 ? lastDay : 30),
-    );
+    return _workingDayOnOrBefore(d.year, d.month, lastDay < 30 ? lastDay : 30);
   }
 
-  static DateTime _fridayIfWeekend(DateTime d) => switch (d.weekday) {
-    DateTime.saturday => DateTime.utc(d.year, d.month, d.day - 1),
-    DateTime.sunday => DateTime.utc(d.year, d.month, d.day - 2),
-    _ => d,
-  };
+  static DateTime _workingDayOnOrBefore(int year, int month, int day) {
+    var d = DateTime.utc(year, month, day);
+    while (d.weekday == DateTime.saturday ||
+        d.weekday == DateTime.sunday ||
+        isPhilippineHoliday(d)) {
+      d = DateTime.utc(d.year, d.month, d.day - 1);
+    }
+    return d;
+  }
 
   factory PayCalendarPeriod.fromJson(Map<String, dynamic> j) {
     final cutoffTo = DateTime.parse(j['cutoff_to'] as String);
@@ -1270,8 +1274,8 @@ class HrisApi {
   /// `/auth/pay-periods` (which already streams `fm_pay_calendar` rows) using
   /// [PayCalendarPeriod.paydayFromCutoff]. Prefers the server-computed
   /// `/auth/pay-calendar/next` endpoint when it is deployed. That endpoint may
-  /// pick its period from the unshifted date, so on a weekend it can return a
-  /// payday already paid on Friday; that case uses the pay-periods list instead.
+  /// pick its period from the unshifted date, so it can return a payday already
+  /// paid early; that case uses the pay-periods list instead.
   Future<PayCalendarNext?> nextPayCalendar() async {
     PayCalendarNext? server;
     try {
