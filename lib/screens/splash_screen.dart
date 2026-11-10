@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/app_session.dart';
@@ -14,6 +16,13 @@ import 'login_screen.dart';
 /// existing session / stored biometric token before routing.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  static final Completer<void> _routed = Completer<void>();
+
+  /// Completes once the splash has handed off to the first real screen. The
+  /// hand-off replaces the top route, so anything pushed earlier would be lost.
+  /// Never completes behind the forced-update wall.
+  static Future<void> get routed => _routed.future;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -90,6 +99,7 @@ class _SplashScreenState extends State<SplashScreen>
             FadeTransition(opacity: anim, child: child),
       ),
     );
+    if (!SplashScreen._routed.isCompleted) SplashScreen._routed.complete();
 
     // Soft prompt: after the destination is on screen, offer the update.
     if (decision.action == UpdateAction.soft) {

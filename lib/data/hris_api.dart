@@ -1107,6 +1107,23 @@ class HrisApi {
         },
       );
 
+  // Sets a new password using the token from a forgot-password email link.
+  Future<void> resetPassword({
+    required String token,
+    String? tenant,
+    required String next,
+    required String confirm,
+  }) =>
+      _api.post(
+        '/public/reset-password',
+        body: {
+          'token': token,
+          if (tenant != null && tenant.isNotEmpty) 'tenant': tenant,
+          'new_password': next,
+          'confirm_password': confirm,
+        },
+      );
+
   // ---- Profile ----
   Future<Profile> getProfile() async =>
       Profile.fromJson(_asMap(await _api.get('/auth/profile')));

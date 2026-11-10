@@ -6,5 +6,11 @@
 	     (Firebase's APNs .p8 key works for both sandbox and production.) -->
 	<key>aps-environment</key>
 	<string>production</string>
+	<!-- Universal Links for the password-reset email link. Host must match
+	     RESET_LINK_BASE_URL on the server. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:hris-api.ardentnetworks.com.ph</string>
+	</array>
 </dict>
 </plist>

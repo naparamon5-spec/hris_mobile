@@ -34,7 +34,31 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Password-reset email link: opens the app when verified, the
+                 website page otherwise. Host must match RESET_LINK_BASE_URL. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="hris-api.ardentnetworks.com.ph"
+                    android:pathPrefix="/reset-password"/>
+            </intent-filter>
+            <!-- Fallback: anihris://reset-password?token=xxx -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="anihris"/>
+            </intent-filter>
         </activity>
+        <!-- Let the app_links package handle deep links via its stream. Without
+             this, Flutter's built-in deep linking routes the URL through the
+             Navigator and fails with "No route defined". -->
+        <meta-data
+            android:name="flutter_deeplinking_enabled"
+            android:value="false" />
         <!-- FCM: default channel + icon for notifications delivered while the
              app is in the background/killed (must match kHrisChannel.id). -->
         <meta-data

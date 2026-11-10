@@ -363,8 +363,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 18),
                           // ---- Helper links (password flow only) ----
                           if (!showBiometric) ...[
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
                               children: [
                                 _linkButton(
                                   icon: Icons.lock_outline_rounded,
@@ -706,6 +706,7 @@ class _LoginScreenState extends State<LoginScreen> {
       label: Text(label),
       style: TextButton.styleFrom(
         foregroundColor: color,
+        minimumSize: const Size(0, 36),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
       ),

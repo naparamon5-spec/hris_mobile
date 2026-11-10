@@ -1,22 +1,28 @@
+import 'dart:async';
 import 'dart:ui';
 
+import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'data/app_session.dart';
 import 'data/app_version_gate.dart';
 import 'data/inbox_badges.dart';
 import 'data/security_state.dart';
 import 'data/notifications/push_service.dart';
+import 'data/reset_link.dart';
+import 'data/tenant_cache.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'screens/app_update_screen.dart';
 import 'screens/company_select_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'screens/splash_screen.dart';
 import 'widgets/brand.dart';
 import 'widgets/ui.dart';
@@ -124,16 +130,63 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   // Away at least this long → re-validate the session before revealing the UI.
   static const _revalidateAfter = Duration(seconds: 30);
 
+  static const _handledResetTokenKey = 'handled_reset_token';
+  StreamSubscription<Uri>? _linkSub;
+  bool _awaitingFirstLink = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // The stream also delivers the link that launched the app.
+    _linkSub = AppLinks().uriLinkStream.listen(
+          _openResetLink,
+          onError: (Object err) => debugPrint('Deep link error: $err'),
+        );
   }
 
   @override
   void dispose() {
+    _linkSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> _openResetLink(Uri uri) async {
+    final isFirstLink = _awaitingFirstLink;
+    _awaitingFirstLink = false;
+    final link = ResetLink.parse(uri);
+    if (link == null) return;
+
+    // Android redelivers the launch link when the app is reopened from recents,
+    // which would bring the reset screen back every time.
+    if (isFirstLink && await _markHandled(link.token)) return;
+
+    await SplashScreen.routed;
+    final tenantId = link.tenantId;
+    final company = tenantId != null
+        ? await TenantCache.instance.findById(tenantId)
+        : AppSession.instance.tenant;
+    hrisNavigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => ResetPasswordScreen(
+          token: link.token,
+          tenantId: tenantId,
+          company: company,
+        ),
+      ),
+      (route) => route.isFirst,
+    );
+  }
+
+  /// Records [token] as opened; true if it had already been.
+  Future<bool> _markHandled(String token) async {
+    const storage = FlutterSecureStorage();
+    try {
+      if (await storage.read(key: _handledResetTokenKey) == token) return true;
+      await storage.write(key: _handledResetTokenKey, value: token);
+    } catch (_) {}
+    return false;
   }
 
   @override

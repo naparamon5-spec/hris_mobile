@@ -63,13 +63,18 @@ class AppSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = this.accent ?? AppColors.brandRed;
     final enabled = onChanged != null;
-    final label = Text(
-      value ? 'ON' : 'OFF',
-      style: TextStyle(
-        fontSize: 10,
-        fontWeight: FontWeight.w900,
-        letterSpacing: 0.5,
-        color: value ? Colors.white : const Color(0xFF9A9DA6),
+    final label = Flexible(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          value ? 'ON' : 'OFF',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+            color: value ? Colors.white : const Color(0xFF9A9DA6),
+          ),
+        ),
       ),
     );
     return Semantics(

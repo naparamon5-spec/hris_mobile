@@ -36,6 +36,21 @@
 	<string>Use Face ID to sign in to ANI HRIS and view your payslips.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow access to your photos to set a profile photo.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.ardentnetworks.hris</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>anihris</string>
+			</array>
+		</dict>
+	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
