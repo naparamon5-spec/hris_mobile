@@ -363,28 +363,35 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 18),
                           // ---- Helper links (password flow only) ----
                           if (!showBiometric) ...[
-                            Wrap(
-                              alignment: WrapAlignment.spaceBetween,
+                            // Forgot password on the left, examination on the
+                            // right; each shrinks on narrow phones.
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                _linkButton(
-                                  icon: Icons.lock_outline_rounded,
-                                  label: 'Forgot your password?',
-                                  color: AppColors.inkSoft,
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ForgotPasswordScreen(
-                                        company: widget.company,
+                                Flexible(
+                                  child: _linkButton(
+                                    icon: Icons.lock_outline_rounded,
+                                    label: 'Forgot your password?',
+                                    color: AppColors.inkSoft,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => ForgotPasswordScreen(
+                                          company: widget.company,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                                _linkButton(
-                                  icon: Icons.assignment_outlined,
-                                  label: 'For examination?',
-                                  color: widget.company.color,
-                                  // Examination flow is hidden until the
-                                  // backend is ready (see ExaminationScreen).
-                                  onTap: () {},
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: _linkButton(
+                                    icon: Icons.assignment_outlined,
+                                    label: 'For examination?',
+                                    color: widget.company.color,
+                                    // Examination flow is hidden until the
+                                    // backend is ready (see ExaminationScreen).
+                                    onTap: () {},
+                                  ),
                                 ),
                               ],
                             ),

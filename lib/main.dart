@@ -12,6 +12,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'data/app_session.dart';
 import 'data/app_version_gate.dart';
+import 'data/fresh_install_reset.dart';
 import 'data/inbox_badges.dart';
 import 'data/security_state.dart';
 import 'data/notifications/push_service.dart';
@@ -31,6 +32,9 @@ final GlobalKey<NavigatorState> hrisNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Before anything reads secure storage: wipe what a previous install left
+  // in the iOS Keychain.
+  await FreshInstallReset.run();
   await _disablePasswordReveal();
   // Load the frontend .env (API base URL) before anything makes a request.
   // Best-effort — a missing/omitted file just falls back to the dart-define
