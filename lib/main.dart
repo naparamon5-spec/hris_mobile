@@ -18,6 +18,7 @@ import 'data/security_state.dart';
 import 'data/notifications/push_service.dart';
 import 'data/reset_link.dart';
 import 'data/tenant_cache.dart';
+import 'data/uptime.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'screens/app_update_screen.dart';
@@ -122,6 +123,8 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   // AppSession.backgroundTimeout (3 min), the user is signed out on return.
   // Just opening the multitask switcher (inactive) doesn't count.
   DateTime? _pausedAt;
+  // Uptime (ms since boot) when the app left; the user can't change it.
+  int? _pausedElapsed;
   // Privacy cover: while the app isn't in the foreground (incl. the multitask
   // switcher), the splash is painted over the UI so the switcher snapshot
   // never shows payslips or other personal data.
@@ -204,6 +207,8 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
       // applies if the app is killed while in the background).
       if (_pausedAt == null) {
         _pausedAt = DateTime.now();
+        _pausedElapsed = null;
+        Uptime.elapsedMs().then((v) => _pausedElapsed = v);
         AppSession.instance.markBackgrounded(_pausedAt);
       }
     } else if (state == AppLifecycleState.resumed) {
@@ -215,16 +220,30 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
       // leave it showing on a signed-out app.
       if (!AppSession.instance.isSignedIn) InboxBadges.instance.clear();
       if (since == null) return;
-      final away = DateTime.now().difference(since);
-      if (!AppSession.instance.isSignedIn || away < _revalidateAfter) return;
-      _coverWhile(() async {
+      final sinceElapsed = _pausedElapsed;
+      _pausedElapsed = null;
+      if (!AppSession.instance.isSignedIn) return;
+      final wallAway = DateTime.now().difference(since);
+      Future<void> check() async {
+        // The uptime clock decides; the wall clock can be changed by the user.
+        final away = await Uptime.awaySince(since, sinceElapsed);
         if (away >= AppSession.backgroundTimeout) {
           await _signOutToLogin();
-        } else {
+        } else if (away >= _revalidateAfter) {
           // Expired → onSessionExpired routes to login while still covered.
           await AppSession.instance.revalidate();
         }
-      });
+      }
+
+      if (!wallAway.isNegative && wallAway < _revalidateAfter) {
+        // Looks like a short absence: no loading cover, but still confirm it
+        // on the uptime clock (catches a clock set back while away).
+        Uptime.awaySince(since, sinceElapsed).then((away) {
+          if (away >= _revalidateAfter && mounted) _coverWhile(check);
+        });
+        return;
+      }
+      _coverWhile(check);
     }
   }
 

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/api_client.dart';
 import '../data/app_session.dart';
+import '../data/biometric_service.dart';
 import '../data/hris_api.dart';
 import '../data/security_state.dart';
 import '../theme/app_colors.dart';
@@ -1197,18 +1198,22 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
       accent: AppColors.success,
     );
     if (password == null || !mounted) return;
+    // Only real biometrics count: the phone's PIN is not accepted for sign-in.
+    final caps = await BiometricService.instance.capabilities();
+    if (!(caps.hasFace || caps.hasFingerprint || caps.hasIris)) {
+      if (mounted) {
+        showToast(context,
+            'Set up a fingerprint or face unlock on this phone first, then try again.',
+            isSuccess: false, title: 'No Biometrics');
+      }
+      return;
+    }
+    if (!mounted) return;
     showLoadingOverlay(context);
     try {
-      final ok = await HrisApi.instance.verifyPassword(password);
-      if (!ok) {
-        hideLoadingOverlay();
-        if (mounted) showToast(context, 'The password you entered is incorrect. Please try again.', isSuccess: false, title: 'Incorrect Password');
-        return;
-      }
-      // Set the preference before saving creds so a crash between the two can
-      // never leave creds with the flag off (which reconciliation would purge).
+      // The server checks the password and issues the biometric token.
+      await AppSession.instance.saveBiometricCredentials(password);
       _sec.setBiometricsEnabled(true);
-      await AppSession.instance.saveBiometricCredentials();
       hideLoadingOverlay();
       if (mounted) {
         showSuccessDialog(
@@ -1220,7 +1225,7 @@ class _SecurityPrivacyTabState extends State<_SecurityPrivacyTab> {
       }
     } on ApiException catch (e) {
       hideLoadingOverlay();
-      if (mounted) showToast(context, e.message, isSuccess: false, title: 'Error');
+      if (mounted) showToast(context, e.message, isSuccess: false, title: 'Not Enabled');
     }
   }
 

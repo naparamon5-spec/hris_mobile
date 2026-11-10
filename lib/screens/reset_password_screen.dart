@@ -63,8 +63,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           isSuccess: false, title: 'Mismatch');
       return;
     }
-    if (next.length < 6) {
-      showToast(context, 'New password must be at least 6 characters long.',
+    if (next.length < 8) {
+      showToast(context, 'New password must be at least 8 characters long.',
           isSuccess: false, title: 'Too Short');
       return;
     }

@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -17,6 +18,17 @@ import java.io.IOException
 class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Milliseconds since boot, including deep sleep. The user can't change
+        // it, so the 3-minute background sign-out can't be skipped by setting
+        // the clock back. Used by lib/data/uptime.dart.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CLOCK_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "elapsedRealtime") {
+                    result.success(SystemClock.elapsedRealtime())
+                } else {
+                    result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DOWNLOADS_CHANNEL)
             .setMethodCallHandler { call, result ->
                 if (call.method != "savePdf") {
@@ -85,5 +97,6 @@ class MainActivity : FlutterFragmentActivity() {
 
     private companion object {
         const val DOWNLOADS_CHANNEL = "com.ardentnetworks.hris/downloads"
+        const val CLOCK_CHANNEL = "com.ardentnetworks.hris/clock"
     }
 }

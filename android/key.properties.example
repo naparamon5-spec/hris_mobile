@@ -1,0 +1,11 @@
+# Copy to android/key.properties (ignored by git) and fill in. Keep the
+# keystore and its passwords out of the repo, in the team's password vault.
+#
+# Create the upload key once:
+#   keytool -genkeypair -v -keystore ~/ani-hris-upload.jks -keyalg RSA \
+#           -keysize 2048 -validity 10000 -alias upload
+#
+storeFile=C:/path/to/ani-hris-upload.jks
+storePassword=
+keyAlias=upload
+keyPassword=

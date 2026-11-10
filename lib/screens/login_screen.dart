@@ -3,6 +3,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../data/api_client.dart';
 import '../data/app_session.dart';
+import '../data/bio_vault.dart';
 import '../data/biometric_service.dart';
 import '../data/security_state.dart';
 import '../data/tenants.dart';
@@ -156,6 +157,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       hideLoadingOverlay(context);
       _goToHome();
+    } on BiometricCancelled {
+      // "Use password" / cancel on the OS prompt.
+      if (mounted) hideLoadingOverlay(context);
+      if (mounted) setState(() => _showPasswordFallback = true);
     } on TwoFactorRequiredException {
       if (!mounted) return;
       hideLoadingOverlay(context);
@@ -181,6 +186,12 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     if (_bioLoading) return;
+    // Token behind the biometric lock: reading it is the fingerprint/face
+    // check, so go straight there (one prompt, not two).
+    if (AppSession.instance.bioInVault) {
+      _completeBiometric();
+      return;
+    }
     setState(() => _bioLoading = true);
     final ok = await BiometricService.instance
         .authenticate(reason: 'Verify to $reason', biometricOnly: true);
@@ -193,22 +204,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Device PIN / pattern / passcode unlock via the OS credential prompt.
-  Future<void> _signInWithPin() async {
-    if (_bioLoading) return;
-    setState(() => _bioLoading = true);
-    final ok = await BiometricService.instance
-        .authenticate(reason: 'Enter your device PIN to sign in', biometricOnly: false);
-    if (!mounted) return;
-    setState(() => _bioLoading = false);
-    if (ok) {
-      _completeBiometric();
-    } else {
-      showToast(context, 'Could not verify your PIN. Please try again.', isSuccess: false, title: 'Failed');
-    }
-  }
-
-  /// Performs the actual backend sign-in after a biometric / PIN unlock.
+  /// Performs the actual backend sign-in after a biometric unlock. (The phone's
+  /// PIN is deliberately not accepted: it is much weaker than the HRIS
+  /// password, and anyone who has seen it could open payslips.)
   Future<void> _completeBiometric() async {
     if (_bioLoading) return;
     setState(() => _bioLoading = true);
@@ -443,7 +441,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// Biometric-first sign-in panel. Shows only what this device actually
-  /// exposes (fingerprint / face / iris) plus a device-PIN fallback.
+  /// exposes (fingerprint / face / iris); without any, it offers the password.
   Widget _biometricPanel() {
     // Still probing the device.
     if (!_capsLoaded) {
@@ -458,7 +456,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final savedId = AppSession.instance.savedUserId ?? '';
 
     // A single method, following the default fallback chain:
-    //   Face ID  ->  Fingerprint  ->  Iris  ->  PIN code
+    //   Face ID  ->  Fingerprint  ->  Iris  ->  password form
     // Only the best available one is shown.
     final Widget methodIcon;
     final String methodLabel;
@@ -481,11 +479,12 @@ class _LoginScreenState extends State<LoginScreen> {
       onMethodTap =
           _bioLoading ? null : () => _authenticateWithBiometrics(reason: 'sign in');
     } else {
+      // No biometrics enrolled on the phone (removed since enabling): the
+      // device PIN isn't accepted, so go to the password form.
       methodIcon =
-          Icon(Icons.pin_rounded, size: 46, color: AppColors.brandRed);
-      methodLabel = 'PIN code';
-      onMethodTap =
-          (_bioLoading || !caps.deviceSupported) ? null : _signInWithPin;
+          Icon(Icons.password_rounded, size: 46, color: AppColors.brandRed);
+      methodLabel = 'Password';
+      onMethodTap = () => setState(() => _showPasswordFallback = true);
     }
 
     return SizedBox(
@@ -529,8 +528,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-          // Gap so the ID sits up near the company logo while the biometric /
-          // PIN action drops lower into the screen.
+          // Gap so the ID sits up near the company logo while the biometric
+          // action drops lower into the screen.
           const SizedBox(height: 72),
         ],
         // ---- Single sign-in method (best available in the fallback chain) ----

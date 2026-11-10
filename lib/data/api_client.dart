@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
+import 'error_report.dart';
 
 /// Thrown for any failed API call. [statusCode] is 0 for network/timeout
 /// failures (no HTTP response). [message] is safe to show to the user.
@@ -62,11 +63,9 @@ class ApiClient {
       .timeout(_timeout));
 
   /// Runs [request], decodes JSON on success, and maps every failure mode to a
-  /// user-friendly [ApiException]. On a first 401/403 from an authenticated
-  /// route it tries [onUnauthorized] (token refresh) once and retries.
+  /// user-friendly [ApiException]. On a first 401 from an authenticated route
+  /// it tries [onUnauthorized] (token refresh) once and retries.
   ///
-  /// The backend's auth middleware answers an expired/invalid access token with
-  /// 403 (401 only when no token is sent), so both trigger the refresh.
   /// `/public/*` routes (login, refresh, forgot-password) never do: their 401 is
   /// a wrong password / bad code, not an expired session — and refreshing from
   /// inside `/public/refresh` would wait on itself.
@@ -85,12 +84,19 @@ class ApiClient {
       );
     } on TimeoutException {
       throw ApiException('The server took too long to respond. Try again.');
-    } catch (e) {
-      throw ApiException('Network error: $e');
+    } catch (e, st) {
+      reportError(e, st, 'http $path');
+      throw ApiException(
+          'Something went wrong while contacting the server. Please try again.');
     }
 
-    // Access token likely expired — try a one-time refresh, then retry.
-    if ((res.statusCode == 401 || res.statusCode == 403) &&
+    // Access token expired or its session ended — try a one-time refresh, then
+    // retry. The server answers token problems with 401; a 403 is a real
+    // "not allowed" and is shown as is. (Servers before the session store sent
+    // a bare 403 with no body for a bad token, so that still refreshes.)
+    final tokenProblem = res.statusCode == 401 ||
+        (res.statusCode == 403 && res.body.trim().isEmpty);
+    if (tokenProblem &&
         allowRetry &&
         accessToken != null &&
         !path.startsWith('/public/') &&

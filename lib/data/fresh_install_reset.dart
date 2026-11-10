@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'bio_vault.dart';
+
 /// Clears secure storage on a fresh install.
 ///
 /// iOS keeps Keychain items after the app is deleted, so a reinstall would
@@ -30,6 +32,7 @@ class FreshInstallReset {
         await const FlutterSecureStorage(
           aOptions: AndroidOptions(encryptedSharedPreferences: true),
         ).deleteAll();
+        await BioVault.instance.delete();
       }
       await dir.create(recursive: true);
       await marker.writeAsString('1');

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../data/app_session.dart';
+import '../data/error_report.dart';
 import '../data/hris_api.dart';
 import '../data/mock_data.dart';
 import '../data/payslip_pdf.dart';
@@ -49,9 +50,10 @@ class _PayslipDetailScreenState extends State<PayslipDetailScreen> {
       } else {
         await captureAndShare(context, _boundaryKey, 'Payslip_${widget.id}');
       }
-    } catch (e) {
+    } catch (e, st) {
+      reportError(e, st, 'payslip pdf');
       if (mounted) {
-        await showToast(context, "We couldn't prepare the PDF.\n($e)",
+        await showToast(context, "We couldn't prepare the PDF. Please try again.",
             isSuccess: false, title: 'Download Failed');
       }
     } finally {

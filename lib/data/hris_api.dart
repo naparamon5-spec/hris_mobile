@@ -1383,14 +1383,6 @@ class HrisApi {
   Future<Attendance> attendance() async =>
       Attendance.fromJson(_asMap(await _api.get('/auth/attendance')));
 
-  Future<AttendanceToday> clockIn() async => AttendanceToday.fromJson(
-    _asMap(_asMap(await _api.post('/auth/attendance/clock-in'))['data']),
-  );
-
-  Future<AttendanceToday> clockOut() async => AttendanceToday.fromJson(
-    _asMap(_asMap(await _api.post('/auth/attendance/clock-out'))['data']),
-  );
-
   // ---- Notifications ----
   Future<NotificationsResult> notifications() async {
     final res = _asMap(await _api.get('/auth/notifications'));

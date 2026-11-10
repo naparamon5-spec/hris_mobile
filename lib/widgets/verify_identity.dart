@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
 import '../data/biometric_service.dart';
+import '../data/error_report.dart';
 import '../data/hris_api.dart';
 import 'ui.dart';
 
 /// Gates a sensitive screen behind an identity check and returns true only on
-/// success. With [allowBiometrics], the OS prompt (Face ID / fingerprint, with
-/// the device PIN or passcode as its own fallback) is tried first; if it fails
-/// or is cancelled, the password prompt below takes over. The password is
+/// success. With [allowBiometrics], the OS biometric prompt (Face ID /
+/// fingerprint; the device PIN is not accepted) is tried first; if it fails or
+/// is cancelled, the HRIS password prompt below takes over. The password is
 /// verified against the backend, showing the blur loader while verifying and an
 /// error toast on a wrong password.
 Future<bool> verifyIdentity(
@@ -24,9 +25,11 @@ Future<bool> verifyIdentity(
 }) async {
   if (allowBiometrics) {
     final caps = await BiometricService.instance.capabilities();
-    if (caps.deviceSupported &&
+    final hasBiometric = caps.deviceSupported &&
+        (caps.hasFace || caps.hasFingerprint || caps.hasIris);
+    if (hasBiometric &&
         await BiometricService.instance
-            .authenticate(reason: biometricReason, biometricOnly: false)) {
+            .authenticate(reason: biometricReason, biometricOnly: true)) {
       return true;
     }
     if (!context.mounted) return false;
@@ -61,7 +64,8 @@ Future<bool> verifyIdentity(
   } catch (e) {
     if (context.mounted) {
       hideLoadingOverlay(context);
-      await showToast(context, "We couldn't verify your password.\n($e)",
+      reportError(e, null, 'verifyIdentity');
+      await showToast(context, "We couldn't verify your password. Please try again.",
           isSuccess: false, title: 'Verification Failed');
     }
     return false;

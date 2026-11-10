@@ -13,6 +13,24 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     disableBriefPasswordReveal(engineBridge)
+    registerUptimeClock(engineBridge)
+  }
+
+  /// Milliseconds since the phone booted, still counting while it sleeps
+  /// (Darwin's CLOCK_MONOTONIC does). Unlike the wall clock, the user can't
+  /// change it, so the 3-minute background sign-out can't be skipped by
+  /// setting the time back. Used by lib/data/uptime.dart.
+  private func registerUptimeClock(_ engineBridge: FlutterImplicitEngineBridge) {
+    guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "UptimeClock")
+    else { return }
+    FlutterMethodChannel(name: "com.ardentnetworks.hris/clock", binaryMessenger: registrar.messenger())
+      .setMethodCallHandler { call, result in
+        guard call.method == "elapsedRealtime" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        result(NSNumber(value: clock_gettime_nsec_np(CLOCK_MONOTONIC) / 1_000_000))
+      }
   }
 
   /// Flutter briefly shows the last typed character of a password on mobile.

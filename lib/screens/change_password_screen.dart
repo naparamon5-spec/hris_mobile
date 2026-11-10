@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
+import '../data/app_session.dart';
 import '../data/hris_api.dart';
+import '../data/security_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
 
@@ -47,8 +49,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       showToast(context, 'New password and confirmation do not match. Please try again.', isSuccess: false, title: 'Mismatch');
       return;
     }
-    if (next.length < 6) {
-      showToast(context, 'New password must be at least 6 characters long.', isSuccess: false, title: 'Too Short');
+    if (next.length < 8) {
+      showToast(context, 'New password must be at least 8 characters long.', isSuccess: false, title: 'Too Short');
       return;
     }
     setState(() => _saving = true);
@@ -56,6 +58,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     try {
       await HrisApi.instance
           .changePassword(current: current, next: next, confirm: confirm);
+      // The server ends other sessions and biometric enrollments on a password
+      // change; turn biometrics back on for this phone with the new password.
+      if (AppSession.instance.hasSavedCredentials) {
+        try {
+          await AppSession.instance.saveBiometricCredentials(next);
+        } catch (_) {
+          await AppSession.instance.clearBiometricCredentials(revokeOnServer: false);
+          SecurityState.instance.setBiometricsEnabled(false);
+        }
+      }
       if (!mounted) return;
       hideLoadingOverlay(context);
       await showSuccessDialog(
@@ -118,7 +130,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 16),
             _label('New Password'),
             const SizedBox(height: 7),
-            _field(_next, _obscureNext, 'At least 6 characters',
+            _field(_next, _obscureNext, 'At least 8 characters',
                 () => setState(() => _obscureNext = !_obscureNext)),
             const SizedBox(height: 16),
             _label('Confirm New Password'),

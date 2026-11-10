@@ -9,20 +9,25 @@ void main() {
   var authCalls = 0;
   late Object authResult;
   late bool supported;
+  late List<String> enrolled;
+  Map<dynamic, dynamic>? lastAuthArgs;
 
   setUp(() {
     authCalls = 0;
     authResult = true;
     supported = true;
+    enrolled = <String>['fingerprint'];
+    lastAuthArgs = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
       switch (call.method) {
         case 'isDeviceSupported':
           return supported;
         case 'getAvailableBiometrics':
-          return <String>[];
+          return enrolled;
         case 'authenticate':
           authCalls++;
+          lastAuthArgs = call.arguments as Map<dynamic, dynamic>?;
           if (authResult is PlatformException) throw authResult;
           return authResult;
       }
@@ -67,6 +72,24 @@ void main() {
     expect(authCalls, 1);
     expect(result, isTrue);
     expect(find.text(passwordTitle), findsNothing);
+  });
+
+  testWidgets('the prompt accepts biometrics only, not the phone PIN',
+      (tester) async {
+    final run = await pumpGate(tester, allowBiometrics: true, onResult: (_) {});
+    run();
+    await settle(tester);
+    expect(lastAuthArgs?['biometricOnly'], isTrue);
+  });
+
+  testWidgets('a phone with only a PIN (no biometrics) asks for the password',
+      (tester) async {
+    enrolled = <String>[];
+    final run = await pumpGate(tester, allowBiometrics: true, onResult: (_) {});
+    run();
+    await settle(tester);
+    expect(authCalls, 0);
+    expect(find.text(passwordTitle), findsOneWidget);
   });
 
   testWidgets('a failed biometric falls back to the password', (tester) async {

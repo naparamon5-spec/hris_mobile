@@ -11,7 +11,17 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import '../data/error_report.dart';
 import 'ui.dart';
+
+/// Removes a temporary payslip file once it has been shared or saved, so no
+/// copy of the payslip is left behind in the app's cache.
+Future<void> _deleteQuietly(String path) async {
+  try {
+    final f = File(path);
+    if (await f.exists()) await f.delete();
+  } catch (_) {}
+}
 
 /// Captured content can be saved/shared either as a PNG image or a PDF.
 enum DownloadFormat { image, pdf }
@@ -58,9 +68,10 @@ Future<bool> savePdfBytes(
       origin,
       shareText,
     );
-  } catch (e) {
+  } catch (e, st) {
+    reportError(e, st, 'savePdfBytes');
     if (context.mounted) {
-      await showToast(context, "We couldn't save the PDF.\n($e)",
+      await showToast(context, "We couldn't save the PDF. Please try again.",
           isSuccess: false, title: 'Download Failed');
     }
     return false;
@@ -99,6 +110,8 @@ Future<bool> _shareAndReport(
     text: shareText,
     sharePositionOrigin: origin,
   );
+  // The share sheet has copied what it needed by now.
+  await _deleteQuietly(file.path);
   if (!context.mounted) return result.status != ShareResultStatus.dismissed;
   switch (result.status) {
     case ShareResultStatus.success:
@@ -190,9 +203,14 @@ Future<bool> captureAndShare(
         return false;
       }
       await Gal.putImage(file.path, album: 'ANI HRIS');
+      await _deleteQuietly(file.path);
       if (context.mounted) {
-        await showToast(context, 'Saved to your Photos in the ANI HRIS album.',
-            isSuccess: true, title: 'Download Complete');
+        await showToast(
+            context,
+            'Saved to your Photos in the ANI HRIS album. Photos may be backed '
+            'up to your cloud account.',
+            isSuccess: true,
+            title: 'Download Complete');
       }
       return true;
     }
@@ -212,12 +230,13 @@ Future<bool> captureAndShare(
           isSuccess: false, title: 'Download Failed');
     }
     return false;
-  } catch (e) {
+  } catch (e, st) {
+    reportError(e, st, 'captureAndShare');
     if (context.mounted) {
       await showToast(
           context,
           "We couldn't prepare the file. If this keeps happening, fully "
-          "reopen the app and try again.\n($e)",
+          "reopen the app and try again.",
           isSuccess: false,
           title: 'Download Failed');
     }

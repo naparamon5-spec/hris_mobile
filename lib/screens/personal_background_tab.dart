@@ -290,6 +290,18 @@ class _PersonalBackgroundTabState extends State<PersonalBackgroundTab> {
       );
       return;
     }
+    // Reset links go to this email, so changing it needs the password.
+    if (changes.containsKey('email')) {
+      final password = await promptPassword(
+        context,
+        title: 'Confirm Email Change',
+        message: 'Enter your current password to change your email address.',
+        buttonLabel: 'Confirm',
+      );
+      if (password == null || password.isEmpty || !mounted) return;
+      changes['current_password'] = password;
+    }
+    if (!mounted) return;
     showLoadingOverlay(context);
     try {
       await HrisApi.instance.updatePersonalInfo(changes);

@@ -7,12 +7,17 @@
          and requestLegacyExternalStorage (below) to save into an album there. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29"/>
-    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION"/>
     <application
         android:label="ANI HRIS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
+        <!-- No backups: secure storage can't be restored on another phone (its
+             key stays in the old phone's Keystore), and a restored install
+             marker would skip the fresh-install wipe. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -44,13 +49,6 @@
                     android:scheme="https"
                     android:host="hris-api.ardentnetworks.com.ph"
                     android:pathPrefix="/reset-password"/>
-            </intent-filter>
-            <!-- Fallback: anihris://reset-password?token=xxx -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="anihris"/>
             </intent-filter>
         </activity>
         <!-- Let the app_links package handle deep links via its stream. Without

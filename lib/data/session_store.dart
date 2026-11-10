@@ -41,15 +41,30 @@ class SessionStore {
   // When the app last went to the background (epoch ms). Lets the 3-minute
   // background sign-out still apply if the app was killed while backgrounded.
   static const _kBackgroundedAt = 'backgrounded_at';
+  // Uptime (ms since boot) at the same moment; see lib/data/uptime.dart.
+  static const _kBackgroundedElapsed = 'backgrounded_elapsed';
+
+  /// Stored in place of the biometric token when the token itself lives in the
+  /// biometric-locked vault (lib/data/bio_vault.dart).
+  static const vaultMarker = '@biometric-vault';
 
   Future<DateTime?> readBackgroundedAt() async {
     final v = int.tryParse(await _read(_kBackgroundedAt) ?? '');
     return v == null ? null : DateTime.fromMillisecondsSinceEpoch(v);
   }
 
-  Future<void> saveBackgroundedAt(DateTime? at) => at == null
-      ? _storage.delete(key: _kBackgroundedAt)
-      : _write(_kBackgroundedAt, at.millisecondsSinceEpoch.toString());
+  Future<void> saveBackgroundedAt(DateTime? at, {int? elapsed}) async {
+    if (at == null) {
+      await _storage.delete(key: _kBackgroundedAt);
+      await _storage.delete(key: _kBackgroundedElapsed);
+      return;
+    }
+    await _write(_kBackgroundedAt, at.millisecondsSinceEpoch.toString());
+    await _write(_kBackgroundedElapsed, elapsed?.toString());
+  }
+
+  Future<int?> readBackgroundedElapsed() async =>
+      int.tryParse(await _read(_kBackgroundedElapsed) ?? '');
 
   Future<void> saveSession({
     required String? accessToken,
@@ -65,6 +80,10 @@ class SessionStore {
 
   /// Updates just the access token (after a refresh).
   Future<void> saveAccessToken(String? token) => _write(_kAccess, token);
+
+  /// Updates just the refresh token (the server hands out a new one on every
+  /// refresh; the previous one stops working).
+  Future<void> saveRefreshToken(String? token) => _write(_kRefresh, token);
 
   /// The last chosen company id, kept across sign-out so the app can return to
   /// that company's login screen (with the biometric panel) rather than the

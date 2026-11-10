@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
 import '../data/app_session.dart';
+import '../data/error_report.dart';
 import '../data/hris_api.dart';
 import '../data/mock_data.dart';
 import '../data/payslip_pdf.dart';
@@ -173,12 +174,13 @@ class _BulkPayslipScreenState extends State<BulkPayslipScreen> {
       if (mounted) {
         showToast(context, e.message, isSuccess: false, title: 'Error');
       }
-    } catch (e) {
+    } catch (e, st) {
+      reportError(e, st, 'bulk payslips');
       if (mounted) hideLoadingOverlay(context);
       if (mounted) {
         showToast(
           context,
-          "Couldn't prepare the payslips.\n($e)",
+          "Couldn't prepare the payslips. Please try again.",
           isSuccess: false,
           title: 'Download Failed',
         );
