@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -49,7 +51,15 @@ class BiometricService {
       // Leave defaults (all false) — the caller falls back to PIN/password.
     }
     return BiometricCapabilities(
-      hasFingerprint: types.contains(BiometricType.fingerprint),
+      // Most Android phones report only "strong"/"weak", not the sensor
+      // type. A strong biometric there is almost always the fingerprint, and
+      // it's what the biometric sign-in vault requires.
+      hasFingerprint:
+          types.contains(BiometricType.fingerprint) ||
+          (Platform.isAndroid &&
+              types.contains(BiometricType.strong) &&
+              !types.contains(BiometricType.face) &&
+              !types.contains(BiometricType.iris)),
       hasFace: types.contains(BiometricType.face),
       hasIris: types.contains(BiometricType.iris),
       canCheck: canCheck,

@@ -244,7 +244,10 @@ pw.Page _payslipPage(Payslip slip, _Emp emp) {
 
         pw.SizedBox(height: 20),
         pw.Center(
-          child: pw.Text('Date Generated : ${_fmtNow()}',
+          child: pw.Text(
+              (slip.payDate ?? '').trim().isNotEmpty
+                  ? 'Pay Date : ${slip.payDate!.trim()}'
+                  : 'Date Generated : ${_fmtNow()}',
               style: const pw.TextStyle(fontSize: 8.5, color: _soft)),
         ),
       ],
