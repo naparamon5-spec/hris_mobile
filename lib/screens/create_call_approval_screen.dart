@@ -330,6 +330,7 @@ class _CreateCallApprovalScreenState extends State<CreateCallApprovalScreen> {
               child: CircularProgressIndicator(color: AppColors.brandRed))
           : SafeArea(
         child: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
             const Text('Call Approval Date',
@@ -555,6 +556,8 @@ class _CreateCallApprovalScreenState extends State<CreateCallApprovalScreen> {
 
   Widget _inputBox(TextEditingController c, String hint) {
     return TextField(
+      textInputAction: TextInputAction.done,
+      onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
       controller: c,
       minLines: 3,
       maxLines: 5,

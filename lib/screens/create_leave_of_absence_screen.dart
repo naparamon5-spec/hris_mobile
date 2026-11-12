@@ -461,6 +461,7 @@ class _CreateLeaveOfAbsenceScreenState
           children: [
             Expanded(
               child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,6 +544,8 @@ class _CreateLeaveOfAbsenceScreenState
               // expanding TextFields inside nested Expanded columns drop
               // keystrokes on iOS when the keyboard reflows the layout.
               TextField(
+                textInputAction: TextInputAction.done,
+                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
                 controller: _reason,
                 minLines: 4,
                 maxLines: 8,

@@ -217,7 +217,7 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       // Keep the whole form on one screen — no scrolling.
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(_isEditing
             ? 'Edit ${widget.initialNo ?? widget.title}'
@@ -225,6 +225,7 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,6 +284,8 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
               ),
               const SizedBox(height: 7),
               TextField(
+                textInputAction: TextInputAction.done,
+                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
                 controller: _reason,
                 minLines: 4,
                 maxLines: 8,
