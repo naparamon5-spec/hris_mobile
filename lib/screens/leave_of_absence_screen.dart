@@ -236,6 +236,8 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
   void _showFilterSheet() {
     showPremiumBottomSheet(
       context,
+      // Grow to fit every chip instead of the default 9/16-height cap.
+      isScrollControlled: true,
       builder: (ctx) => _FilterOptionsSheet(
         currentStatus: _selectedStatus,
         currentType: _selectedType,
@@ -264,7 +266,7 @@ class _LeaveOfAbsenceScreenState extends State<LeaveOfAbsenceScreen> {
       if (_selectedStatus != 'All' && r.status != _selectedStatus) return false;
 
       // Type filter
-      if (_selectedType != 'All' && !r.type.contains(_selectedType)) {
+      if (_selectedType != 'All' && !_leaveTypeMatches(r.type, _selectedType)) {
         return false;
       }
 
@@ -692,6 +694,36 @@ class _DateRangeSelectionSheet extends StatelessWidget {
 // -----------------------------------------------------------------------------
 // FILTER OPTIONS SHEET (STATUS & LEAVE TYPE)
 // -----------------------------------------------------------------------------
+// The official leave types (same as the Create form). Records with any other
+// type still show under All.
+const _kLeaveTypes = <String>[
+  'Approved Leave',
+  'Approved UT',
+  'Vacation Leave',
+  'Sick Leave',
+  'Additional VL',
+  'Accumulated Leave',
+];
+
+bool _leaveTypeMatches(String recordType, String filter) {
+  final t = recordType.toLowerCase().trim();
+  switch (filter) {
+    case 'Approved Leave':
+      return t == 'approved leave';
+    case 'Approved UT':
+      return t.startsWith('approved ut');
+    case 'Vacation Leave':
+      return t == 'vl' || t.contains('vacation');
+    case 'Sick Leave':
+      return t == 'sl' || t.contains('sick');
+    case 'Additional VL':
+      return t.contains('additional') && t.contains('vl');
+    case 'Accumulated Leave':
+      return t.contains('accumulated');
+  }
+  return t == filter.toLowerCase().trim();
+}
+
 class _FilterOptionsSheet extends StatefulWidget {
   const _FilterOptionsSheet({
     required this.currentStatus,
@@ -713,7 +745,8 @@ class _FilterOptionsSheetState extends State<_FilterOptionsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Scrolls when the chips don't fit (small phones, many leave types).
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -788,7 +821,8 @@ class _FilterOptionsSheetState extends State<_FilterOptionsSheet> {
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            children: ['All', 'Approved Leave', 'Approved UT'].map((t) {
+            runSpacing: 4,
+            children: ['All', ..._kLeaveTypes].map((t) {
               final sel = _type == t;
               return ChoiceChip(
                 label: Text(t),
@@ -902,11 +936,10 @@ class _LoaCard extends StatelessWidget {
               Expanded(child: _kv('Approved date', record.approvedDate)),
             ],
           ),
-          // Reason on the LOA card (single-day records carry it; multi-day
-          // posted rows don't and stay hidden).
-          if ((record.reason ?? '').trim().isNotEmpty) ...[
+          // Leave type on the LOA card (the reason stays in the details).
+          if (record.type.trim().isNotEmpty) ...[
             const SizedBox(height: 14),
-            _kv('Reason', (record.reason ?? '').trim()),
+            _kv('Leave type', record.type.trim()),
           ],
         ],
       ),
