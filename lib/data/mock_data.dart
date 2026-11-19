@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'payday_text.dart';
 
 /// UI models for the HRIS app. Each has a `fromJson` factory that maps the
 /// backend response (see hris-server `data/seed.js`) into the shape the screens
@@ -71,12 +72,12 @@ class Employee {
   final Color color;
 
   factory Employee.fromJson(Map<String, dynamic> j) => Employee(
-        id: j['id'] as String?,
-        name: (j['name'] ?? '') as String,
-        role: (j['role'] ?? '') as String,
-        department: (j['department'] ?? '') as String,
-        status: (j['status'] ?? 'Active') as String,
-      );
+    id: j['id'] as String?,
+    name: (j['name'] ?? '') as String,
+    role: (j['role'] ?? '') as String,
+    department: (j['department'] ?? '') as String,
+    status: (j['status'] ?? 'Active') as String,
+  );
 }
 
 class LeaveRequest {
@@ -122,9 +123,9 @@ class PayItem {
   final String amount;
 
   factory PayItem.fromJson(Map<String, dynamic> j) => PayItem(
-        label: (j['label'] ?? '') as String,
-        amount: (j['amount'] ?? '') as String,
-      );
+    label: (j['label'] ?? '') as String,
+    amount: (j['amount'] ?? '') as String,
+  );
 }
 
 /// Display sequence of a deduction, matching the HRIS website's payslip: loans,
@@ -224,18 +225,18 @@ class TimesheetDay {
   final String remarks;
 
   factory TimesheetDay.fromJson(Map<String, dynamic> j) => TimesheetDay(
-        date: (j['date'] ?? '') as String,
-        dayType: (j['day_type'] ?? '') as String,
-        timeIn: (j['time_in'] ?? '') as String,
-        timeOut: (j['time_out'] ?? '') as String,
-        basicHrs: (j['basic_hrs'] as num?)?.toDouble() ?? 0,
-        basicNdHrs: (j['basic_nd_hrs'] as num?)?.toDouble() ?? 0,
-        otHrs: (j['ot_hrs'] as num?)?.toDouble() ?? 0,
-        ndOtHrs: (j['nd_ot_hrs'] as num?)?.toDouble() ?? 0,
-        leaveHrs: (j['leave_hrs'] as num?)?.toDouble() ?? 0,
-        totalHrs: (j['total_hrs'] as num?)?.toDouble() ?? 0,
-        remarks: (j['remarks'] ?? '') as String,
-      );
+    date: (j['date'] ?? '') as String,
+    dayType: (j['day_type'] ?? '') as String,
+    timeIn: (j['time_in'] ?? '') as String,
+    timeOut: (j['time_out'] ?? '') as String,
+    basicHrs: (j['basic_hrs'] as num?)?.toDouble() ?? 0,
+    basicNdHrs: (j['basic_nd_hrs'] as num?)?.toDouble() ?? 0,
+    otHrs: (j['ot_hrs'] as num?)?.toDouble() ?? 0,
+    ndOtHrs: (j['nd_ot_hrs'] as num?)?.toDouble() ?? 0,
+    leaveHrs: (j['leave_hrs'] as num?)?.toDouble() ?? 0,
+    totalHrs: (j['total_hrs'] as num?)?.toDouble() ?? 0,
+    remarks: (j['remarks'] ?? '') as String,
+  );
 }
 
 class TimesheetDetail {
@@ -298,29 +299,37 @@ class AppNotification {
   final String requestType;
   final String requestId;
 
-  factory AppNotification.fromJson(Map<String, dynamic> j) => AppNotification(
-        id: (j['id'] as num?)?.toInt(),
-        title: (j['title'] ?? '') as String,
-        body: (j['body'] ?? '') as String,
-        time: (j['time'] ?? '') as String,
-        icon: iconFromToken(j['icon'] as String?),
-        color: AppColors.defaultBrand,
-        unread: (j['unread'] ?? false) as bool,
-        kind: (j['kind'] ?? j['type'] ?? '') as String,
-        requestType: (j['request_type'] ?? '') as String,
-        requestId: '${j['request_id'] ?? j['id'] ?? ''}',
-      );
+  factory AppNotification.fromJson(Map<String, dynamic> j) {
+    // Payday notifications show the same payday as the dashboard tile.
+    final (title, body) = PaydayText.apply(
+      '${j['kind'] ?? j['type'] ?? ''}',
+      (j['title'] ?? '') as String,
+      (j['body'] ?? '') as String,
+    );
+    return AppNotification(
+      id: (j['id'] as num?)?.toInt(),
+      title: title,
+      body: body,
+      time: (j['time'] ?? '') as String,
+      icon: iconFromToken(j['icon'] as String?),
+      color: AppColors.defaultBrand,
+      unread: (j['unread'] ?? false) as bool,
+      kind: (j['kind'] ?? j['type'] ?? '') as String,
+      requestType: (j['request_type'] ?? '') as String,
+      requestId: '${j['request_id'] ?? j['id'] ?? ''}',
+    );
+  }
 
   AppNotification copyWith({bool? unread}) => AppNotification(
-        id: id,
-        title: title,
-        body: body,
-        time: time,
-        icon: icon,
-        color: color,
-        unread: unread ?? this.unread,
-        kind: kind,
-        requestType: requestType,
-        requestId: requestId,
-      );
+    id: id,
+    title: title,
+    body: body,
+    time: time,
+    icon: icon,
+    color: color,
+    unread: unread ?? this.unread,
+    kind: kind,
+    requestType: requestType,
+    requestId: requestId,
+  );
 }

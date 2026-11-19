@@ -306,8 +306,12 @@ class LeaveBalance {
   static String? hrsLabel(String? hhmm) {
     if (hhmm == null || hhmm.isEmpty) return null;
     final p = hhmm.split(':');
-    final h = (int.tryParse(p[0]) ?? 0) + (p.length > 1 ? (int.tryParse(p[1]) ?? 0) / 60 : 0);
-    final n = h == h.roundToDouble() ? h.toInt().toString() : h.toStringAsFixed(2).replaceFirst(RegExp(r'0$'), '');
+    final h =
+        (int.tryParse(p[0]) ?? 0) +
+        (p.length > 1 ? (int.tryParse(p[1]) ?? 0) / 60 : 0);
+    final n = h == h.roundToDouble()
+        ? h.toInt().toString()
+        : h.toStringAsFixed(2).replaceFirst(RegExp(r'0$'), '');
     return '$n hrs';
   }
 
@@ -375,6 +379,46 @@ class PayCalendarNext {
   final PayCalendarPeriod next;
   final PayCalendarPeriod? current;
 
+  /// The payday the dashboard shows on [today]: today itself when today is a
+  /// payday, otherwise the next one. The day after payday it moves on to the
+  /// next payday.
+  ///
+  /// Every payday follows [PayCalendarPeriod.paydayFromCutoff] (15th / 30th,
+  /// paid early on weekends and holidays), so the next payday is worked out
+  /// from [today] with that rule. The server and the pay-periods list only
+  /// say whether a calendar is configured and supply cutoff details; neither
+  /// can hold the tile on a payday already paid (the server may still return
+  /// the period just paid, and the pay-periods list lacks periods without
+  /// data). Returns null when neither source has a calendar.
+  static PayCalendarNext? resolve({
+    PayCalendarNext? server,
+    PayCalendarNext? computed,
+    required DateTime today,
+  }) {
+    final t = DateTime.utc(today.year, today.month, today.day);
+    final known = server ?? computed;
+    if (known == null) return null;
+
+    final upcoming = PayCalendarPeriod.upcoming(t, after: known.next);
+    // Keep the real period (code, cutoffs) when a source has this payday.
+    final match = [server, computed]
+        .whereType<PayCalendarNext>()
+        .map((c) => c.next)
+        .where((p) => p.payDate == upcoming.payDate)
+        .firstOrNull;
+    final next = match == null
+        ? upcoming
+        : PayCalendarPeriod(
+            payYear: match.payYear,
+            payPeriod: match.payPeriod,
+            payDate: match.payDate,
+            cutoffFrom: match.cutoffFrom,
+            cutoffTo: match.cutoffTo,
+            daysToPayday: upcoming.daysToPayday,
+          );
+    return PayCalendarNext(next: next, current: known.current);
+  }
+
   factory PayCalendarNext.fromJson(Map<String, dynamic> j) => PayCalendarNext(
     next: PayCalendarPeriod.fromJson(
       (j['next'] as Map).cast<String, dynamic>(),
@@ -426,6 +470,39 @@ class PayCalendarPeriod {
     return d;
   }
 
+  /// The first payday on/after [today] by the [paydayFromCutoff] rule, so on
+  /// payday itself it is today (0 days) and the day after it is the next one.
+  /// [after] is returned only if none is found, which can't happen in practice.
+  static PayCalendarPeriod upcoming(
+    DateTime today, {
+    required PayCalendarPeriod after,
+  }) {
+    final t = DateTime.utc(today.year, today.month, today.day);
+    // Half-month windows: 1–15 and 16–end of month. Start with today's window;
+    // its payday may already be past (paid early), then try the next ones.
+    var from = DateTime.utc(t.year, t.month, t.day <= 15 ? 1 : 16);
+    for (var i = 0; i < 6; i++) {
+      final to = from.day == 1
+          ? DateTime.utc(from.year, from.month, 15)
+          : DateTime.utc(from.year, from.month + 1, 0);
+      final pay = paydayFromCutoff(to);
+      if (!pay.isBefore(t)) {
+        return PayCalendarPeriod(
+          payYear: '${pay.year}',
+          payPeriod: '',
+          payDate: pay,
+          cutoffFrom: from,
+          cutoffTo: to,
+          daysToPayday: pay.difference(t).inDays,
+        );
+      }
+      from = from.day == 1
+          ? DateTime.utc(from.year, from.month, 16)
+          : DateTime.utc(from.year, from.month + 1, 1);
+    }
+    return after;
+  }
+
   factory PayCalendarPeriod.fromJson(Map<String, dynamic> j) {
     final cutoffTo = DateTime.parse(j['cutoff_to'] as String);
     final payDate = paydayFromCutoff(cutoffTo);
@@ -438,7 +515,7 @@ class PayCalendarPeriod {
       payDate: payDate,
       cutoffFrom: DateTime.parse(j['cutoff_from'] as String),
       cutoffTo: cutoffTo,
-      daysToPayday: j.containsKey('days_to_payday') ? (days < 0 ? 0 : days) : null,
+      daysToPayday: days < 0 ? 0 : days,
     );
   }
 }
@@ -1113,16 +1190,15 @@ class HrisApi {
     String? tenant,
     required String next,
     required String confirm,
-  }) =>
-      _api.post(
-        '/public/reset-password',
-        body: {
-          'token': token,
-          if (tenant != null && tenant.isNotEmpty) 'tenant': tenant,
-          'new_password': next,
-          'confirm_password': confirm,
-        },
-      );
+  }) => _api.post(
+    '/public/reset-password',
+    body: {
+      'token': token,
+      if (tenant != null && tenant.isNotEmpty) 'tenant': tenant,
+      'new_password': next,
+      'confirm_password': confirm,
+    },
+  );
 
   // ---- Profile ----
   Future<Profile> getProfile() async =>
@@ -1293,7 +1369,10 @@ class HrisApi {
   /// `/auth/pay-calendar/next` endpoint when it is deployed. That endpoint may
   /// pick its period from the unshifted date, so it can return a payday already
   /// paid early; that case uses the pay-periods list instead.
-  Future<PayCalendarNext?> nextPayCalendar() async {
+  Future<PayCalendarNext?> nextPayCalendar({DateTime? now}) async {
+    final n = now ?? DateTime.now();
+    final today = DateTime.utc(n.year, n.month, n.day);
+
     PayCalendarNext? server;
     try {
       final m = _asMap(await _api.get('/auth/pay-calendar/next'));
@@ -1303,24 +1382,18 @@ class HrisApi {
     } catch (_) {
       /* fall through to pay-periods */
     }
-    if (server == null) return _nextPayFromPeriods();
-
-    final now = DateTime.now();
-    final today = DateTime.utc(now.year, now.month, now.day);
-    if (!server.next.payDate.isBefore(today)) return server;
-
-    final computed = await _nextPayFromPeriods();
-    return computed == null || computed.next.payDate.isBefore(today)
-        ? server
-        : computed;
+    final computed = await _nextPayFromPeriods(today);
+    return PayCalendarNext.resolve(
+      server: server,
+      computed: computed,
+      today: today,
+    );
   }
 
   /// Next payday computed from the pay-periods list (always deployed).
-  Future<PayCalendarNext?> _nextPayFromPeriods() async {
+  Future<PayCalendarNext?> _nextPayFromPeriods(DateTime today) async {
     try {
       final periods = await payPeriods();
-      final now = DateTime.now();
-      final today = DateTime.utc(now.year, now.month, now.day);
 
       DateTime paydayFromCutoff(DateTime cutoffEnd) =>
           PayCalendarPeriod.paydayFromCutoff(cutoffEnd);

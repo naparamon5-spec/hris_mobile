@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../payday_text.dart';
 import 'notification_routes.dart';
 
 /// Push notifications via Firebase Cloud Messaging — mirrors eforward_app's
@@ -30,7 +31,8 @@ const AndroidNotificationChannel kHrisChannel = AndroidNotificationChannel(
   enableVibration: true,
 );
 
-final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin _local =
+    FlutterLocalNotificationsPlugin();
 
 /// TOP-LEVEL background handler — Firebase runs this in its own isolate when the
 /// app is terminated. Must be a top-level / static function.
@@ -38,6 +40,9 @@ final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin()
 Future<void> hrisFcmBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   if (Platform.isIOS) return; // APNs already displayed it.
+  // A push with a notification payload is already shown by Android itself
+  // while the app is in the background; showing it here too doubles it.
+  if (message.notification != null) return;
   await _local.initialize(
     const InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -45,7 +50,8 @@ Future<void> hrisFcmBackgroundHandler(RemoteMessage message) async {
   );
   await _local
       .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
+        AndroidFlutterLocalNotificationsPlugin
+      >()
       ?.createNotificationChannel(kHrisChannel);
   await PushService.showLocalNotification(message);
 }
@@ -80,14 +86,14 @@ class PushService {
       if (Platform.isAndroid) {
         await _local
             .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>()
+              AndroidFlutterLocalNotificationsPlugin
+            >()
             ?.createNotificationChannel(kHrisChannel);
         await _local.initialize(
           const InitializationSettings(
             android: AndroidInitializationSettings('@mipmap/ic_launcher'),
           ),
-          onDidReceiveNotificationResponse: (r) =>
-              _handlePayloadTap(r.payload),
+          onDidReceiveNotificationResponse: (r) => _handlePayloadTap(r.payload),
         );
       }
 
@@ -107,29 +113,35 @@ class PushService {
   }
 
   Future<void> _requestPermissions() async {
-    await FirebaseMessaging.instance
-        .requestPermission(alert: true, badge: true, sound: true);
+    await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
     if (Platform.isAndroid) {
       await Permission.notification.request();
     }
     if (Platform.isIOS) {
       await FirebaseMessaging.instance
           .setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+            alert: true,
+            badge: true,
+            sound: true,
+          );
     }
   }
 
   /// Show a system-tray notification (Android only; iOS displays via APNs).
   static Future<void> showLocalNotification(RemoteMessage message) async {
     if (Platform.isIOS) return;
-    final title =
-        message.notification?.title ?? message.data['title'] ?? 'ANI HRIS';
-    final body = message.notification?.body ??
-        message.data['body'] ??
-        'You have a new notification';
+    // Payday notifications show the same payday as the dashboard tile.
+    final (title, body) = PaydayText.apply(
+      '${message.data['type'] ?? message.data['kind'] ?? ''}',
+      message.notification?.title ?? message.data['title'] ?? 'ANI HRIS',
+      message.notification?.body ??
+          message.data['body'] ??
+          'You have a new notification',
+    );
     await _local.show(
       message.hashCode,
       title,
@@ -225,11 +237,13 @@ class PushService {
         if (apns == null) {
           // The iOS Simulator never issues an APNs token; only worry the user
           // when the app is running on a real device.
-          final isSimulator =
-              Platform.environment.containsKey('SIMULATOR_DEVICE_NAME');
+          final isSimulator = Platform.environment.containsKey(
+            'SIMULATOR_DEVICE_NAME',
+          );
           if (!isSimulator) {
             debugPrint(
-                'APNs token unavailable — on a real device this usually means the APNs .p8 key needs to be uploaded in Firebase.');
+              'APNs token unavailable — on a real device this usually means the APNs .p8 key needs to be uploaded in Firebase.',
+            );
           }
           return null;
         }

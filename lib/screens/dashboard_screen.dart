@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/app_session.dart';
@@ -96,10 +98,7 @@ class _TopBar extends StatelessWidget {
           // Switch to the Profile tab so the bottom nav stays visible, instead
           // of pushing a full-screen route over the shell.
           onTap: () => HomeShellScope.of(context)?.selectTab(3),
-          child: UserAvatar(
-            name: AppSession.instance.userName ?? '',
-            size: 44,
-          ),
+          child: UserAvatar(name: AppSession.instance.userName ?? '', size: 44),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -299,7 +298,60 @@ class _QA extends StatelessWidget {
 /// sourced from fm_pay_calendar via /auth/pay-calendar/next, so semi-monthly
 /// (Ardent), monthly, weekly, weekend-shifted, or holiday-shifted paydays all
 /// display accurately with no hardcoded 15th/30th assumption.
-class _TodayCard extends StatelessWidget {
+///
+/// Re-checks the payday when the date changes — at midnight while the app is
+/// open, or on resume from the background — so the day after payday it moves
+/// on to the next payday without needing a restart.
+class _TodayCard extends StatefulWidget {
+  @override
+  State<_TodayCard> createState() => _TodayCardState();
+}
+
+class _TodayCardState extends State<_TodayCard> with WidgetsBindingObserver {
+  late Future<PayCalendarNext?> _future;
+  late DateTime _day;
+  Timer? _midnight;
+  PayCalendarNext? _last; // shown while a day-change reload is in flight
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _midnight?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _today() != _day) {
+      setState(_load);
+    }
+  }
+
+  static DateTime _today() {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day);
+  }
+
+  void _load() {
+    _day = _today();
+    _future = HrisApi.instance.nextPayCalendar();
+    _midnight?.cancel();
+    final next = DateTime(_day.year, _day.month, _day.day + 1);
+    _midnight = Timer(
+      next.difference(DateTime.now()) + const Duration(seconds: 1),
+      () {
+        if (mounted) setState(_load);
+      },
+    );
+  }
+
   static const _months = [
     'Jan',
     'Feb',
@@ -327,8 +379,11 @@ class _TodayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<PayCalendarNext?>(
-      future: HrisApi.instance.nextPayCalendar(),
-      builder: (context, snap) => _build(snap.data),
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.done) _last = snap.data;
+        return _build(snap.data ?? _last);
+      },
     );
   }
 
