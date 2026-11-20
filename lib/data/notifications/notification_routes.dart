@@ -134,12 +134,16 @@ Widget? screenForNotification({
   final resolvedType = inferRequestType(requestType, title, body);
   final resolvedNo = inferRequestNo(requestId, title, body);
   final targetId = (requestId ?? '').trim().isNotEmpty ? requestId!.trim() : resolvedNo;
+  // Approvals tasks are keyed "type#id"; give the exact key when we know both
+  // so the right record opens (a bare number can match another type's record).
+  String? taskKey(String type) =>
+      type.isNotEmpty && targetId.isNotEmpty ? '$type#$targetId' : null;
 
   if (resolvedKind == 'pending_witness') {
     return ApprovalsCenterScreen(
       module: 'witness',
       scope: 'pending',
-      initialTaskId: targetId,
+      initialTaskId: taskKey('manual-ad'),
       initialRecordId: targetId,
     );
   }
@@ -148,7 +152,7 @@ Widget? screenForNotification({
     return ApprovalsCenterScreen(
       module: resolvedType == 'other' ? 'requests' : 'records',
       scope: 'pending',
-      initialTaskId: targetId,
+      initialTaskId: taskKey(resolvedType),
       initialRecordId: targetId,
     );
   }

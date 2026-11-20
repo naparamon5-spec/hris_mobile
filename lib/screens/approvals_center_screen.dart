@@ -122,17 +122,26 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
       return;
     }
 
+    // The exact "type#id" key wins. Only without one fall back to the number,
+    // and then only exact matches: a bare id / "contains" check picked another
+    // type's record with the same (or a partly matching) number, e.g. CA#9 for
+    // MAD#9, or anything whose number appears inside "24934".
     ApprovalTask? match;
-    for (final t in _tasks) {
-      if ((targetKey != null && targetKey.isNotEmpty && t.key == targetKey) ||
-          (targetId != null &&
-              targetId.isNotEmpty &&
-              (t.id.toString() == targetId ||
-                  (t.no.isNotEmpty &&
-                      (t.no.toLowerCase() == targetId.toLowerCase() ||
-                          targetId.contains(t.no)))))) {
-        match = t;
-        break;
+    if (targetKey != null && targetKey.isNotEmpty) {
+      for (final t in _tasks) {
+        if (t.key == targetKey) {
+          match = t;
+          break;
+        }
+      }
+    } else if (targetId != null && targetId.isNotEmpty) {
+      final want = targetId.toLowerCase();
+      for (final t in _tasks) {
+        if (t.id.toString() == targetId ||
+            (t.no.isNotEmpty && t.no.toLowerCase() == want)) {
+          match = t;
+          break;
+        }
       }
     }
 

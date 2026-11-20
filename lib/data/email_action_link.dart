@@ -82,15 +82,18 @@ class EmailActionLinks {
             ? 'Approved as witness'
             : (approved ? 'Request approved' : 'Request disapproved'),
         message: '${result['message'] ?? ''}',
-        okLabel: 'View request',
+        okLabel: witness ? 'OK' : 'View request',
       );
     }
+    // Like the website, a witness can't view the MAD once they've decided it
+    // (it has moved on to the department head, or ended) — just the message.
+    if (witness) return;
 
-    // Where the decided request now lives for this approver.
+    // Where the decided request now lives for this approver, with its new
+    // status: the approver's / HR's Decided list.
     final Widget screen = ApprovalsCenterScreen(
-      module: type == 'other' ? 'requests' : (witness ? 'witness' : 'records'),
-      // A witness only has a pending list; the MAD has moved on to the head.
-      scope: witness ? 'pending' : 'history',
+      module: type == 'other' ? 'requests' : 'records',
+      scope: 'history',
       initialTaskId: '$type#$id',
       initialRecordId: id,
     );
