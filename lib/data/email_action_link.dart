@@ -74,23 +74,22 @@ class EmailActionLinks {
     final witness = result['witness'] == true;
     final approved = result['action'] == 'approve';
 
-    final ctx = nav.currentContext;
-    if (ctx != null && ctx.mounted) {
-      await showSuccessDialog(
-        ctx,
-        title: witness && approved
-            ? 'Approved as witness'
-            : (approved ? 'Request approved' : 'Request disapproved'),
-        message: '${result['message'] ?? ''}',
-        okLabel: witness ? 'OK' : 'View request',
-      );
+    // Like the website, a MAD witness can't view the MAD once they've decided
+    // it (it has moved on to the department head, or ended) — just confirm.
+    if (witness) {
+      final ctx = nav.currentContext;
+      if (ctx != null && ctx.mounted) {
+        await showSuccessDialog(
+          ctx,
+          title: approved ? 'Approved as witness' : 'Disapproved as witness',
+          message: '${result['message'] ?? ''}',
+        );
+      }
+      return;
     }
-    // Like the website, a witness can't view the MAD once they've decided it
-    // (it has moved on to the department head, or ended) — just the message.
-    if (witness) return;
 
-    // Where the decided request now lives for this approver, with its new
-    // status: the approver's / HR's Decided list.
+    // Everyone else goes straight to the request's details in their Decided
+    // list, which show its updated status (no extra dialog to tap through).
     final Widget screen = ApprovalsCenterScreen(
       module: type == 'other' ? 'requests' : 'records',
       scope: 'history',
