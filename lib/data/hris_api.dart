@@ -1547,65 +1547,30 @@ class HrisApi {
     return RequestRecord.fromJson(_asMap(data));
   }
 
-  Future<void> sendForApproval(String type, int id) async {
-    try {
-      await _api.post('/auth/requests/$type/$id/send');
-    } catch (_) {
-      await _api.put(
-        '/auth/requests/$type/$id',
-        body: {'status': 'For Approval'},
-      );
-    }
-  }
+  // Record actions. Errors are surfaced as-is: the server's message (e.g. "You
+  // don't have any approver, please contact MIS 5106") is what the user needs.
+  Future<void> _recordAction(String type, int id, String action) =>
+      _api.post('/auth/requests/$type/$id/$action');
 
-  Future<void> reverseRecord(String type, int id) async {
-    try {
-      await _api.post('/auth/requests/$type/$id/reverse');
-    } catch (_) {
-      await _api.put('/auth/requests/$type/$id', body: {'status': 'Reversed'});
-    }
-  }
+  Future<void> sendForApproval(String type, int id) =>
+      _recordAction(type, id, 'send');
 
-  Future<void> resendRecord(String type, int id) async {
-    try {
-      await _api.post('/auth/requests/$type/$id/resend');
-    } catch (_) {
-      await _api.put(
-        '/auth/requests/$type/$id',
-        body: {'status': 'For Approval'},
-      );
-    }
-  }
+  Future<void> reverseRecord(String type, int id) =>
+      _recordAction(type, id, 'reverse');
 
-  Future<void> cancelRecord(String type, int id) async {
-    try {
-      await _api.post('/auth/requests/$type/$id/cancel');
-    } catch (_) {
-      await _api.put('/auth/requests/$type/$id', body: {'status': 'Cancelled'});
-    }
-  }
+  Future<void> resendRecord(String type, int id) =>
+      _recordAction(type, id, 'resend');
+
+  Future<void> cancelRecord(String type, int id) =>
+      _recordAction(type, id, 'cancel');
 
   /// Approve a request record (LOA / Call Approval / Manual A-D / Overtime).
-  /// Posts the decision + approver stamp to the record's real table.
-  Future<void> approveRecord(String type, int id) async {
-    try {
-      await _api.post('/auth/requests/$type/$id/approve');
-    } catch (_) {
-      await _api.put('/auth/requests/$type/$id', body: {'status': 'Approved'});
-    }
-  }
+  Future<void> approveRecord(String type, int id) =>
+      _recordAction(type, id, 'approve');
 
-  /// Disapprove (reject) a request record, stamping the approver + decision.
-  Future<void> disapproveRecord(String type, int id) async {
-    try {
-      await _api.post('/auth/requests/$type/$id/disapprove');
-    } catch (_) {
-      await _api.put(
-        '/auth/requests/$type/$id',
-        body: {'status': 'Disapproved'},
-      );
-    }
-  }
+  /// Disapprove (reject) a request record.
+  Future<void> disapproveRecord(String type, int id) =>
+      _recordAction(type, id, 'disapprove');
 
   // ---- Approvals (approver roles only) ----
   Future<List<Approval>> approvals({String status = ''}) async {
