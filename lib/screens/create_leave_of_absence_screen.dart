@@ -330,6 +330,7 @@ class _CreateLeaveOfAbsenceScreenState
       double.parse((_appliedMinutes / 60).toStringAsFixed(2));
 
   Future<void> _pickLeaveType() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _active = 'type');
     final picked = await showPremiumBottomSheet<String>(
       context,
@@ -341,6 +342,7 @@ class _CreateLeaveOfAbsenceScreenState
   }
 
   Future<void> _pick(bool isFrom) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _active = isFrom ? 'from' : 'to');
     final base = isFrom ? _from : _to;
     final date = await showDatePicker(
@@ -387,6 +389,7 @@ class _CreateLeaveOfAbsenceScreenState
       ][m - 1];
 
   Future<void> _submit() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (_submitting) return;
     // The invalid range is already flagged inline (red fields), so just block
     // the submit quietly — no sliding toast.
@@ -545,7 +548,10 @@ class _CreateLeaveOfAbsenceScreenState
               // keystrokes on iOS when the keyboard reflows the layout.
               TextField(
                 textInputAction: TextInputAction.done,
-                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                // No onTapOutside unfocus: it closed the keyboard on touch-down,
+                // and on iPad iOS then cancels that touch — so the first tap on
+                // Save Changes / Create did nothing. The buttons and pickers
+                // close the keyboard themselves once their tap has gone through.
                 controller: _reason,
                 minLines: 4,
                 maxLines: 8,
