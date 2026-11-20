@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../data/email_action_link.dart';
 import '../data/inbox_badges.dart';
 import '../data/notifications/push_service.dart';
 import 'dashboard_screen.dart';
@@ -54,12 +55,14 @@ class _HomeShellState extends State<HomeShell> {
     super.initState();
     InboxBadges.instance.refresh();
     PushService.attachHome();
+    EmailActionLinks.attachHome();
     _selectFromOutside = _select;
   }
 
   @override
   void dispose() {
     PushService.detachHome();
+    EmailActionLinks.detachHome();
     if (_selectFromOutside == _select) _selectFromOutside = null;
     super.dispose();
   }

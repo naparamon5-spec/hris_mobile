@@ -16,6 +16,7 @@ import 'data/fresh_install_reset.dart';
 import 'data/inbox_badges.dart';
 import 'data/security_state.dart';
 import 'data/notifications/push_service.dart';
+import 'data/email_action_link.dart';
 import 'data/reset_link.dart';
 import 'data/tenant_cache.dart';
 import 'data/uptime.dart';
@@ -138,6 +139,7 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   static const _revalidateAfter = Duration(seconds: 30);
 
   static const _handledResetTokenKey = 'handled_reset_token';
+  static const _handledActionTokenKey = 'handled_email_action_token';
   StreamSubscription<Uri>? _linkSub;
   bool _awaitingFirstLink = true;
 
@@ -162,12 +164,23 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   Future<void> _openResetLink(Uri uri) async {
     final isFirstLink = _awaitingFirstLink;
     _awaitingFirstLink = false;
+
+    // Approve / Disapprove link from an approval email.
+    final actionToken = EmailActionLinks.tokenFrom(uri);
+    if (actionToken != null) {
+      // Same Android relaunch redelivery as reset links below.
+      if (isFirstLink && await _markHandled(actionToken, _handledActionTokenKey)) return;
+      await SplashScreen.routed;
+      await EmailActionLinks.handle(actionToken, hrisNavigatorKey);
+      return;
+    }
+
     final link = ResetLink.parse(uri);
     if (link == null) return;
 
     // Android redelivers the launch link when the app is reopened from recents,
     // which would bring the reset screen back every time.
-    if (isFirstLink && await _markHandled(link.token)) return;
+    if (isFirstLink && await _markHandled(link.token, _handledResetTokenKey)) return;
 
     await SplashScreen.routed;
     final tenantId = link.tenantId;
@@ -186,12 +199,12 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
     );
   }
 
-  /// Records [token] as opened; true if it had already been.
-  Future<bool> _markHandled(String token) async {
+  /// Records [token] as opened under [key]; true if it had already been.
+  Future<bool> _markHandled(String token, String key) async {
     const storage = FlutterSecureStorage();
     try {
-      if (await storage.read(key: _handledResetTokenKey) == token) return true;
-      await storage.write(key: _handledResetTokenKey, value: token);
+      if (await storage.read(key: key) == token) return true;
+      await storage.write(key: key, value: token);
     } catch (_) {}
     return false;
   }

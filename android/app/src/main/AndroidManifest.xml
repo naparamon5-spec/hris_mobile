@@ -49,6 +49,11 @@
                     android:scheme="https"
                     android:host="hris-api.ardentnetworks.com.ph"
                     android:pathPrefix="/reset-password"/>
+                <!-- Approve / Disapprove links in approval emails. -->
+                <data
+                    android:scheme="https"
+                    android:host="hris-api.ardentnetworks.com.ph"
+                    android:pathPrefix="/email-action"/>
             </intent-filter>
         </activity>
         <!-- Let the app_links package handle deep links via its stream. Without

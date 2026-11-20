@@ -1572,6 +1572,11 @@ class HrisApi {
   Future<void> disapproveRecord(String type, int id) =>
       _recordAction(type, id, 'disapprove');
 
+  /// Approve / Disapprove from an approval email link (public: the signed
+  /// token is the credential). Returns {ok, message, type, id, action, witness}.
+  Future<Map<String, dynamic>> emailAction(String token) async =>
+      _asMap(await _api.post('/public/email-action', body: {'token': token}));
+
   // ---- Approvals (approver roles only) ----
   Future<List<Approval>> approvals({String status = ''}) async {
     final path =
