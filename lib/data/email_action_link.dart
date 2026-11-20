@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../screens/approvals_center_screen.dart';
+import '../widgets/email_decision_sheet.dart';
 import '../widgets/ui.dart';
 import 'api_client.dart';
 import 'app_session.dart';
@@ -26,7 +27,7 @@ class EmailActionLinks {
 
   static GlobalKey<NavigatorState>? _nav;
   static bool _homeMounted = false;
-  static WidgetBuilder? _pending;
+  static VoidCallback? _pending;
 
   /// Called by HomeShell when it mounts: opens a request held until sign-in.
   static void attachHome() {
@@ -34,8 +35,7 @@ class EmailActionLinks {
     final pending = _pending;
     if (pending == null) return;
     _pending = null;
-    WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _nav?.currentState?.push(MaterialPageRoute(builder: pending)));
+    WidgetsBinding.instance.addPostFrameCallback((_) => pending());
   }
 
   static void detachHome() => _homeMounted = false;
@@ -88,19 +88,43 @@ class EmailActionLinks {
       return;
     }
 
-    // Everyone else goes straight to the request's details in their Decided
-    // list, which show its updated status (no extra dialog to tap through).
-    final Widget screen = ApprovalsCenterScreen(
-      module: type == 'other' ? 'requests' : 'records',
-      scope: 'history',
-      initialTaskId: '$type#$id',
-      initialRecordId: id,
-    );
+    // Everyone else goes straight to the request, in their Decided list, with
+    // the same details the email and the website show (sent by the server)
+    // and its updated status — no extra dialog to tap through.
+    final details = result['details'];
+    void open() {
+      final nav = _nav?.currentState;
+      if (nav == null) return;
+      final hasDetails = details is Map;
+      nav.push(MaterialPageRoute(
+        builder: (_) => ApprovalsCenterScreen(
+          module: type == 'other' ? 'requests' : 'records',
+          scope: 'history',
+          // Without the server's details, fall back to the list's own sheet.
+          initialTaskId: hasDetails ? null : '$type#$id',
+          initialRecordId: hasDetails ? null : id,
+        ),
+      ));
+      if (!hasDetails) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _nav?.currentContext;
+        if (ctx == null || !ctx.mounted) return;
+        showPremiumBottomSheet(
+          ctx,
+          isScrollControlled: true,
+          builder: (_) => EmailDecisionSheet(
+            details: details.cast<String, dynamic>(),
+            status: '${result['status'] ?? ''}',
+          ),
+        );
+      });
+    }
+
     if (AppSession.instance.isSignedIn && _homeMounted) {
-      nav.currentState?.push(MaterialPageRoute(builder: (_) => screen));
+      open();
     } else {
       // Signed out: open it once they sign in.
-      _pending = (_) => screen;
+      _pending = open;
     }
   }
 }

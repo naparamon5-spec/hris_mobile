@@ -142,6 +142,7 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   static const _handledActionTokenKey = 'handled_email_action_token';
   StreamSubscription<Uri>? _linkSub;
   bool _awaitingFirstLink = true;
+  final _seenLinks = <String>{};
 
   @override
   void initState() {
@@ -164,6 +165,8 @@ class _HrisAppState extends State<HrisApp> with WidgetsBindingObserver {
   Future<void> _openResetLink(Uri uri) async {
     final isFirstLink = _awaitingFirstLink;
     _awaitingFirstLink = false;
+    // iOS can deliver the same link twice (scene and app delegate): act once.
+    if (!_seenLinks.add(uri.toString())) return;
 
     // Approve / Disapprove link from an approval email.
     final actionToken = EmailActionLinks.tokenFrom(uri);

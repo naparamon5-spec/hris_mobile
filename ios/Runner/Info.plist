@@ -24,10 +24,23 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.ardentnetworks.hris</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>anihris</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
@@ -36,8 +49,6 @@
 	<string>Use Face ID to sign in to ANI HRIS and view your payslips.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow access to your photos to set a profile photo.</string>
-	<key>FlutterDeepLinkingEnabled</key>
-	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -55,6 +55,15 @@
                     android:host="hris-api.ardentnetworks.com.ph"
                     android:pathPrefix="/email-action"/>
             </intent-filter>
+            <!-- Approve / Disapprove buttons shown on phones in approval emails
+                 (anihris://email-action?token=...): the email app opens ANI HRIS
+                 directly, without a browser in between. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="anihris" android:host="email-action"/>
+            </intent-filter>
         </activity>
         <!-- Let the app_links package handle deep links via its stream. Without
              this, Flutter's built-in deep linking routes the URL through the
