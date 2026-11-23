@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -48,6 +49,8 @@ final requestsHistory = [
 /// Fake server: [decision] is what POST /public/email-action answers.
 MockClientHandler fakeServer(int code, Map<String, dynamic> decision,
     {List<String>? calls}) {
+  // The email link carries the same action the server answers with.
+  linkAction = '${decision['action'] ?? 'approve'}';
   return (req) async {
     calls?.add('${req.method} ${req.url.path}?${req.url.query}');
     final path = req.url.path;
@@ -67,13 +70,20 @@ MockClientHandler fakeServer(int code, Map<String, dynamic> decision,
 }
 
 final nav = GlobalKey<NavigatorState>();
+String linkAction = 'approve';
 
 // The app's ApiClient is created once (AppSession singleton), so it is built
 // inside runWithClient with a client that forwards to each test's server.
 MockClientHandler? currentServer;
 final forwarding = MockClient((req) => currentServer!(req));
 
+/// A token shaped like the server's (payload.signature); the app only reads
+/// the action from it to word the confirm prompt.
+String tokenFor(String action) =>
+    '${base64Url.encode(utf8.encode(jsonEncode({'v': 3, 'a': action}))).replaceAll('=', '')}.sig';
+
 Future<void> runLink(WidgetTester t, MockClientHandler server) async {
+  final action = linkAction;
   currentServer = server;
   t.view.physicalSize = const Size(1179, 2556); // iPhone-sized
   t.view.devicePixelRatio = 3.0;
@@ -85,7 +95,12 @@ Future<void> runLink(WidgetTester t, MockClientHandler server) async {
   ));
   EmailActionLinks.attachHome();
   // Don't await: the witness dialog stays open until OK is tapped.
-  EmailActionLinks.handle('token', nav);
+  EmailActionLinks.handle(tokenFor(action), nav);
+  await t.pumpAndSettle();
+  // The app asks before deciding.
+  final label = action == 'approve' ? 'Approve' : 'Disapprove';
+  expect(find.text('$label this request?'), findsOneWidget);
+  await t.tap(find.widgetWithText(ElevatedButton, label));
   for (var i = 0; i < 20; i++) {
     await t.pump(const Duration(milliseconds: 100));
   }
@@ -118,6 +133,8 @@ void expectOpened(WidgetTester t, String no, String employee, String status,
 }
 
 void main() {
+  // ApiConfig reads the base URL from dotenv; unloaded, every request throws.
+  setUpAll(() => dotenv.testLoad(fileInput: 'API_BASE_URL=https://api.test/api/v1'));
   http.runWithClient(() => AppSession.instance, () => forwarding);
 
   testWidgets('MAD witness approves: confirmation popup, nothing opens', (t) async {
@@ -245,6 +262,51 @@ void main() {
         }));
     expect(find.text('Record not found or already approved/disapproved'),
         findsOneWidget);
+    expect(find.byType(ApprovalsCenterScreen), findsNothing);
+  });
+
+  testWidgets('Cancel on the confirm prompt decides nothing', (t) async {
+    final calls = <String>[];
+    currentServer = fakeServer(200, {'ok': true, 'action': 'approve'}, calls: calls);
+    AppSession.instance.api.accessToken = 'signed-in';
+    await t.pumpWidget(MaterialApp(navigatorKey: nav, home: const Scaffold(body: Text('HOME'))));
+    EmailActionLinks.handle(tokenFor('approve'), nav);
+    await t.pumpAndSettle();
+    await t.tap(find.text('Cancel'));
+    await t.pumpAndSettle();
+    expect(calls.where((c) => c.contains('email-action')), isEmpty);
+    expect(find.text('HOME'), findsOneWidget);
+  });
+
+  testWidgets('Signed out: confirms only, keeps no details for a later sign-in', (t) async {
+    final calls = <String>[];
+    currentServer = fakeServer(200, {
+      'ok': true,
+      'message': 'OT#55 has been approved.',
+      'type': 'overtime',
+      'id': '55',
+      'action': 'approve',
+      'witness': false,
+      'status': 'Approved',
+      'details': {'name': 'Tan, Eli', 'heading': 'Overtime'},
+    }, calls: calls);
+    AppSession.instance.api.accessToken = null;
+    await t.pumpWidget(MaterialApp(navigatorKey: nav, home: const Scaffold(body: Text('HOME'))));
+    EmailActionLinks.handle(tokenFor('approve'), nav);
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(ElevatedButton, 'Approve'));
+    for (var i = 0; i < 10; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    await t.pumpAndSettle();
+    expect(find.text('OT#55 has been approved.'), findsOneWidget);
+    expect(find.textContaining('Tan, Eli'), findsNothing);
+    await t.tap(find.text('OK'));
+    await t.pumpAndSettle();
+    // A later sign-in opens nothing.
+    AppSession.instance.api.accessToken = 'someone-else';
+    EmailActionLinks.attachHome();
+    await t.pumpAndSettle();
     expect(find.byType(ApprovalsCenterScreen), findsNothing);
   });
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../screens/approvals_center_screen.dart';
@@ -25,6 +27,19 @@ class EmailActionLinks {
     return isAction && token != null && token.isNotEmpty ? token : null;
   }
 
+  /// 'approve' / 'disapprove' read from the token's (signed) payload, only
+  /// to word the confirm prompt; the server verifies the token itself.
+  static String? actionOf(String token) {
+    try {
+      final body = token.split('.').first;
+      final json = utf8.decode(base64Url.decode(base64Url.normalize(body)));
+      final a = (jsonDecode(json) as Map)['a'];
+      return a == 'approve' || a == 'disapprove' ? a as String : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static GlobalKey<NavigatorState>? _nav;
   static bool _homeMounted = false;
   static VoidCallback? _pending;
@@ -38,7 +53,11 @@ class EmailActionLinks {
     WidgetsBinding.instance.addPostFrameCallback((_) => pending());
   }
 
-  static void detachHome() => _homeMounted = false;
+  static void detachHome() {
+    _homeMounted = false;
+    // Never carry a request over to whoever signs in next.
+    _pending = null;
+  }
 
   /// Records the decision for [token] and opens the request. [nav] is the
   /// app's root navigator (ready — the splash has routed).
@@ -47,8 +66,31 @@ class EmailActionLinks {
     final context = nav.currentContext;
     if (context == null) return;
 
+    // Ask first: links can be opened by other apps or pages, and a decision
+    // can't be undone.
+    final action = actionOf(token);
+    if (action == null) {
+      await showToast(context, 'This link is invalid or has expired.',
+          isSuccess: false, title: 'Not done');
+      return;
+    }
+    final approve = action == 'approve';
+    final confirmed = await showConfirmDialog(
+      context,
+      title: approve ? 'Approve this request?' : 'Disapprove this request?',
+      message: approve
+          ? 'This approves the request from your approval email. It cannot be undone.'
+          : 'This disapproves the request from your approval email. It cannot be undone.',
+      confirmLabel: approve ? 'Approve' : 'Disapprove',
+      cancelLabel: 'Cancel',
+      destructive: !approve,
+    );
+    if (!confirmed) return;
+    final ctx0 = nav.currentContext;
+    if (ctx0 == null || !ctx0.mounted) return;
+
     Map<String, dynamic> result;
-    showLoadingOverlay(context, immediate: true);
+    showLoadingOverlay(ctx0, immediate: true);
     try {
       result = await HrisApi.instance.emailAction(token);
     } on ApiException catch (e) {
@@ -76,12 +118,16 @@ class EmailActionLinks {
 
     // Like the website, a MAD witness can't view the MAD once they've decided
     // it (it has moved on to the department head, or ended) — just confirm.
-    if (witness) {
+    // Signed out: also just confirm. The request's details are never kept to
+    // show after a later sign-in, which may be someone else's.
+    if (witness || !AppSession.instance.isSignedIn || !_homeMounted) {
       final ctx = nav.currentContext;
       if (ctx != null && ctx.mounted) {
         await showSuccessDialog(
           ctx,
-          title: approved ? 'Approved as witness' : 'Disapproved as witness',
+          title: witness
+              ? (approved ? 'Approved as witness' : 'Disapproved as witness')
+              : (approved ? 'Approved' : 'Disapproved'),
           message: '${result['message'] ?? ''}',
         );
       }
@@ -120,11 +166,6 @@ class EmailActionLinks {
       });
     }
 
-    if (AppSession.instance.isSignedIn && _homeMounted) {
-      open();
-    } else {
-      // Signed out: open it once they sign in.
-      _pending = open;
-    }
+    open();
   }
 }
