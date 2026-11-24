@@ -206,23 +206,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               context,
                               const ApprovalsCenterScreen(
                                 module: 'records',
-                                scope: 'pending',
-                              ),
-                            );
-                            _refreshAccess();
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        NavListTile(
-                          icon: Icons.task_alt_rounded,
-                          label: 'Approved Records',
-                          color: AppColors.inkSoft,
-                          onTap: () async {
-                            await _go(
-                              context,
-                              const ApprovalsCenterScreen(
-                                module: 'records',
-                                scope: 'history',
+                                scope: 'all',
                               ),
                             );
                             _refreshAccess();
@@ -245,23 +229,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               context,
                               const ApprovalsCenterScreen(
                                 module: 'requests',
-                                scope: 'pending',
-                              ),
-                            );
-                            _refreshAccess();
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        NavListTile(
-                          icon: Icons.fact_check_outlined,
-                          label: 'Approved Requests',
-                          color: AppColors.inkSoft,
-                          onTap: () async {
-                            await _go(
-                              context,
-                              const ApprovalsCenterScreen(
-                                module: 'requests',
-                                scope: 'history',
+                                scope: 'all',
                               ),
                             );
                             _refreshAccess();

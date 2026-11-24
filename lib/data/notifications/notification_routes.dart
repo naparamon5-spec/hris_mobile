@@ -151,7 +151,7 @@ Widget? screenForNotification({
   if (resolvedKind == 'pending_approval' || resolvedKind == 'for_approval') {
     return ApprovalsCenterScreen(
       module: resolvedType == 'other' ? 'requests' : 'records',
-      scope: 'pending',
+      scope: 'all',
       initialTaskId: taskKey(resolvedType),
       initialRecordId: targetId,
     );

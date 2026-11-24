@@ -674,7 +674,7 @@ class _ApproverPendingSection extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) => ApprovalsCenterScreen(
                       module: witnessOnly ? 'witness' : 'records',
-                      scope: 'pending',
+                      scope: witnessOnly ? 'pending' : 'all',
                     ),
                   ),
                 );

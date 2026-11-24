@@ -145,7 +145,7 @@ class EmailActionLinks {
       nav.push(MaterialPageRoute(
         builder: (_) => ApprovalsCenterScreen(
           module: type == 'other' ? 'requests' : 'records',
-          scope: 'history',
+          scope: 'all',
           // Without the server's details, fall back to the list's own sheet.
           initialTaskId: hasDetails ? null : '$type#$id',
           initialRecordId: hasDetails ? null : id,

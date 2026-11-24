@@ -213,7 +213,7 @@ void main() {
     ]) {
       expect(shown, contains(want), reason: 'missing "$want"');
     }
-    expect(find.text('Approved Records'), findsWidgets);
+    expect(find.text('Records Approval'), findsWidgets);
   });
 
   for (final c in [
@@ -235,7 +235,7 @@ void main() {
             'action': c[5],
             'witness': false,
           }));
-      expectOpened(t, c[2], c[3], c[4], title: 'Approved Records');
+      expectOpened(t, c[2], c[3], c[4], title: 'Records Approval');
     });
   }
 
@@ -250,7 +250,7 @@ void main() {
           'action': 'disapprove',
           'witness': false,
         }));
-    expectOpened(t, '3', 'Ho, Hal', 'Disapproved', title: 'Approved Requests');
+    expectOpened(t, '3', 'Ho, Hal', 'Disapproved', title: 'Request Approval');
   });
 
   testWidgets('Already decided: shows the website message, opens nothing', (t) async {

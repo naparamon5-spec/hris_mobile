@@ -5,16 +5,18 @@ import '../data/hris_api.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui.dart';
 
-/// Department approver's inbox for a single dedicated view:
-/// - Records Approval (module: 'records', scope: 'pending')
-/// - Approved Records (module: 'records', scope: 'history')
-/// - Request Approval (module: 'requests', scope: 'pending')
-/// - Approved Requests (module: 'requests', scope: 'history')
+/// Department approver's inbox:
+/// - Records Approval (module: 'records', scope: 'all') — pending and decided
+///   LOA/CA/MAD/OT in one list, latest first, with search and filters.
+/// - Request Approval (module: 'requests', scope: 'all') — the same for
+///   Other Requests.
+/// - Witness Approval (module: 'witness', scope: 'pending').
+/// scope 'pending' / 'history' still show just one half.
 class ApprovalsCenterScreen extends StatefulWidget {
   const ApprovalsCenterScreen({
     super.key,
     this.module = 'records',
-    this.scope = 'pending',
+    this.scope = 'all',
     this.initialTaskId,
     this.initialRecordId,
   });
@@ -24,7 +26,8 @@ class ApprovalsCenterScreen extends StatefulWidget {
   /// 'witness' = MADs awaiting the MAD witness (fm_mad_approver).
   final String module;
 
-  /// 'pending' = Filings awaiting a decision; 'history' = Decided filings.
+  /// 'all' = pending and decided together; 'pending' = awaiting a decision;
+  /// 'history' = decided only.
   final String scope;
 
   final String? initialTaskId;
@@ -57,13 +60,17 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
 
   bool get _isRequests => widget.module == 'requests';
   bool get _isPending => widget.scope == 'pending';
+  bool get _isAll => widget.scope == 'all';
+
+  /// Pending filings can be ticked for a batch decision.
+  bool _canSelect(ApprovalTask t) => _isPending || (_isAll && t.isPending);
 
   String get _screenTitle {
     if (widget.module == 'witness') return 'Witness Approval';
     if (_isRequests) {
-      return _isPending ? 'Request Approval' : 'Approved Requests';
+      return widget.scope == 'history' ? 'Approved Requests' : 'Request Approval';
     } else {
-      return _isPending ? 'Records Approval' : 'Approved Records';
+      return widget.scope == 'history' ? 'Approved Records' : 'Records Approval';
     }
   }
 
@@ -91,14 +98,39 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
       _error = null;
     });
     try {
-      final rows = await HrisApi.instance.approvalTasks(
-        widget.scope,
-        module: widget.module,
-      );
+      final List<ApprovalTask> rows;
+      if (_isAll) {
+        // Pending + decided in one list (a filing is in only one of them;
+        // de-duplicate anyway in case it changed between the two calls).
+        final parts = await Future.wait([
+          HrisApi.instance.approvalTasks('pending', module: widget.module),
+          HrisApi.instance.approvalTasks('history', module: widget.module),
+        ]);
+        final seen = <String>{};
+        rows = [
+          for (final t in [...parts[0], ...parts[1]])
+            if (seen.add(t.key)) t,
+        ];
+      } else {
+        rows = await HrisApi.instance.approvalTasks(
+          widget.scope,
+          module: widget.module,
+        );
+      }
+      // Latest to oldest.
+      rows.sort((a, b) {
+        final da = _sortDate(a), db = _sortDate(b);
+        if (da == null && db == null) return b.id.compareTo(a.id);
+        if (da == null) return 1;
+        if (db == null) return -1;
+        final c = db.compareTo(da);
+        return c != 0 ? c : b.id.compareTo(a.id);
+      });
       if (!mounted) return;
       setState(() {
         _tasks = rows;
-        _selected.removeWhere((k) => !rows.any((t) => t.key == k));
+        _selected.removeWhere(
+            (k) => !rows.any((t) => t.key == k && _canSelect(t)));
         _loading = false;
       });
       if (!_hasHandledInitial) {
@@ -155,6 +187,14 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
   }
 
   // ---- filtering ----
+  /// The filing's latest activity: decided, else sent, else applied.
+  DateTime? _sortDate(ApprovalTask t) {
+    return parseAppDateTime(t.approvedDate) ??
+        parseAppDateTime(t.dateSent) ??
+        parseAppDateTime(t.dateApplied) ??
+        parseAppDateTime(t.txnDate);
+  }
+
   DateTime? _taskDate(ApprovalTask t) {
     return parseAppDateTime(t.approvedDate) ??
         parseAppDateTime(t.txnDate) ??
@@ -403,8 +443,9 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
     _showChoiceSheet(
       title: 'Status',
       current: _historyStatus,
-      options: const [
+      options: [
         'All',
+        if (_isAll) 'For Approval',
         'Approved',
         'Posted',
         'Disapproved',
@@ -494,14 +535,15 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
 
   Widget _content() {
     final rows = _visibleTasks;
-    final allSelected =
-        rows.isNotEmpty && rows.every((t) => _selected.contains(t.key));
+    final selectable = rows.where(_canSelect).toList();
+    final allSelected = selectable.isNotEmpty &&
+        selectable.every((t) => _selected.contains(t.key));
 
     return Column(
       children: [
         _dateFilterBar(),
         _filterBar(),
-        if (_isPending && rows.isNotEmpty)
+        if (selectable.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
             child: Row(
@@ -511,7 +553,7 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
                     if (allSelected) {
                       _selected.clear();
                     } else {
-                      _selected.addAll(rows.map((t) => t.key));
+                      _selected.addAll(selectable.map((t) => t.key));
                     }
                   }),
                   borderRadius: BorderRadius.circular(8),
@@ -560,7 +602,9 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
                     title: _isPending ? 'All caught up' : 'Nothing here',
                     subtitle: _isPending
                         ? 'No filings are waiting for your approval.'
-                        : 'Decided filings will appear here.',
+                        : _isAll
+                            ? 'No filings match your search or filters.'
+                            : 'Decided filings will appear here.',
                   )
                 : ListView.separated(
                     padding: EdgeInsets.fromLTRB(
@@ -573,7 +617,7 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
                       return _TaskCard(
                         task: t,
                         isRequests: _isRequests,
-                        selectable: _isPending,
+                        selectable: _canSelect(t),
                         selected: _selected.contains(t.key),
                         onToggle: () => setState(() {
                           if (!_selected.add(t.key)) _selected.remove(t.key);
@@ -584,7 +628,7 @@ class _ApprovalsCenterScreenState extends State<ApprovalsCenterScreen> {
                   ),
           ),
         ),
-        if (_isPending && _selected.isNotEmpty) _batchBar(),
+        if (_selected.isNotEmpty) _batchBar(),
       ],
     );
   }
