@@ -46,9 +46,15 @@ void main() async {
   } catch (_) {}
   // Restore the persisted biometric preference before the login screen builds.
   await SecurityState.instance.load();
+  // Edge-to-edge (required look from Android 15): draw behind transparent
+  // status and navigation bars; screens keep clear of them via SafeArea.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarContrastEnforced: false,
   ));
   // Initialize push notifications (FCM). Best-effort — a missing Firebase
   // config never blocks app startup.

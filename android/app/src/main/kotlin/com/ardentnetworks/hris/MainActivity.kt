@@ -3,11 +3,13 @@ package com.ardentnetworks.hris
 import android.content.ContentValues
 import android.media.MediaScannerConnection
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.MediaStore
+import androidx.activity.enableEdgeToEdge
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -16,6 +18,14 @@ import java.io.IOException
 
 // local_auth requires a FragmentActivity host to show the biometric prompt.
 class MainActivity : FlutterFragmentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Draw behind the status and navigation bars on every Android version
+        // (the default from Android 15 / SDK 35). Must run before super.onCreate.
+        // Flutter pads the UI with the system insets (SafeArea / Scaffold).
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         // Milliseconds since boot, including deep sleep. The user can't change

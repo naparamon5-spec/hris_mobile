@@ -55,6 +55,10 @@ android {
 
     buildTypes {
         release {
+            // R8: shrink code and remove unused resources (optimized resource
+            // shrinking is switched on in gradle.properties).
+            isMinifyEnabled = true
+            isShrinkResources = true
             if (hasReleaseKey) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
@@ -71,6 +75,8 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // enableEdgeToEdge() in MainActivity.
+    implementation("androidx.activity:activity-ktx:1.10.1")
 }
 
 // Apply the Google Services plugin only once google-services.json is added, so

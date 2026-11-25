@@ -22,7 +22,7 @@ plugins {
     // Lets Gradle download the JDK a plugin asks for (biometric_storage builds
     // with a Java 17 toolchain) when this machine only has another version.
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
-    id("com.android.application") version "8.11.1" apply false
+    id("com.android.application") version "8.13.0" apply false
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
     // Firebase / FCM — declared here, applied in app/build.gradle.kts only when
     // google-services.json is present, so the build works before Firebase setup.
