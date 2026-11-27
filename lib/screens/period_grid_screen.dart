@@ -36,7 +36,16 @@ class PeriodGridScreen extends StatefulWidget {
     this.embedded = false,
     this.headerAction,
     this.onRefresh,
+    this.initialYear,
+    this.onYearChanged,
   });
+
+  /// Year to show first (kept by the parent so a refresh — which rebuilds this
+  /// widget — doesn't jump back to the newest year).
+  final String? initialYear;
+
+  /// Called when the user picks a different year.
+  final ValueChanged<String>? onYearChanged;
 
   /// When true, renders only the body (the parent supplies Scaffold + AppBar).
   final bool embedded;
@@ -87,7 +96,10 @@ class _PeriodGridScreenState extends State<PeriodGridScreen> {
   void initState() {
     super.initState();
     final ys = _years;
-    _year = ys.isNotEmpty ? ys.first : widget.years.first;
+    final keep = widget.initialYear;
+    _year = keep != null && ys.contains(keep)
+        ? keep
+        : (ys.isNotEmpty ? ys.first : widget.years.first);
   }
 
   // Clean bottom-sheet year picker (consistent with the app's other pickers).
@@ -122,7 +134,10 @@ class _PeriodGridScreenState extends State<PeriodGridScreen> {
         ),
       ),
     );
-    if (picked != null && mounted) setState(() => _year = picked);
+    if (picked != null && mounted) {
+      setState(() => _year = picked);
+      widget.onYearChanged?.call(picked);
+    }
   }
 
   Widget _yearOption(BuildContext ctx, String y) {

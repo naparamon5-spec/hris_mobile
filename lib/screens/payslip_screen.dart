@@ -19,6 +19,9 @@ class PayslipScreen extends StatefulWidget {
 class _PayslipScreenState extends State<PayslipScreen> {
   final _controller = AsyncViewController();
 
+  /// Year picked in the filter; survives pull-to-refresh / reloads.
+  String? _year;
+
   Future<void> _handleRefresh() async {
     _controller.reload();
   }
@@ -52,6 +55,8 @@ class _PayslipScreenState extends State<PayslipScreen> {
             years: ['${DateTime.now().year}'],
             embedded: true,
             onRefresh: _handleRefresh,
+            initialYear: _year,
+            onYearChanged: (y) => _year = y,
             headerAction: _DownloadButton(
               onTap: periods.isEmpty
                   ? null

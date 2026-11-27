@@ -17,6 +17,9 @@ class TimesheetScreen extends StatefulWidget {
 class _TimesheetScreenState extends State<TimesheetScreen> {
   final _controller = AsyncViewController();
 
+  /// Year picked in the filter; survives pull-to-refresh / reloads.
+  String? _year;
+
   Future<void> _handleRefresh() async {
     _controller.reload();
   }
@@ -45,6 +48,8 @@ class _TimesheetScreenState extends State<TimesheetScreen> {
           years: ['${DateTime.now().year}'],
           embedded: true,
           onRefresh: _handleRefresh,
+          initialYear: _year,
+          onYearChanged: (y) => _year = y,
           periods: periods
               .map((p) => PeriodEntry(p.code, [p.range], year: p.year))
               .toList(),
